@@ -32,6 +32,13 @@ Peak Warehouse, Berlin Roll, Electro, Acid Jack, Deep House, Breakbeat, Dub Tech
 - Change pattern: hold HOME (on the SMK-37: PATCH) and press white key / pad 1-7.
 - Steps: the white keys on the FM-1, the 16 pads on the SMK-37.
 
+## Use it with the MD|442 app (web, Mac, Windows, Android)
+The app and the keyboard work together over USB. In the app:
+- ▶ PLAY / ■ STOP is one key now (it replaces separate START and STOP).
+- Double-tap a drum to mute it, and double-tap again to unmute.
+- MY BEATS has IMPORT, EXPORT and MIDI ↓ (download a beat as a .mid file).
+- CLOCK OUT (in the MIDI · DAW panel) makes the keyboard follow the app's tempo. Firmware 1.1 follows incoming MIDI clock and Start/Stop over USB, so press ▶ PLAY in the app and the keyboard starts in time. When the clock stops for half a second, the keyboard goes back to its own tempo.
+
 ## Send your own beats to the keyboard (firmware 1.1)
 1. Connect the keyboard by USB to the computer running MD|442 (Chrome or the desktop app).
 2. In MD|442 open the MIDI · DAW panel and press SEND TO KEYBOARD (allow MIDI with SysEx the first time).
