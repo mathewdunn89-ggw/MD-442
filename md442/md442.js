@@ -773,7 +773,11 @@ function loadBeat(j) {
 function delBeat(j) { const b = beats[j]; if (!b) return; beats.splice(j, 1); keepBeats(); drawAll(); toast(b.name + ' deleted'); }
 /* beats in and out: .md442.json is the same file the DAW plugin and the other MD|442 apps read and write; .mid is a clip for Ableton, Maschine or any DAW */
 const fileName = (n, ext) => (String(n || 'MD442 beat').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'MD442-beat') + ext;
-function beatFile() { storeMix(); return { format: 'md442-beat', version: 1, style: S.style, name: S.preset || 'MD442 beat', P: Object.assign({}, P), scenes: S.scenes.map(copyScene), last: S.last, trim: trimOf() }; }
+// the DAW plugin keeps the sampler as its BREAK row (scenes[].brk: . off, 1-8 a slice, - rings on, g the loop plays on) and brk.* settings;
+// a file carries both, so the web, phone, desktop apps and the plugin all read each other's beats
+const brkRow = sc => sc.g.SM.map((on, i) => { if (!on) return '.'; if (sc.sl[i]) return String(sc.sl[i]); let j = i - 1; while (j >= 0 && sc.g.SM[j] && !sc.sl[j]) j--; return i > 0 && sc.g.SM[i - 1] && j >= 0 && sc.g.SM[j] && sc.sl[j] ? '-' : 'g'; }).join('');
+const brkP = Q => { const b = Math.round(Q['sm.bank']); return { 'brk.kit': S.style === '442' && !S.scenes.some(sc => sc.g.SM.some(Boolean)) ? 0 : b < 4 ? 1 : 2, 'brk.slot': b % 4, 'brk.level': clamp(Math.round(100 * Math.pow(10, (Q['lvl.SM'] - LEVEL.SM) / 20)), 0, 127), 'brk.complex': Q['sm.chop'], 'brk.pitch': Q['sm.tune'] }; };
+function beatFile() { storeMix(); return { format: 'md442-beat', version: 1, style: S.style, name: S.preset || 'MD442 beat', P: Object.assign({}, P, brkP(P)), scenes: S.scenes.map(sc => { const c = copyScene(sc); const r = brkRow(sc); if (r !== '................') c.brk = r; return c; }), last: S.last, trim: trimOf() }; }
 async function saveAs(blob, name, desc, accept) {
   if (window.showSaveFilePicker && self === top) {
     try { const fh = await showSaveFilePicker({ suggestedName: name, startIn: 'documents', id: 'md442-beats', types: [{ description: desc, accept }] }); const w = await fh.createWritable(); await w.write(blob); await w.close(); return true; }
@@ -782,13 +786,13 @@ async function saveAs(blob, name, desc, accept) {
   const u = URL.createObjectURL(blob), a = h('a'); a.href = u; a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); return true;
 }
 async function exportBeat() { const b = beatFile(); if (await saveAs(new Blob([JSON.stringify(b, null, 1)], { type: 'application/json' }), fileName(b.name, '.md442.json'), 'MD|442 beat', { 'application/json': ['.json'] })) toast('Exported ' + b.name); }
-function midiBytes() {   // one track, drums on channel 1 (C1 = kick, the plugin's pad map), bass on 2, stab on 3, sampler on 4 (C3-G3 = slices 1-8, G#3 = the loop plays on); every scene in order, one bar each
+function midiBytes() {   // one track, drums on channel 1 (C1 = kick, the plugin's pad map), bass on 2, stab on 3, sampler on 1 at 49-56 (slices 1-8, the plugin's slice pads; a loop that plays on is written as the slices it passes); every scene in order, one bar each
   storeMix();
   const PPQ = 96, ST = PPQ / 4, ev = [], keyN = Math.round(P.key), sh = (P.shuffle / 100 - .5) * 2 * ST, L = S.last;
   S.scenes.forEach((sc, bar) => { for (let i = 0; i < L; i++) {
     const t = Math.round(bar * L * ST + i * ST + (i % 2 ? sh : 0)), vel = sc.g.AC && sc.g.AC[i] ? 127 : 100;
     SOUND.forEach((k, ki) => { if (!sc.g[k] || !sc.g[k][i]) return;
-      const [ch, n, len] = k === 'BS' ? [1, clamp(28 + keyN + (sc.n[i] | 0), 0, 127), ST - 2] : k === 'ST' ? [2, clamp(52 + keyN, 0, 127), ST - 2] : k === 'SM' ? [3, sc.sl && sc.sl[i] ? 59 + sc.sl[i] : 68, ST - 2] : [0, 36 + ki, ST / 2];
+      const [ch, n, len] = k === 'BS' ? [1, clamp(28 + keyN + (sc.n[i] | 0), 0, 127), ST - 2] : k === 'ST' ? [2, clamp(52 + keyN, 0, 127), ST - 2] : k === 'SM' ? [0, 48 + (sc.sl && sc.sl[i] ? sc.sl[i] : 1 + Math.floor(((i + 16 * (bar % BANKS[Math.round(P['sm.bank'])][2])) % (16 * BANKS[Math.round(P['sm.bank'])][2])) * 8 / (16 * BANKS[Math.round(P['sm.bank'])][2]))), ST - 2] : [0, 36 + ki, ST / 2];
       ev.push([t, 1, 0x90 | ch, n, vel], [t + len, 0, 0x80 | ch, n, 0]); });
   } });
   ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -811,9 +815,19 @@ function normBeat(x) {   // a beat from any MD|442: the web app, the phone app, 
   for (const s of x.scenes.slice(0, 8)) {
     if (!s || !s.g || !Array.isArray(s.n) || s.n.length !== 16) return null;
     const g = {}; for (const k of KEYS) { const r = s.g[k]; if (r != null && (!Array.isArray(r) || r.length !== 16)) return null; g[k] = r ? r.map(Boolean) : Array(16).fill(false); }
-    const sc = fixScene({ g, n: s.n.map(v => clamp(Math.round(+v) || 0, -24, 24)), sl: s.sl }); if (s.x && typeof s.x === 'object') sc.x = s.x; scenes.push(sc);
+    const sc = fixScene({ g, n: s.n.map(v => clamp(Math.round(+v) || 0, -24, 24)), sl: s.sl });
+    // a beat from the plugin: its BREAK row
+    if (typeof s.brk === 'string' && s.brk.length === 16 && !(s.g.SM && Array.isArray(s.sl))) s.brk.split('').forEach((c, i) => { sc.g.SM[i] = /[-g1-8]/.test(c); sc.sl[i] = c >= '1' && c <= '8' ? +c : 0; });
+    if (s.x && typeof s.x === 'object') sc.x = s.x; scenes.push(sc);
   }
-  const Pn = {}; Object.keys(DEF).forEach(k => { if (typeof x.P[k] === 'number' && isFinite(x.P[k])) Pn[k] = clamp(x.P[k], DEF[k].mn, DEF[k].mx); });
+  const Pn = {}, num = k => typeof x.P[k] === 'number' && isFinite(x.P[k]);
+  if (num('brk.kit') && !num('sm.bank')) {   // the plugin's BREAK settings
+    const kit = Math.round(x.P['brk.kit']), slot = num('brk.slot') ? clamp(Math.round(x.P['brk.slot']), 0, 3) : 0;
+    if (kit > 0) Pn['sm.bank'] = (kit - 1) * 4 + slot; if (!x.style && kit > 0) x.style = kit === 1 ? '187' : '888';
+    if (num('brk.level')) Pn['lvl.SM'] = kit > 0 ? half(LEVEL.SM + 20 * Math.log10(Math.max(1, x.P['brk.level']) / 100)) : -40;
+    if (num('brk.complex')) Pn['sm.chop'] = clamp(x.P['brk.complex'], 0, 100); if (num('brk.pitch')) Pn['sm.tune'] = clamp(x.P['brk.pitch'], -12, 12);
+  }
+  Object.keys(DEF).forEach(k => { if (num(k)) Pn[k] = clamp(x.P[k], DEF[k].mn, DEF[k].mx); });
   return { name: String(x.name || 'Imported beat').slice(0, 40), style: STYLES[x.style] ? String(x.style) : '442', P: Pn, scenes, last: clamp(Math.round(+x.last) || 16, 1, 16), trim: clamp(+x.trim || 0, -12, 12) };
 }
 function importBeat() {
@@ -1422,7 +1436,7 @@ const GUIDE = [
     'Press CONNECT here. Press play in Live: MD|442 starts with it and follows its tempo.',
     'To get the sound into Live, press REC here, play, press REC again and drag the WAV onto a track. To record it live, route your computer audio into Live with BlackHole (Mac) or VB-CABLE (Windows).',
     'Your SMK-37 can play MD|442 and Live together on a Mac. In Live, MIDI Ports: Track On for the SMK-37.',
-    'To get the beat into Live as notes, press MIDI ↓ under MY BEATS and drop the .mid file on a track (in Chrome or Edge you can drag the key straight onto it). Drums are on channel 1 from C1, bass on 2, stab on 3, the sampler on 4 (C3 to G3 are slices 1 to 8, G#3 lets the loop play on), so it plays the MD|442 plugin or a Drum Rack.']],
+    'To get the beat into Live as notes, press MIDI ↓ under MY BEATS and drop the .mid file on a track (in Chrome or Edge you can drag the key straight onto it). Drums are on channel 1 from C1, bass on 2, stab on 3, the sampler slices on notes 49 to 56 (the plugin slice pads), so it plays the MD|442 plugin or a Drum Rack.']],
   ['MASCHINE', [
     'Turn on the IAC Driver (Mac) or a loopMIDI port (Windows), as in the Ableton steps.',
     'In Maschine: Preferences, MIDI, Output: enable the IAC Driver. Then File, Sync: Send MIDI Clock.',
@@ -1551,5 +1565,5 @@ function frame() {
 requestAnimationFrame(frame);
 root.addEventListener('pointerdown', boot, { capture: true, once: true });
 ['touchend', 'click'].forEach(ev => root.addEventListener(ev, () => { if (!ac || ac.state !== 'running') boot(); }, { capture: true, passive: true }));   // iOS only starts sound from a touch that ends, so make sure that one counts too      // build the sound engine on the first touch, before the finger lifts
-window.MD442 = { P, S, DEF, KEYS, PRESETS, VPRESETS, STYLES, BANKS, pickStyle, preloadBank, midiBytes, kbFrame, kbBreak, beatFile, mkEngine, apply, playStep, scene, set, select, setStep, setPlaying, pickPreset, render, renderLR, install, toggleTheme, askSignup, midi, onMidi, fit: fitDesk, get playing() { return playing; }, get beats() { return beats; }, get ac() { return ac; }, get E() { return E; } };
+window.MD442 = { P, S, DEF, KEYS, PRESETS, VPRESETS, STYLES, BANKS, pickStyle, preloadBank, midiBytes, normBeat, kbFrame, kbBreak, beatFile, mkEngine, apply, playStep, scene, set, select, setStep, setPlaying, pickPreset, render, renderLR, install, toggleTheme, askSignup, midi, onMidi, fit: fitDesk, get playing() { return playing; }, get beats() { return beats; }, get ac() { return ac; }, get E() { return E; } };
 })();
