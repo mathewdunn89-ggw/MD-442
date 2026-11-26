@@ -5,6 +5,7 @@
 (() => {
 const root = document.getElementById('md442'); if (!root) return;
 const PHONE = document.documentElement.dataset.layout === 'phone';
+const BASE = ((document.currentScript && document.currentScript.src) || location.href).replace(/[?#].*$/, '').replace(/[^/]*$/, '');   // md442.js's folder: the sample banks sit beside it
 const $ = (s, r = root) => r.querySelector(s);
 const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; if (tag === 'button') e.type = 'button'; return e; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -13,13 +14,19 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
 /* ---------- 1. parameters, in real units ---------- */
 // [id, full name, key label]
 const VOICES = [['BD', 'Kick', 'KICK'], ['SD', 'Snare', 'SNARE'], ['CP', 'Clap', 'CLAP'], ['RS', 'Rim shot', 'RIM'], ['LT', 'Low tom', 'LO TOM'], ['MT', 'Mid tom', 'MID TOM'], ['HT', 'Hi tom', 'HI TOM'],
-  ['CH', 'Closed hat', 'CL HAT'], ['OH', 'Open hat', 'OP HAT'], ['CR', 'Crash', 'CRASH'], ['RD', 'Ride', 'RIDE'], ['BS', 'Bass', 'BASS'], ['ST', 'Dub stab', 'STAB'], ['AC', 'Accent', 'ACCENT']];
+  ['CH', 'Closed hat', 'CL HAT'], ['OH', 'Open hat', 'OP HAT'], ['CR', 'Crash', 'CRASH'], ['RD', 'Ride', 'RIDE'], ['BS', 'Bass', 'BASS'], ['ST', 'Dub stab', 'STAB'], ['SM', 'Sampler', 'SAMPLE'], ['AC', 'Accent', 'ACCENT']];
 const KEYS = VOICES.map(v => v[0]), SOUND = KEYS.filter(k => k !== 'AC');
 const NAME = Object.fromEntries(VOICES.map(v => [v[0], v[1]])), SHORT = Object.fromEntries(VOICES.map(v => [v[0], v[2]]));
 const CHORDS = [['Fifth', [0, 7, 12]], ['Minor', [0, 3, 7]], ['Min 7', [0, 3, 7, 10]], ['Min 9', [0, 3, 7, 10, 14]], ['Maj 7', [0, 4, 7, 11]], ['Maj 9', [0, 4, 7, 11, 14]], ['6/9', [0, 4, 7, 9, 14]]];
 const NOTES = ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#'];
 const NOTE_CYCLE = [0, 3, 5, 7, 10, 12, -2];
 const sgn = v => (v > 0 ? '+' : v < 0 ? '−' : '');
+// MD|442's three machines: one engine, the same filters, effects and controls; their own patterns, sound and sample banks.
+// The banks are the ones in the MD|187 / MD|888 keyboard firmwares (tools/md_gen_samples.py there): 8 slices each.
+const STYLES = { 442: { name: 'MD|442', tag: 'TECHNO', first: 'Peak Warehouse', bank: 4 }, 187: { name: 'MD|187', tag: 'HIP-HOP', first: 'Boom Bap', bank: 0 }, 888: { name: 'MD|888', tag: 'HARD TECHNO', first: 'Warehouse', bank: 4 } };
+const STYLE_IDS = ['442', '187', '888'];
+const BANKS = [['187', 'BOOMBP', 1, 96, 'Boom bap break'], ['187', 'DRUMS', 1, 96, 'Dusty drum hits'], ['187', 'STABS', 1, 96, 'Jazz stabs'], ['187', 'VOX', 1, 96, 'Vocal hits'],
+  ['888', 'RUMBLE', 1, 155, 'Rumble'], ['888', 'GABBA', 1, 155, 'Gabba kicks'], ['888', 'TRANCE', 2, 155, 'Trance stabs'], ['888', 'HITS', 1, 155, 'Industrial hits']];   // [machine, file, bars, BPM it was cut at, name]
 const ETIMES = [['1/16', 1], ['1/8 T', 4 / 3], ['1/8', 2], ['3/16', 3], ['1/4', 4], ['3/8', 6]];   // echo time in 16th notes
 const F = {
   db: v => v <= -40 ? 'OFF' : sgn(v) + String(Math.abs(Math.round(v * 2) / 2)) + ' dB',
@@ -32,6 +39,7 @@ const F = {
   chord: v => CHORDS[Math.round(v)][0],
   etime: v => ETIMES[Math.round(v)][0],
   pan: v => Math.abs(v) < 3 ? 'C' : (v < 0 ? 'L ' : 'R ') + Math.round(Math.abs(v)),
+  bank: v => BANKS[Math.round(v)][1],
   filter: v => Math.abs(v) < 4 ? 'OFF' : v < 0 ? 'LP ' + F.hz(lpHz(v)) : 'HP ' + F.hz(hpHz(v))
 };
 const lpHz = v => 18000 * Math.pow(140 / 18000, (-v - 4) / 96), hpHz = v => 20 * Math.pow(4500 / 20, (v - 4) / 96);
@@ -49,13 +57,14 @@ D('cr.tune', -12, 12, 0, 'Crash tune', 'st', { step: .5 }); D('cr.decay', 400, 4
 D('rd.tune', -12, 12, 0, 'Ride tune', 'st', { step: .5 }); D('rd.decay', 300, 3000, 1100, 'Ride decay', 'ms', { exp: 1 }); D('rd.tone', 0, 100, 50, 'Ride tone', 'pc');
 D('bs.cutoff', 60, 8000, 500, 'Bass cutoff', 'hz', { exp: 1 }); D('bs.reso', 0, 100, 45, 'Bass reso', 'pc'); D('bs.acid', 0, 100, 0, 'Acid', 'pc'); D('bs.drive', 0, 100, 30, 'Bass drive', 'pc'); D('bs.echo', 0, 100, 0, 'Bass echo', 'pc'); D('bs.fat', 0, 100, 0, 'Bass fat', 'pc'); D('bs.decay', 40, 800, 200, 'Bass decay', 'ms', { exp: 1 });
 D('st.tone', 300, 12000, 2500, 'Stab tone', 'hz', { exp: 1 }); D('st.decay', 80, 1700, 400, 'Stab decay', 'ms', { exp: 1 }); D('st.chord', 0, 6, 1, 'Chord', 'chord'); D('st.echo', 0, 100, 0, 'Stab echo', 'pc'); D('st.verb', 0, 100, 0, 'Stab verb', 'pc');
+D('sm.bank', 0, 7, 0, 'Sample loop', 'bank'); D('sm.tune', -12, 12, 0, 'Sample tune', 'st', { step: .5 }); D('sm.chop', 0, 100, 0, 'Chop', 'pc');
 D('fx.filter', -100, 100, 0, 'Filter', 'filter'); D('fx.verb', 0, 100, 0, 'Reverb', 'pc'); D('fx.space', 0, 100, 0, 'Space', 'pc'); D('fx.drive', 0, 100, 0, 'Drive', 'pc');
 D('fx.vdec', .3, 4, 1.6, 'Reverb decay', 'ms', { exp: 1 }); D('fx.etime', 0, 5, 3, 'Echo time', 'etime'); D('fx.efb', 0, 95, 50, 'Echo feedback', 'pc');
-const LEVEL = { BD: 0, SD: -3, CP: -4, RS: -8, LT: -6, MT: -6, HT: -6, CH: -3, OH: -4, CR: -6, RD: -8, BS: -5.5, ST: -6 };
+const LEVEL = { BD: 0, SD: -3, CP: -4, RS: -8, LT: -6, MT: -6, HT: -6, CH: -3, OH: -4, CR: -6, RD: -8, BS: -5.5, ST: -6, SM: -4 };
 SOUND.forEach(k => D('lvl.' + k, -40, 6, LEVEL[k], NAME[k] + ' level', 'db'));
 // channel tools, the same five on every drum: where it sits, its own filter and drive, and how much goes to the reverb and the echo
 const PAN = { RS: -12, LT: -30, HT: 30, CH: 18, OH: -18, CR: -24, RD: 26 };
-const RV = { BD: 0, SD: .5, CP: .7, RS: .45, LT: .5, MT: .55, HT: .55, CH: .16, OH: .24, CR: .3, RD: .2, BS: 0 }, DV = { BD: 0, SD: .32, CP: .45, RS: .4, LT: .4, MT: .5, HT: .5, CH: .1, OH: .18, CR: .2, RD: .12 };
+const RV = { BD: 0, SD: .5, CP: .7, RS: .45, LT: .5, MT: .55, HT: .55, CH: .16, OH: .24, CR: .3, RD: .2, BS: 0, SM: .12 }, DV = { SM: .08, BD: 0, SD: .32, CP: .45, RS: .4, LT: .4, MT: .5, HT: .5, CH: .1, OH: .18, CR: .2, RD: .12 };
 SOUND.forEach(k => {
   D('pan.' + k, -100, 100, PAN[k] || 0, NAME[k] + ' pan', 'pan'); D('flt.' + k, -100, 100, 0, NAME[k] + ' filter', 'filter'); D('drv.' + k, 0, 100, 0, NAME[k] + ' channel drive', 'pc');
   if (k !== 'ST') D('rev.' + k, 0, 100, Math.round(RV[k] * 100), NAME[k] + ' reverb send', 'pc');
@@ -76,6 +85,7 @@ const KN = {
   CR: [['cr.tune', 'TUNE'], ['cr.decay', 'DECAY'], ['cr.tone', 'TONE']], RD: [['rd.tune', 'TUNE'], ['rd.decay', 'DECAY'], ['rd.tone', 'TONE']],
   BS: [['bs.cutoff', 'CUTOFF'], ['bs.reso', 'RESO'], ['bs.decay', 'DECAY'], ['bs.acid', 'ACID'], ['bs.fat', 'FAT'], ['bs.drive', 'DRIVE']],
   ST: [['st.tone', 'TONE'], ['st.decay', 'DECAY'], ['st.chord', 'CHORD']],
+  SM: [['sm.bank', 'LOOP'], ['sm.tune', 'TUNE'], ['sm.chop', 'CHOP']],
   AC: [['accent', 'AMOUNT']]
 };
 // phone: the row under the instrument keys = the drum's sound knobs, then its channel tools (its level is in the Mixer)
@@ -87,7 +97,7 @@ const SECT = [
   { t: 'TOMS', v: ['LT', 'MT', 'HT'], k: [['lt.tune', 'LO TUNE'], ['lt.decay', 'LO DEC'], ['mt.tune', 'MD TUNE'], ['mt.decay', 'MD DEC'], ['ht.tune', 'HI TUNE'], ['ht.decay', 'HI DEC']] },
   { t: 'HATS', v: ['CH', 'OH'], k: [['ch.decay', 'CH DEC'], ['oh.decay', 'OH DEC'], ['hh.tone', 'TONE']] },
   { t: 'CYMBALS', v: ['CR', 'RD'], k: [['cr.tune', 'CR TUNE'], ['rd.tune', 'RD TUNE'], ['cr.decay', 'CR DEC'], ['rd.decay', 'RD DEC'], ['cr.tone', 'CR TONE'], ['rd.tone', 'RD TONE']] },
-  { t: 'BASS', v: ['BS'], k: KN.BS }, { t: 'DUB STAB', v: ['ST'], k: KN.ST }
+  { t: 'BASS', v: ['BS'], k: KN.BS }, { t: 'STAB · SAMPLE', v: ['ST', 'SM'], k: [['st.tone', 'ST TONE'], ['st.decay', 'ST DEC'], ['st.chord', 'CHORD'], ['sm.chop', 'CHOP'], ['sm.bank', 'LOOP'], ['sm.tune', 'SM TUNE']] }
 ];
 const MASTER = [['vol', 'VOLUME'], ['bpm', 'TEMPO'], ['shuffle', 'SHUFFLE'], ['key', 'KEY'], ['accent', 'ACCENT']];
 const FXK = [['fx.filter', 'FILTER'], ['fx.verb', 'REVERB'], ['fx.space', 'ECHO'], ['fx.drive', 'DRIVE']];
@@ -144,7 +154,49 @@ function convert(p) {
   sc.n = p.notes.slice();
   return { v, sc };
 }
-function emptyScene() { return { g: Object.fromEntries(KEYS.map(k => [k, Array(16).fill(false)])), n: Array(16).fill(0) }; }
+// MD|187 and MD|888: the keyboard firmwares' factory patterns (md_gen_presets.py there), step for step. g: drum rows (808 and 909 together),
+// ac: accent, bk: sample bank (BANKS), br: the SAMPLE row (1-8 = that slice, - = the slice before rings on, g = the loop plays on, . = off),
+// cx: chop (how often the loop jumps), lv: sample level %, root + bs: the 303 line (n = semitones; a = accent, s = slide).
+const VPRESETS = {
+  "Boom Bap": {"s":"187","sw":32,"g":{"BD":"x......x..x.....","SD":"....x.......x...","CH":"x.x.x.x.x.x.x.x.","OH":"..............x."},"ac":"....x.......x...","bk":0,"br":"gggggggggggggggg","cx":0,"lv":70,"root":38,"bs":["0",".",".",".",".",".",".","0",".",".","s3","5",".",".",".","."]},
+  "Dusty": {"s":"187","sw":36,"g":{"BD":"x.........x.....","CH":"..x...x...x...x."},"bk":1,"br":"1-..3-.2.1-3-..5","cx":0,"lv":100,"root":38,"bs":["0",".",".",".",".",".",".",".",".",".","0",".",".","-2",".","."]},
+  "Stab City": {"s":"187","sw":30,"g":{"BD":"x......x.x......","SD":"....x.......x...","CH":"x.x.x.x.x.x.x.x.","RS":".......x......x."},"ac":"....x.......x...","bk":2,"br":"1-......2-....3.","cx":0,"lv":95,"root":38,"bs":["0",".",".",".",".",".",".","0",".","5",".",".",".",".",".","."]},
+  "Vox Hits": {"s":"187","sw":32,"g":{"BD":"x.....x...x.....","SD":"....x.......x...","CP":"............x...","CH":"x.xxx.x.x.xxx.x."},"bk":3,"br":"..1-......2-..8-","cx":0,"lv":90,"root":38,"bs":["0",".",".",".",".",".","0",".",".",".","3",".",".",".",".","."]},
+  "Laid Back": {"s":"187","sw":48,"g":{"BD":"x.......x.x.....","RS":"....x.......x...","CH":"x.x.x.x.x.x.x.x.","OH":"......x........."},"bk":1,"br":"......7-......7-","cx":0,"lv":80,"root":36,"bs":["0",".",".",".",".",".",".",".","0",".","s7","5",".",".",".","."]},
+  "Chop Shop": {"s":"187","sw":28,"g":{"BD":"x.........x.....","CH":"x.x.x.x.x.x.x.x."},"bk":0,"br":"gggggggggggggggg","cx":65,"lv":100,"root":38,"bs":["0",".",".",".",".",".",".",".",".",".","0",".",".",".",".","."]},
+  "Horns": {"s":"187","sw":30,"g":{"BD":"x......x..x.....","SD":"....x.......x...","CH":"x.x.x.x.x.x.x.x.","CR":"x..............."},"ac":"....x.......x...","bk":2,"br":"3-.4-.......3-4-","cx":0,"lv":95,"root":38,"bs":["0",".",".","0",".",".",".",".",".",".","a5",".",".",".",".","."]},
+  "Scratch": {"s":"187","sw":34,"g":{"BD":"x......x..x..x..","SD":"....x.......x...","CH":"x.x.x.x.x.x.x.x."},"bk":3,"br":"........8-8-.8-.","cx":0,"lv":90,"root":38,"bs":["0",".",".",".",".",".",".","0",".",".","0",".",".",".",".","."]},
+  "Warehouse": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"xxxxxxxxxxxxxxxx","OH":"..x...x...x...x.","CP":"....x.......x..."},"ac":"x...x...x...x...","bk":4,"br":"gggggggggggggggg","cx":0,"lv":90},
+  "Gabba": {"s":"888","sw":0,"g":{"CH":"..x...x...x...x.","CP":"....x.......x..."},"bk":5,"br":"gggggggggggggggg","cx":0,"lv":110,"root":45,"bs":["a0",".","0",".","a0",".","0",".","a0",".","0",".","a0",".","s0","12"]},
+  "Trance Stab": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"x.x.x.x.x.x.x.x.","OH":"..x...x...x...x.","RD":"x.x.x.x.x.x.x.x."},"bk":6,"br":"..1-..1-..2-..3-","cx":0,"lv":95},
+  "Industry": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"xxxxxxxxxxxxxxxx","RS":"...x..x....x..x."},"ac":"x...x...x...x...","bk":7,"br":"..1-......7-..5-","cx":0,"lv":90},
+  "Acid 155": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"..x...x...x...x.","CP":"....x.......x..."},"bk":4,"br":"gggggggggggggggg","cx":0,"lv":70,"root":45,"bs":["a0","0","s12","0","3","a0","s0","10","0","a12","0","s7","a0","0","3","s15"]},
+  "Schranz": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"xxxxxxxxxxxxxxxx","LT":"..x...x...x...x.","MT":".x...x...x...x..","HT":"...x...x...x...x"},"ac":"x...x...x...x...","bk":4,"br":"gggggggggggggggg","cx":0,"lv":75},
+  "Rolling": {"s":"888","sw":0,"g":{"RS":".x..x..x.x..x..x","BD":"x...x...x...x...","OH":"..x...x...x...x.","CH":"x.xxx.xxx.xxx.xx"},"bk":4,"br":"gggggggggggggggg","cx":0,"lv":95},
+  "Peak Time": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CP":"....x.......x...","OH":"..x...x...x...x.","RD":"x.x.x.x.x.x.x.x.","CR":"x..............."},"ac":"x...x...x...x...","bk":6,"br":"1-..1-..6-..7-.4","cx":0,"lv":100}
+};
+// each machine's own sound, under every one of its patterns (the knobs are the same on all three)
+const VSOUND = {
+  187: { bpm: 96, 'bd.tune': 47, 'bd.decay': 950, 'bd.attack': 30, 'bd.punch': 38, 'bd.rumble': 0, 'sd.tune': -1.5, 'sd.tone': 38, 'sd.snappy': 48, 'sd.decay': 260, 'cp.tone': 1050, 'cp.decay': 260,
+    'ch.decay': 55, 'oh.decay': 380, 'hh.tone': 34, 'rs.tune': -2, 'cr.tone': 35, 'cr.decay': 1800, 'bs.cutoff': 280, 'bs.reso': 18, 'bs.acid': 0, 'bs.drive': 22, 'bs.fat': 65, 'bs.decay': 420,
+    'st.tone': 1700, 'st.decay': 520, 'st.chord': 3, 'fx.verb': 14, 'fx.space': 0, 'fx.drive': 18, 'fx.vdec': 1.2, 'drv.BD': 12, 'drv.SD': 18, 'flt.CH': -10, 'flt.SM': -6, 'drv.SM': 14, 'accent': 4 },
+  888: { bpm: 155, 'bd.tune': 54, 'bd.decay': 420, 'bd.attack': 92, 'bd.punch': 100, 'bd.rumble': 85, 'sd.tune': 1, 'sd.snappy': 75, 'sd.decay': 220, 'cp.tone': 1500, 'cp.decay': 240,
+    'ch.decay': 42, 'oh.decay': 300, 'hh.tone': 82, 'rd.tone': 70, 'bs.cutoff': 700, 'bs.reso': 72, 'bs.acid': 85, 'bs.drive': 80, 'bs.decay': 120, 'st.tone': 6000, 'st.decay': 280, 'st.chord': 1,
+    'fx.verb': 20, 'fx.space': 14, 'fx.drive': 34, 'fx.vdec': 2.2, 'fx.etime': 2, 'fx.efb': 40, 'drv.BD': 55, 'drv.CP': 30, 'flt.SM': 0, 'drv.SM': 25, 'accent': 7 }
+};
+function convertV(p) {
+  const v = Object.assign({}, VSOUND[p.s]); v.shuffle = Math.round(50 + p.sw / 4); v['sm.bank'] = p.bk; v['sm.chop'] = p.cx; v['lvl.SM'] = half(LEVEL.SM + 20 * Math.log10(Math.max(1, p.lv) / 100));
+  const sc = emptyScene(); Object.keys(p.g).forEach(k => { sc.g[k] = p.g[k].split('').map(c => c === 'x'); }); if (p.ac) sc.g.AC = p.ac.split('').map(c => c === 'x');
+  p.br.split('').forEach((c, i) => { sc.g.SM[i] = c !== '.'; sc.sl[i] = c >= '1' && c <= '8' ? +c : 0; });
+  const root = p.root || (p.s === '888' ? 45 : 38); v.key = ((root - 28) % 12 + 12) % 12; const oct = 12 * Math.floor((root - 28) / 12);
+  if (p.bs) p.bs.forEach((c, i) => { if (c === '.') return; sc.g.BS[i] = true; sc.n[i] = clamp(parseInt(c.replace(/^[asA]/, ''), 10) + oct, -24, 24); });
+  return { v, sc };
+}
+const styleOf = name => (VPRESETS[name] ? VPRESETS[name].s : PRESETS[name] ? '442' : null);
+const stylePresets = st => (st === '442' ? Object.keys(PRESETS) : Object.keys(VPRESETS).filter(n => VPRESETS[n].s === st));
+function emptyScene() { return { g: Object.fromEntries(KEYS.map(k => [k, Array(16).fill(false)])), n: Array(16).fill(0), sl: Array(16).fill(0) }; }
+// scenes saved before the sampler (or by another MD|442) get its row and slices
+function fixScene(s) { if (!s || !s.g) return s; KEYS.forEach(k => { if (!Array.isArray(s.g[k]) || s.g[k].length !== 16) s.g[k] = Array(16).fill(false); }); if (!Array.isArray(s.sl) || s.sl.length !== 16) s.sl = Array(16).fill(0); else s.sl = s.sl.map(v => clamp(Math.round(+v) || 0, 0, 8)); return s; }
 const copyScene = s => JSON.parse(JSON.stringify(s));
 // Random: put together from parts that work with each other, so it always sounds like a beat
 function randomScene() {
@@ -165,12 +217,16 @@ function randomScene() {
   row('ST', pick(['................', '................', '..............x.', '......x.........', 'x..x......x.....', '..x.....x..x....']));
   row('AC', pick(['................', 'x...x...x...x...', '..x...x...x...x.', 'x.....x...x.....']));
   const scale = [3, 5, 7, 10, 12, 12]; sc.n = Array.from({ length: 16 }, (_, i) => i % 4 === 0 || Math.random() < .6 ? 0 : pick(scale));
+  if (S.style !== '442') {   // MD|187 / MD|888: the sampler joins in, a loop that plays on or a few slices
+    const br = pick(['gggggggggggggggg', 'gggggggggggggggg', '1-..3-.2.1-3-..5', '..1-......2-..8-', '1-......2-....3.', '........8-8-.8-.', '..1-..1-..2-..3-']);
+    br.split('').forEach((c, i) => { sc.g.SM[i] = c !== '.'; sc.sl[i] = c >= '1' && c <= '8' ? +c : 0; });
+  }
   return sc;
 }
 
 /* ---------- state ---------- */
 const P = {}; Object.keys(DEF).forEach(k => { P[k] = DEF[k].df; });
-const S = { preset: FIRST, dirty: false, scenes: [emptyScene()], sc: 0, chain: false, last: 16, mute: {}, kill: { LOW: false, MID: false, HI: false }, rep: { on: false, len: 1 }, sel: 'BD', view: 'one', mem: {}, mixer: false, midiOpen: false, metro: false, solo: null, keys: { open: false, target: 'BS', mode: 0, rate: 1, oct: 1, hold: false, rec: false } };
+const S = { style: '442', preset: FIRST, dirty: false, scenes: [emptyScene()], sc: 0, chain: false, last: 16, mute: {}, kill: { LOW: false, MID: false, HI: false }, rep: { on: false, len: 1 }, sel: 'BD', view: 'one', mem: {}, mixer: false, midiOpen: false, metro: false, solo: null, keys: { open: false, target: 'BS', mode: 0, rate: 1, oct: 1, hold: false, rec: false } };
 let presetVals = {};                              // what double-click resets a knob to
 const scene = () => S.scenes[S.sc];
 // SCENE MIX: every scene keeps its own mutes, kills, filter, effects, mixer and sound knobs. The master volume and the tempo stay as they are.
@@ -179,8 +235,8 @@ function storeMix(sc) { sc = sc || scene(); if (!sc) return; const p = {}; MIXK(
 function loadMix(sc) { sc = sc || scene(); if (!sc || !sc.x || !sc.x.P) return false; const x = sc.x; MIXK().forEach(k => { if (typeof x.P[k] === 'number') P[k] = clamp(x.P[k], DEF[k].mn, DEF[k].mx); }); S.mute = Object.assign({}, x.mute || {}); S.kill = Object.assign({ LOW: false, MID: false, HI: false }, x.kill || {}); return true; }
 function goScene(n) { storeMix(); S.sc = clamp(n, 0, S.scenes.length - 1); if (loadMix()) { apply(); refreshKnobs(); } }
 function loadPreset(name) {
-  const p = PRESETS[name]; if (!p) return;
-  const c = convert(p), vol = P.vol;
+  const st = styleOf(name); if (!st) return;
+  const c = st === '442' ? convert(PRESETS[name]) : convertV(VPRESETS[name]), vol = P.vol; S.style = st; preloadBank(c.v['sm.bank'] != null ? c.v['sm.bank'] : DEF['sm.bank'].df);
   Object.keys(DEF).forEach(k => { P[k] = DEF[k].df; }); Object.assign(P, c.v); P.vol = vol;
   presetVals = Object.assign({}, P, { vol: DEF.vol.df });
   Object.assign(S, { preset: name, dirty: false, scenes: [c.sc], sc: 0, chain: false, last: 16, mute: {}, mem: {} }); pend = null;
@@ -191,12 +247,12 @@ let saveT = 0;
 const saveNow = () => { clearTimeout(saveT); storeMix(); try { localStorage.setItem(LS, JSON.stringify({ P, S: Object.assign({}, S, { rep: { on: false, len: S.rep.len } }), presetVals })); } catch (_) {} };
 function persist() { storeMix(); clearTimeout(saveT); saveT = setTimeout(saveNow, 400); }
 addEventListener('pagehide', saveNow);   // nothing from the last moment is lost when the page closes
-const okScene = s => s && s.g && KEYS.every(k => Array.isArray(s.g[k]) && s.g[k].length === 16) && Array.isArray(s.n) && s.n.length === 16;
+const okScene = s => !!(s && s.g && fixScene(s) && Array.isArray(s.n) && s.n.length === 16);
 function restore() {
   try {
     const d = JSON.parse(localStorage.getItem(LS) || 'null'); if (!d || !d.S || !Array.isArray(d.S.scenes) || !d.S.scenes.length || !d.S.scenes.every(okScene)) return false;
     Object.keys(DEF).forEach(k => { if (typeof d.P[k] === 'number') P[k] = clamp(d.P[k], DEF[k].mn, DEF[k].mx); });
-    const S0 = JSON.parse(JSON.stringify(S)); Object.assign(S, d.S); ['mute', 'kill', 'rep', 'mem'].forEach(k => { if (!S[k] || typeof S[k] !== 'object') S[k] = S0[k]; }); if (typeof S.rep.len !== 'number') S.rep = S0.rep; S.scenes = S.scenes.slice(0, 8); S.sc = clamp(S.sc | 0, 0, S.scenes.length - 1); S.rep.on = false; S.last = clamp(Math.round(+S.last) || 16, 1, 16); if (!['one', 'all'].includes(S.view)) S.view = 'one'; S.keys = Object.assign({ open: false, target: 'BS', mode: 0, rate: 1, oct: 1, hold: false, rec: false }, S.keys || {}); S.keys.rec = false; if (!KEYS.includes(S.sel)) S.sel = 'BD';
+    const S0 = JSON.parse(JSON.stringify(S)); Object.assign(S, d.S); ['mute', 'kill', 'rep', 'mem'].forEach(k => { if (!S[k] || typeof S[k] !== 'object') S[k] = S0[k]; }); if (typeof S.rep.len !== 'number') S.rep = S0.rep; S.scenes = S.scenes.slice(0, 8); S.sc = clamp(S.sc | 0, 0, S.scenes.length - 1); S.rep.on = false; S.last = clamp(Math.round(+S.last) || 16, 1, 16); if (!['one', 'all'].includes(S.view)) S.view = 'one'; S.keys = Object.assign({ open: false, target: 'BS', mode: 0, rate: 1, oct: 1, hold: false, rec: false }, S.keys || {}); S.keys.rec = false; if (!KEYS.includes(S.sel)) S.sel = 'BD'; if (!STYLES[S.style]) S.style = styleOf(S.preset) || '442';
     P['fx.filter'] = 0;   // always open at centre: no filter
     presetVals = d.presetVals || {}; return true;
   } catch (_) { return false; }
@@ -208,7 +264,8 @@ const keepBeats = () => { try { localStorage.setItem(LSB, JSON.stringify(beats))
 /* Drums are made the way the classic analogue machines make them: ringing resonators hit by a pulse,
    banks of six square waves for the metal, filtered noise for snap and clap. Works on a live or an offline context. */
 const BUS = .4, CLIPIN = .56, OUT = .79, DUCK = .75, BDUCK = .72;   // louder into the soft clip (patterns land near -13 LUFS with peaks around -3 dBFS, so the kick keeps its punch); the ceiling stays at -1 dBFS: tanh(3.5) / tanh(1.4) × .79
-const PTRIM = { 'Peak Warehouse': .5, 'Berlin Roll': -1, 'Electro': 1.6, 'Acid Jack': 1.9, 'Deep House': 2.6, 'Breakbeat': 1.8, 'Dub Techno': 1 };   // dB per pattern, so they all play at the same loudness   // headroom into the master chain, output trim after the limiter, how far the kick dips the rest
+const PTRIM = { 'Peak Warehouse': .5, 'Berlin Roll': -1, 'Electro': 1.6, 'Acid Jack': 1.9, 'Deep House': 2.6, 'Breakbeat': 1.8, 'Dub Techno': 1,
+  'Boom Bap': 2.0, 'Dusty': 2.5, 'Stab City': 3, 'Vox Hits': 3, 'Laid Back': 3, 'Chop Shop': 3, 'Horns': 2.5, 'Scratch': 3, 'Warehouse': -1.0, 'Gabba': -0.5, 'Trance Stab': 2.5, 'Industry': 0.5, 'Acid 155': -0.5, 'Schranz': -0.5, 'Rolling': 1.5, 'Peak Time': -1.0 };   // dB per pattern, so they all play at the same loudness   // headroom into the master chain, output trim after the limiter, how far the kick dips the rest
 const trimOf = () => { const b = beats.find(x => x.name === S.preset); return b ? +b.trim || 0 : PTRIM[S.preset] || 0; };
 const HAT_F = [205.3, 304.4, 369.6, 522.7, 540, 800], RIDE_F = [263, 400, 421, 474, 587, 845];
 const curves = {};
@@ -394,6 +451,8 @@ function voice(X, k, t, i, vel, note) {
     if (fat > .01) { const fg = ac.createGain(); fg.gain.value = og.gain.value * (.35 + fat * .45); fg.connect(l1); [-1, 1].forEach(sg => { const o = ac.createOscillator(); o.type = o1.type; o.frequency.value = o1.frequency.value; o.detune.value = sg * (5 + fat * 17); o.connect(fg); more.push(o); }); og.gain.value *= 1 - fat * .2; }
     e.gain.value = 0; e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(.5, t + .004); e.gain.setTargetAtTime(.34, t + .004, .05); e.gain.setTargetAtTime(0, t + len, .025);
     e.connect(d); [o1, o2].concat(more).forEach(o => { o.start(t); o.stop(t + len + .2); });
+  } else if (k === 'SM') {
+    sampler(X, t, i, vel, note != null ? note : (scene().sl[i] | 0));
   } else if (k === 'ST') {
     const top = P['st.tone'], tn = Math.log2(top / 300) / 5.5, dur = P['st.decay'] / 1000;
     const lp = ac.createBiquadFilter(), e = ac.createGain(); lp.type = 'lowpass'; lp.Q.value = 2 + tn * 5;
@@ -401,6 +460,38 @@ function voice(X, k, t, i, vel, note) {
     CHORDS[P['st.chord']][1].forEach(iv => [-8, 8].forEach(dt => { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 41.2 * 4 * Math.pow(2, (P.key + iv + (note || 0)) / 12); o.detune.value = dt; o.connect(lp); o.start(t); o.stop(t + dur + .1); }));
     lp.connect(e); e.gain.value = 0; e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(.24, t + .004); e.gain.exponentialRampToValueAtTime(.0005, t + .004 + dur); e.gain.setTargetAtTime(0, t + .004 + dur, .012); e.connect(d);
   }
+}
+/* the sampler: MD|187 and MD|888's banks, fetched the first time a pattern or the LOOP knob needs one, played in time with the tempo */
+const bankBufs = {}, bankWait = {};
+function preloadBank(i) {
+  i = clamp(Math.round(+i) || 0, 0, BANKS.length - 1); if (bankBufs[i]) return Promise.resolve(bankBufs[i]); if (bankWait[i]) return bankWait[i];
+  const b = BANKS[i], OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OAC || !window.fetch) return Promise.resolve(null);
+  const dc = new OAC(1, 1, 44100);
+  return (bankWait[i] = fetch(BASE + 'samples/md' + b[0] + '/' + b[1] + '.wav').then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+    .then(a => new Promise((res, rej) => dc.decodeAudioData(a, res, rej))).then(buf => { bankBufs[i] = buf; bankWait[i] = null; return buf; }).catch(() => { bankWait[i] = null; return null; }));
+}
+// sl > 0: that slice (1-8) of the bank; sl < 0: the loop from step -sl - 1; else the loop where this step falls (two-bar banks follow the bar count)
+function sampler(X, t, i, vel, sl) {
+  const bi = Math.round(P['sm.bank']), buf = bankBufs[bi], b = BANKS[bi]; if (!buf) { preloadBank(bi); return false; }
+  const ac = X.ac, rate = P.bpm / b[3] * Math.pow(2, P['sm.tune'] / 12), steps = 16 * b[2], per = buf.duration / steps;
+  let off, dur;
+  if (sl > 0) { off = (sl - 1) * buf.duration / 8; dur = buf.duration / 8; X.smLoop = false; }
+  else { const pos = sl < 0 ? (-sl - 1) % steps : (i + 16 * ((X.bar || 0) % b[2])) % steps; off = pos * per; dur = buf.duration - off; X.smLoop = true; }
+  if (X.smG && X.smEnd > t) { hold(X.smG.gain, t); X.smG.gain.setTargetAtTime(0, t, .003); }      // one sampler voice: a new hit cuts the last, as on the keyboard
+  const src = ac.createBufferSource(), e = ac.createGain(), end = t + dur / rate; src.buffer = buf; src.playbackRate.value = rate;
+  e.gain.value = 0; e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(vel * 1.1, t + .002); e.gain.setValueAtTime(vel * 1.1, Math.max(t + .002, end - .006)); e.gain.linearRampToValueAtTime(0, end);
+  src.connect(e); e.connect(X.in.SM); src.start(t, off, dur + .01); src.stop(end + .02); X.smG = e; X.smEnd = end; return true;
+}
+// a SAMPLE step in a pattern: a slice plays and rings through the steps after it (the firmware's "-"); a run of loop steps plays on and
+// is only lined up again every beat, unless CHOP makes it jump somewhere else in the loop (the firmware's break generator)
+function smStep(X, sc, idx, t, vel) {
+  const s = sc.sl[idx] | 0; if (s) return sampler(X, t, idx, vel, s);
+  const prevOn = idx > 0 && sc.g.SM[idx - 1]; let j = idx - 1; while (j >= 0 && sc.g.SM[j] && !sc.sl[j]) j--;
+  if (prevOn && j >= 0 && sc.g.SM[j] && sc.sl[j]) return false;
+  const chop = P['sm.chop'] / 100, b = BANKS[Math.round(P['sm.bank'])];
+  if (chop > 0 && idx % 2 === 0 && Math.random() < chop * .7) return sampler(X, t, idx, vel, -(1 + 2 * Math.floor(Math.random() * 8 * b[2])));
+  if (prevOn && idx % 4 && X.smLoop && X.smEnd > t) return false;
+  return sampler(X, t, idx, vel, 0);
 }
 let ac = null, E = null, restT = 0;
 function rest() {
@@ -426,7 +517,7 @@ const stepLen = () => 60 / P.bpm / 4;
 const shuffleDelay = idx => (idx % 2 ? (P.shuffle / 100 - .5) * 2 * stepLen() : 0);
 function playStep(X, idx, t) {
   const sc = scene(), acc = sc.g.AC[idx] && !S.mute.AC ? Math.pow(10, P.accent / 20) : 1, hits = [];
-  SOUND.forEach(k => { if (sc.g[k][idx] && !off(k)) { voice(X, k, t, idx, acc); hits.push(k); } });
+  SOUND.forEach(k => { if (sc.g[k][idx] && !off(k)) { if (k === 'SM') smStep(X, sc, idx, t, acc); else voice(X, k, t, idx, acc); hits.push(k); } });
   return hits;
 }
 let mstep = 0;
@@ -447,7 +538,7 @@ function tick() {
   const now = ac.currentTime, ahead = document.hidden ? 1.6 : .12;      // a hidden tab only gets a timer about once a second, so queue further ahead
   if (nt < 0 || nt < now - 2) nt = now + .03;                            // just started, or asleep for seconds: begin from here
   while (nt < now + ahead) {
-    cur %= S.last; if (cur === 0 && !S.rep.on) barLine();
+    cur %= S.last; if (cur === 0 && !S.rep.on) { barLine(); E.bar = (E.bar || 0) + 1; }
     let idx = cur;
     if (S.rep.on) { const len = [4, 2, 1][S.rep.len]; if (repStart == null) { repStart = cur - (cur % len); repN = 0; } idx = (repStart + (repN++ % len)) % S.last; } else repStart = null;
     const tt = nt + shuffleDelay(idx);
@@ -473,7 +564,7 @@ function clockStop() { const outs = ckOuts(); ckStarted = false; outs.forEach(o 
 function setPlaying(on) {
   if (on === playing || (on && root.querySelector('.dlg[data-locked]'))) return;   /* nothing starts behind the sign-up dialog: not START by keyboard, not MIDI start */
   playing = on;
-  if (on) { ckStarted = false; if (rec) clearTimeout(rec.tail); boot(); apply(); cur = 0; mstep = 0; firstBar = true; nt = -1; repStart = null; queue.length = 0; clearInterval(timer); timer = setInterval(tick, 25); tick(); }
+  if (on) { ckStarted = false; if (rec) clearTimeout(rec.tail); boot(); apply(); E.bar = -1; cur = 0; mstep = 0; firstBar = true; nt = -1; repStart = null; queue.length = 0; clearInterval(timer); timer = setInterval(tick, 25); tick(); }
   else { clearInterval(timer); clockStop(); queue.length = 0; head = -1; drawHead(); if (rec && !rec.busy) rec.tail = setTimeout(recStop, Math.max(1500, P['fx.vdec'] * 1050 + 300));   // let the tails ring out, then save
  if (pend != null) { const n = pend; pend = null; goScene(n); } if (mqDo) flipGroup(); if (ac) { E.fb.gain.setTargetAtTime(0, ac.currentTime, .05); setTimeout(apply, 700); } }
   if (!on && S.keys.mode && held.length) arpRun();
@@ -611,11 +702,11 @@ const seg = (items, get, pick, cls) => { const box = h('div', 'seg' + (cls ? ' '
 /* actions */
 // UNDO: the last 20 changes to the beat (steps, scenes, clears, random, loading a pattern) can be taken back
 const undoS = [], redoS = []; let editT = 0;
-const snap = () => JSON.stringify({ P, scenes: S.scenes, sc: S.sc, last: S.last, preset: S.preset, chain: S.chain, dirty: S.dirty, mute: S.mute, presetVals });
+const snap = () => JSON.stringify({ P, style: S.style, scenes: S.scenes, sc: S.sc, last: S.last, preset: S.preset, chain: S.chain, dirty: S.dirty, mute: S.mute, presetVals });
 function keep(label) { undoS.push([label, snap()]); if (undoS.length > 20) undoS.shift(); redoS.length = 0; }
 function putBack(str) {
   const d = JSON.parse(str); Object.keys(DEF).forEach(k => { if (typeof d.P[k] === 'number') P[k] = d.P[k]; });
-  Object.assign(S, { scenes: d.scenes, sc: clamp(d.sc, 0, d.scenes.length - 1), last: d.last, preset: d.preset, chain: d.chain, dirty: d.dirty, mute: d.mute || {} }); presetVals = d.presetVals || {}; pend = null;
+  Object.assign(S, { style: d.style || S.style, scenes: d.scenes, sc: clamp(d.sc, 0, d.scenes.length - 1), last: d.last, preset: d.preset, chain: d.chain, dirty: d.dirty, mute: d.mute || {} }); presetVals = d.presetVals || {}; pend = null;
   apply(); refreshKnobs(); drawAll(); persist();
 }
 const UNDO_KEY = /Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌘Z' : 'Ctrl+Z';
@@ -631,6 +722,7 @@ function setStep(k, i, on, sound) {
   if (on && sound && !playing) hit(k, i);
 }
 function cycleNote(i) { keep('bass note'); const sc = scene(), j = NOTE_CYCLE.indexOf(sc.n[i]); sc.n[i] = NOTE_CYCLE[(j + 1) % NOTE_CYCLE.length]; mark(); lcdFlash('Bass note', sc.n[i] ? sgn(sc.n[i]) + Math.abs(sc.n[i]) + ' st' : 'Root'); drawAll(); if (!playing) hit('BS', i); buzz(12); }
+function cycleSlice(i) { keep('sample slice'); const sc = scene(); sc.sl[i] = ((sc.sl[i] | 0) + 1) % 9; mark(); lcdFlash('Sample step', sc.sl[i] ? 'Slice ' + sc.sl[i] + ' of ' + BANKS[Math.round(P['sm.bank'])][1] : 'Loop plays on'); drawAll(); if (!playing) hit('SM', i); buzz(12); }
 function select(k, sound) { if (!KEYS.includes(k)) return; if (midi.learn && SOUND.includes(k)) { midi.armD = k; midi.armP = null; } S.sel = k; drawAll(); persist(); if (sound && !playing) hit(k); }
 // MUTE GROUP: pick several drums once, then FLIP mutes or unmutes them all together, on the next bar while it plays
 const mq = new Set(); let grp = false, mqDo = null;
@@ -661,23 +753,27 @@ function lastCtl() {
 function setView(v) { S.view = v; drawAll(); persist(); }
 const nextView = () => setView(S.view === 'one' ? 'all' : 'one');
 function toggleMixer() { S.mixer = !S.mixer; drawAll(); persist(); }
+function pickStyle(st) {
+  if (!STYLES[st]) return; if (st === S.style) return lcdFlash(STYLES[st].name, STYLES[st].tag);
+  pickPreset(STYLES[st].first); lcdFlash(STYLES[st].name, STYLES[st].tag + ' · ' + stylePresets(st).length + ' patterns'); buzz(15);
+}
 function pickPreset(name) { const had = S.dirty || S.scenes.length > 1; keep('load ' + name); loadPreset(name); apply(); refreshKnobs(); drawAll(); persist(); if (had) toast(name + ' loaded.' + undoHint()); }
 function saveBeat() {
   if (beats.length >= 8) return toast('All 8 slots are full. Delete a beat first.');
   let n = 1; while (beats.some(b => b.name === 'My beat ' + n)) n++;
-  const name = 'My beat ' + n; beats.push({ name, P: Object.assign({}, P), scenes: S.scenes.map(copyScene), last: S.last, trim: trimOf() }); keepBeats();
+  const name = 'My beat ' + n; beats.push({ name, style: S.style, P: Object.assign({}, P), scenes: S.scenes.map(copyScene), last: S.last, trim: trimOf() }); keepBeats();
   S.preset = name; S.dirty = false; presetVals = Object.assign({}, P); drawAll(); persist(); toast('Saved as ' + name); if (kbx.ok) sendToKeyboard(true);   // a keyboard that answered before gets the saved beat too
 }
 function loadBeat(j) {
   const b = beats[j]; if (!b) return; keep('load ' + b.name);
   Object.keys(DEF).forEach(k => { P[k] = typeof b.P[k] === 'number' ? clamp(b.P[k], DEF[k].mn, DEF[k].mx) : DEF[k].df; }); presetVals = Object.assign({}, P);
-  Object.assign(S, { preset: b.name, dirty: false, scenes: b.scenes.map(copyScene), sc: 0, chain: false, last: b.last || 16, mute: {}, mem: {} }); pend = null; loadMix();
+  Object.assign(S, { style: STYLES[b.style] ? b.style : S.style, preset: b.name, dirty: false, scenes: b.scenes.map(copyScene).map(fixScene), sc: 0, chain: false, last: b.last || 16, mute: {}, mem: {} }); pend = null; loadMix();
   apply(); refreshKnobs(); drawAll(); persist();
 }
 function delBeat(j) { const b = beats[j]; if (!b) return; beats.splice(j, 1); keepBeats(); drawAll(); toast(b.name + ' deleted'); }
 /* beats in and out: .md442.json is the same file the DAW plugin and the other MD|442 apps read and write; .mid is a clip for Ableton, Maschine or any DAW */
 const fileName = (n, ext) => (String(n || 'MD442 beat').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'MD442-beat') + ext;
-function beatFile() { storeMix(); return { format: 'md442-beat', version: 1, name: S.preset || 'MD442 beat', P: Object.assign({}, P), scenes: S.scenes.map(copyScene), last: S.last, trim: trimOf() }; }
+function beatFile() { storeMix(); return { format: 'md442-beat', version: 1, style: S.style, name: S.preset || 'MD442 beat', P: Object.assign({}, P), scenes: S.scenes.map(copyScene), last: S.last, trim: trimOf() }; }
 async function saveAs(blob, name, desc, accept) {
   if (window.showSaveFilePicker && self === top) {
     try { const fh = await showSaveFilePicker({ suggestedName: name, startIn: 'documents', id: 'md442-beats', types: [{ description: desc, accept }] }); const w = await fh.createWritable(); await w.write(blob); await w.close(); return true; }
@@ -686,13 +782,13 @@ async function saveAs(blob, name, desc, accept) {
   const u = URL.createObjectURL(blob), a = h('a'); a.href = u; a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); return true;
 }
 async function exportBeat() { const b = beatFile(); if (await saveAs(new Blob([JSON.stringify(b, null, 1)], { type: 'application/json' }), fileName(b.name, '.md442.json'), 'MD|442 beat', { 'application/json': ['.json'] })) toast('Exported ' + b.name); }
-function midiBytes() {   // one track, drums on channel 1 (C1 = kick, the plugin's pad map), bass on 2, stab on 3; every scene in order, one bar each
+function midiBytes() {   // one track, drums on channel 1 (C1 = kick, the plugin's pad map), bass on 2, stab on 3, sampler on 4 (C3-G3 = slices 1-8, G#3 = the loop plays on); every scene in order, one bar each
   storeMix();
   const PPQ = 96, ST = PPQ / 4, ev = [], keyN = Math.round(P.key), sh = (P.shuffle / 100 - .5) * 2 * ST, L = S.last;
   S.scenes.forEach((sc, bar) => { for (let i = 0; i < L; i++) {
     const t = Math.round(bar * L * ST + i * ST + (i % 2 ? sh : 0)), vel = sc.g.AC && sc.g.AC[i] ? 127 : 100;
     SOUND.forEach((k, ki) => { if (!sc.g[k] || !sc.g[k][i]) return;
-      const [ch, n, len] = k === 'BS' ? [1, clamp(28 + keyN + (sc.n[i] | 0), 0, 127), ST - 2] : k === 'ST' ? [2, clamp(52 + keyN, 0, 127), ST - 2] : [0, 36 + ki, ST / 2];
+      const [ch, n, len] = k === 'BS' ? [1, clamp(28 + keyN + (sc.n[i] | 0), 0, 127), ST - 2] : k === 'ST' ? [2, clamp(52 + keyN, 0, 127), ST - 2] : k === 'SM' ? [3, sc.sl && sc.sl[i] ? 59 + sc.sl[i] : 68, ST - 2] : [0, 36 + ki, ST / 2];
       ev.push([t, 1, 0x90 | ch, n, vel], [t + len, 0, 0x80 | ch, n, 0]); });
   } });
   ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -715,10 +811,10 @@ function normBeat(x) {   // a beat from any MD|442: the web app, the phone app, 
   for (const s of x.scenes.slice(0, 8)) {
     if (!s || !s.g || !Array.isArray(s.n) || s.n.length !== 16) return null;
     const g = {}; for (const k of KEYS) { const r = s.g[k]; if (r != null && (!Array.isArray(r) || r.length !== 16)) return null; g[k] = r ? r.map(Boolean) : Array(16).fill(false); }
-    const sc = { g, n: s.n.map(v => clamp(Math.round(+v) || 0, -24, 24)) }; if (s.x && typeof s.x === 'object') sc.x = s.x; scenes.push(sc);
+    const sc = fixScene({ g, n: s.n.map(v => clamp(Math.round(+v) || 0, -24, 24)), sl: s.sl }); if (s.x && typeof s.x === 'object') sc.x = s.x; scenes.push(sc);
   }
   const Pn = {}; Object.keys(DEF).forEach(k => { if (typeof x.P[k] === 'number' && isFinite(x.P[k])) Pn[k] = clamp(x.P[k], DEF[k].mn, DEF[k].mx); });
-  return { name: String(x.name || 'Imported beat').slice(0, 40), P: Pn, scenes, last: clamp(Math.round(+x.last) || 16, 1, 16), trim: clamp(+x.trim || 0, -12, 12) };
+  return { name: String(x.name || 'Imported beat').slice(0, 40), style: STYLES[x.style] ? String(x.style) : '442', P: Pn, scenes, last: clamp(Math.round(+x.last) || 16, 1, 16), trim: clamp(+x.trim || 0, -12, 12) };
 }
 function importBeat() {
   const inp = h('input'); inp.type = 'file'; inp.accept = '.json,application/json'; inp.multiple = true;
@@ -730,7 +826,7 @@ function importBeat() {
       for (const x of list) {
         const b = normBeat(x); if (!b) { bad++; continue; }
         if (beats.length >= 8) { toast('All 8 slots are full. Delete a beat first.'); break; }
-        let nm = b.name, i = 2; while (beats.some(y => y.name === nm) || PRESETS[nm]) nm = b.name + ' ' + i++;
+        let nm = b.name, i = 2; while (beats.some(y => y.name === nm) || styleOf(nm)) nm = b.name + ' ' + i++;
         b.name = nm; beats.push(b); added++; if (first < 0) first = beats.length - 1;
       }
     }
@@ -803,7 +899,8 @@ function arpSeq() {
   const base = held.slice().sort((a, b) => a - b); let n = []; for (let o = 0; o < S.keys.oct; o++) base.forEach(x => n.push(x + 12 * o));
   if (S.keys.mode === 2) n.reverse(); if (S.keys.mode === 3 && n.length > 2) n = n.concat(n.slice(1, -1).reverse()); return n;
 }
-function playNote(note, t) { const k = S.keys.target; if (off(k)) return; voice(E, k, t, 0, 1, note); flashKey(k); }
+const slOf = note => ((Math.round(note) % 8) + 8) % 8 + 1;   // the keyboard plays the sampler's slices: C = 1 … G = 8, then round again
+function playNote(note, t) { const k = S.keys.target; if (off(k)) return; voice(E, k, t, 0, 1, k === 'SM' ? slOf(note) : note); flashKey(k); }
 function arpFire(t) { const n = arpSeq(); if (!n.length) return; playNote(S.keys.mode === 4 ? n[Math.floor(Math.random() * n.length)] : n[arpPos++ % n.length], t); }
 function arpAtStep(idx, t) {                        // called once for every 16th-note step
   if (!S.keys.mode || !held.length) return; const r = ARPR[S.keys.rate][1];
@@ -818,7 +915,8 @@ function noteOn(note) {
   if (S.keys.mode) { if (S.keys.hold && down.size === 0) { held = []; arpPos = 0; } down.add(note); if (!held.includes(note)) held.push(note); if (!playing) { if (ac.state === 'running') arpRun(); else ac.resume().then(arpRun).catch(() => {}); } }
   else {
     down.add(note); const go = () => playNote(note, ac.currentTime + .01); if (ac.state === 'running') go(); else ac.resume().then(go).catch(() => {});
-    if (S.keys.rec && playing && S.keys.target === 'BS' && head >= 0) { const sc = scene(); sc.g.BS[head] = true; sc.n[head] = note; mark(); drawAll(); }   // REC: writes the note into the bass line at the step that is playing
+    if (S.keys.rec && playing && S.keys.target === 'BS' && head >= 0) { const sc = scene(); sc.g.BS[head] = true; sc.n[head] = note; mark(); drawAll(); }
+    else if (S.keys.rec && playing && S.keys.target === 'SM' && head >= 0) { const sc = scene(); sc.g.SM[head] = true; sc.sl[head] = slOf(note); mark(); drawAll(); }   // REC: writes the note into the bass line at the step that is playing
   }
   drawKbd();
 }
@@ -829,7 +927,7 @@ function buildKeys(box, count) {
   const ctl = h('div', 'kctl'), lab = (t, el) => { const w = h('div', 'lab'); w.append(h('span', 'cap', t), el); return w; };
   const hold = key('HOLD', () => setKeys({ hold: !S.keys.hold }), 'led'), rec = key('WRITE', () => setKeys({ rec: !S.keys.rec }), 'led'); rec.title = 'Writes the notes you play into the bass line while it runs';
   live(hold, () => { hold.classList.toggle('on', S.keys.hold); hold.setAttribute('aria-pressed', S.keys.hold); }); live(rec, () => { rec.classList.toggle('on', S.keys.rec); rec.setAttribute('aria-pressed', S.keys.rec); rec.disabled = S.keys.target !== 'BS' || !!S.keys.mode; });
-  ctl.append(lab('PLAYS', seg([['BS', 'BASS'], ['ST', 'STAB']], () => S.keys.target, v => setKeys({ target: v }))), lab('ARP', seg(ARPM.map((m, j) => [j, m]), () => S.keys.mode, v => setKeys({ mode: v }))),
+  ctl.append(lab('PLAYS', seg([['BS', 'BASS'], ['ST', 'STAB'], ['SM', 'SAMPLE']], () => S.keys.target, v => setKeys({ target: v }))), lab('ARP', seg(ARPM.map((m, j) => [j, m]), () => S.keys.mode, v => setKeys({ mode: v }))),
     lab('RATE', seg(ARPR.map((r, j) => [j, r[0]]), () => S.keys.rate, v => setKeys({ rate: v }))), lab('OCTAVES', seg([[1, '1'], [2, '2']], () => S.keys.oct, v => setKeys({ oct: v }))), hold, rec);
   const kb = h('div', 'kbd'); let shownKey = -1;
   live(kb, () => {
@@ -865,13 +963,13 @@ function instKey(k) {
     last = now; select(k, true); buzz(6);
   });
   (instEls[k] = instEls[k] || []).push(b);
-  if (!PHONE && KEYS.indexOf(k) < 14) b.append(h('i', 'lt', DRUM_LET[KEYS.indexOf(k)]));
+  if (!PHONE && KEYS.indexOf(k) < DRUM_LET.length) b.append(h('i', 'lt', DRUM_LET[KEYS.indexOf(k)]));
   return live(b, () => { b.classList.toggle('arm', grp && mq.has(k)); b.classList.toggle('ingrp', !grp && mq.has(k)); b.classList.toggle('sel', S.sel === k); b.classList.toggle('mute', !!S.mute[k]); b.classList.toggle('solo', S.solo === k); b.classList.toggle('quiet', !!S.solo && S.solo !== k && k !== 'AC'); b.setAttribute('aria-pressed', S.sel === k); b.setAttribute('aria-label', NAME[k] + (S.mute[k] ? ', muted' : '')); });
 }
 function flashKey(k) { (instEls[k] || []).forEach(b => { if (!b.isConnected) return; b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 90); }); }
 
 /* steps: ONE DRUM = 16 big keys for the selected drum, WHOLE PATTERN = every drum as a row of 16 */
-const LETTERS = 'QWERTYUIASDFGHJK', DRUM_LET = 'QWERTYUIASDFGH', DRUM_CODES = DRUM_LET.split('').map(c => 'Key' + c);   // steps use all 16; the 14 drums use the first 14 with Shift (select) or Alt (mute)
+const LETTERS = 'QWERTYUIASDFGHJK', DRUM_LET = 'QWERTYUIASDFGHJ', DRUM_CODES = DRUM_LET.split('').map(c => 'Key' + c);   // steps use all 16; the 14 drums use the first 14 with Shift (select) or Alt (mute)
 let head = -1, holdT = 0;
 const stepBoxes = [];
 function buildSteps(box, view) {
@@ -886,7 +984,7 @@ function buildSteps(box, view) {
   const sc = scene();
   box._els.forEach(({ el, k, i, nt }) => {
     const on = sc.g[k][i]; el.classList.toggle('on', on); el.classList.toggle('out', i >= S.last); el.classList.toggle('ph', i === head);
-    nt.textContent = k === 'BS' && on && sc.n[i] ? sgn(sc.n[i]) + Math.abs(sc.n[i]) : '';
+    nt.textContent = k === 'BS' && on && sc.n[i] ? sgn(sc.n[i]) + Math.abs(sc.n[i]) : k === 'SM' && on && sc.sl[i] ? String(sc.sl[i]) : '';
     el.setAttribute('aria-pressed', on); el.setAttribute('aria-label', NAME[k] + ' step ' + (i + 1));
   });
   box.querySelectorAll('.prow').forEach(r => { r.classList.toggle('sel', r.dataset.k === S.sel); r.classList.toggle('mute', !!S.mute[r.dataset.k]); });
@@ -905,7 +1003,7 @@ function bindSteps(box, scrolly) {
     d = { k, i, x: e.clientX, y: e.clientY, val: !was, pend: wait || was, moved: false, held: false, id: e.pointerId, wait };
     if (!d.pend) { setStep(k, i, true, true); buzz(6); }
     if (!wait) { e.preventDefault(); try { box.setPointerCapture(e.pointerId); } catch (_) {} }
-    clearTimeout(holdT); if (was && k === 'BS') holdT = setTimeout(() => { if (d && !d.moved) { d.held = true; cycleNote(i); } }, 450);   // hold a lit bass step: next note
+    clearTimeout(holdT); if (was && (k === 'BS' || k === 'SM')) holdT = setTimeout(() => { if (d && !d.moved) { d.held = true; if (k === 'SM') cycleSlice(i); else cycleNote(i); } }, 450);   // hold a lit bass step: next note; a lit sample step: next slice
   });
   box.addEventListener('pointermove', e => {
     if (!d || e.pointerId !== d.id || d.held) return;
@@ -919,7 +1017,8 @@ function bindSteps(box, scrolly) {
   const end = e => { if (!d || e.pointerId !== d.id) return; clearTimeout(holdT); if (e.type === 'pointerup' && d.pend && !d.moved && !d.held) { setStep(d.k, d.i, d.val, true); buzz(6); } d = null; };
   box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end); box.addEventListener('contextmenu', e => e.preventDefault());
 }
-const presetKeys = box => { Object.keys(PRESETS).forEach(n => { const b = key(n, () => pickPreset(n), 'led'); box.append(b); live(b, () => { b.classList.toggle('on', S.preset === n); b.setAttribute('aria-pressed', S.preset === n); }); }); return box; };
+const styleKeys = cls => seg(STYLE_IDS.map(st => [st, STYLES[st].name]), () => S.style, pickStyle, 'style' + (cls ? ' ' + cls : ''));
+const presetKeys = box => live(box, () => { if (box._st === S.style) return; box._st = S.style; box.textContent = ''; stylePresets(S.style).forEach(n => { const b = key(n, () => pickPreset(n), 'led'); box.append(b); live(b, () => { b.classList.toggle('on', S.preset === n); b.setAttribute('aria-pressed', S.preset === n); }); }); });
 function beatKeys(box) {
   let sig = null;
   return live(box, () => {
@@ -953,7 +1052,8 @@ function buildDesk() {
   const blk = (title, cls) => { const b = h('div', 'blk' + (cls ? ' ' + cls : '')); b.append(h('span', 'cap', title)); return b; };
   // header: logo, display, Random, Save, ⌘K, Start, Stop, full screen
   const hd = h('div', 'row hd'), logo = h('div', 'logo'), lcd = h('div', 'lcd'), l1 = h('span', 'l1'), l2 = h('span', 'l2'), tp = h('span', 'tp'), tl = h('span', 'tl', 'BPM'), txt = h('div', 'lt2');
-  logo.append('MD', h('b', '', '|442'), h('small', '', 'BY MATHEW')); txt.append(l1, l2); lcd.append(txt, tp, tl); tp.title = 'Type a tempo'; tp.addEventListener('click', () => typeBpm(tp));
+  const lnum = h('b', '', '|442'), lsw = h('span', 'lsw'); STYLE_IDS.forEach(st => { const b = key(st, () => pickStyle(st), 'sty'); b.title = STYLES[st].name + ' · ' + STYLES[st].tag.toLowerCase(); lsw.append(live(b, () => { b.classList.toggle('on', S.style === st); b.setAttribute('aria-pressed', S.style === st); })); });
+  logo.append('MD', live(lnum, () => { lnum.textContent = '|' + S.style; }), lsw); txt.append(l1, l2); lcd.append(txt, tp, tl); tp.title = 'Type a tempo'; tp.addEventListener('click', () => typeBpm(tp));
   live(lcd, () => { const t = lcdText(); l1.textContent = t[0]; l2.textContent = t[1]; tp.textContent = Math.round(P.bpm); }, true);
   const play = playKey(), fs = key('', fullScreen, 'ico');
   fs.setAttribute('aria-label', 'Full screen'); fs.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6M3 3l6.5 6.5M21 3l-6.5 6.5M3 21l6.5-6.5M21 21l-6.5-6.5"/></svg>';
@@ -1018,7 +1118,7 @@ const CMDS = [
   ['Patterns', 'Import a beat (.md442.json)', '', importBeat],
   ['Patterns', 'Export this beat (.md442.json)', '', exportBeat],
   ['Patterns', 'Export a MIDI clip (.mid)', '', exportMidi]
-].concat(Object.keys(PRESETS).map(n => ['Patterns', 'Load ' + n, '', () => pickPreset(n)])).concat([
+].concat(STYLE_IDS.map(st => ['Patterns', 'Switch to ' + STYLES[st].name + ' (' + STYLES[st].tag.toLowerCase() + ')', '', () => pickStyle(st)])).concat(STYLE_IDS.flatMap(st => stylePresets(st).map(n => ['Patterns', 'Load ' + n + ' · ' + STYLES[st].name, '', () => pickPreset(n)]))).concat([
   ['Sound and effects', 'Kill the lows / mids / highs', K('Alt', 'Z') + '  ' + K('Alt', 'X') + '  ' + K('Alt', 'C'), () => {}],
   ['Sound and effects', 'Filter / reverb / echo / drive on or off', K('Alt', 'V') + '  ' + K('Alt', 'B') + '  ' + K('Alt', 'N') + '  ' + K('Alt', 'M'), () => {}],
   ['Sound and effects', 'Fine adjust a knob', K('Shift', 'drag'), () => {}], ['Sound and effects', 'Back to the pattern’s value', 'Double-click', () => {}],
@@ -1109,13 +1209,14 @@ function openSheet(title, fill) {
   sheetEl.append(hd, body); sheetEl.setAttribute('aria-label', title); sheetEl.hidden = false; scrimEl.hidden = false; fill(body); drawAll();
 }
 const SHEETS = {
-  patterns: ["MATHEW'S PATTERNS", b => { b.append(presetKeys(h('div', 'keys two')), h('span', 'cap', 'MY BEATS'), beatKeys(h('div', 'keys two'))); }],
+  patterns: ["MATHEW'S PATTERNS", b => { b.append(styleKeys('three'), presetKeys(h('div', 'keys two')), h('span', 'cap', 'MY BEATS'), beatKeys(h('div', 'keys two'))); }],
   scenes: ['SCENES', b => { const t = h('div', 'keys three'); t.append(key('+ SCENE', addScene), chainKey(), key('DELETE', delScene)); b.append(sceneKeys(h('div', 'keys four')), t, h('span', 'cap', 'LAST STEP'), lastCtl(), h('p', 'note', 'Tap the key marked + to save this pattern to the next scene, then change it there. Each scene keeps its own mutes, filter, effects and mixer too, so a scene can be a breakdown or a drop. Chain plays the scenes one after another. A change waits for the bar line.')); }],
   master: ['MASTER', b => { const k = h('div', 'knobs1'); MASTER.forEach(([p, l]) => k.append(mkKnob(p, l))); const t = h('div', 'keys two'); t.append(metroKey(), recKey(), themeKey(), key('MIDI · DAW', () => { closeSheet(); openSheet('MIDI · DAW · SMK-37', buildMidi); })); b.append(k, t, h('p', 'note', 'CLICK is a metronome; it is never in a recording. REC records what you hear and saves a WAV when you press it again.')); }],
   mixer: ['MIXER', b => { const k = h('div', 'knobs1 mix'); SOUND.forEach(v => { const box = mkKnob('lvl.' + v, SHORT[v]), m = key('M', () => toggleMute(v), 'sw'); m.setAttribute('aria-label', 'Mute ' + NAME[v]); box.append(live(m, () => { m.classList.toggle('on', !S.mute[v]); m.textContent = S.mute[v] ? 'MUTED' : 'ON'; })); k.append(box); }); b.append(k); }],
   fx: ['EFFECTS', b => { const k = h('div', 'knobs1'); FXK.forEach(([p, l]) => k.append(fxKnob(p, l))); FXMORE.forEach(([p, l]) => k.append(mkKnob(p, l))); const r = h('div', 'repw'); r.append(holdKey(), repSeg()); b.append(k, r, h('span', 'cap', 'KILL'), killKeys(), h('span', 'cap', 'OUTPUT'), meter()); }],
   keys: ['KEYBOARD · ARP', b => { buildKeys(b, 13); }],
-  menu: ['MD|442', b => {
+  menu: ['MD|442 · MD|187 · MD|888', b => {
+    b.append(h('span', 'cap', 'MACHINE'), styleKeys('three'));
     const k = h('div', 'keys'), go = (t, href) => { const a = h('a', 'key next navk', t); a.href = href; return a; };
     k.append(key('CONNECT MIDI · ABLETON · MASCHINE · SMK-37', () => { closeSheet(); openSheet('MIDI · DAW · SMK-37', buildMidi); }, 'next'), go('DOWNLOAD · DESKTOP · ANDROID · FIRMWARE', '/md442/download/'), go('MD|442 HOME', '/md442/'), go("MATHEW'S DJ PAGE", '/mathew-dj/'), key('SHORTCUTS AND TIPS', () => { closeSheet(); openSheet('TIPS', tb => { tb.append(h('p', 'note', 'Tap a drum, then tap the steps. Drag a knob up or down; double-tap resets it. Double-tap a drum key to mute or unmute it (double-click on a computer). MUTE GROUP: hold it, tap several drums, DONE, then FLIP mutes them together on the next bar. Scenes keep their own mutes, filter, FX and mixer. IMPORT and EXPORT under My beats move beats between every MD|442 and the DAW plugin; MIDI ↓ saves a clip for your DAW.')); }); }));
     b.append(k, h('p', 'note', 'MD|442 · free · developed by Mathew · 442 is binary for NEST'));
@@ -1127,7 +1228,7 @@ function buildPhone() {
   const hd = h('header', 'phd'), play = playKey(), lcd = h('button', 'lcd'), l1 = h('span', 'l1'), l2 = h('span', 'l2'), tp = h('span', 'tp'), txt = h('span', 'lt2'), logo = h('span', 'logo');
   txt.append(l1, l2); lcd.append(txt, tp); lcd.setAttribute('aria-label', "Mathew's patterns"); lcd.addEventListener('click', e => { boot(); if (e.target === tp) openSheet(...SHEETS.master); else openSheet(...SHEETS.patterns); });   // the number opens tempo, the name opens patterns logo.append('MD', h('b', '', '|442'));
   live(lcd, () => { const t = lcdText(); l1.textContent = t[0]; l2.textContent = t[1]; tp.textContent = Math.round(P.bpm); }, true);
-  const menu = h('button', 'key menu'); logo.append('MD', h('b', '', '|442')); menu.append(h('i', 'mi', '☰'), logo); menu.setAttribute('aria-label', 'Menu: MIDI and DAW help, downloads, other pages'); menu.addEventListener('click', () => openSheet(...SHEETS.menu));
+  const menu = h('button', 'key menu'), lnum = h('b'); logo.append('MD', live(lnum, () => { lnum.textContent = '|' + S.style; })); menu.append(h('i', 'mi', '☰'), logo); menu.setAttribute('aria-label', 'Menu: MIDI and DAW help, downloads, other pages'); menu.addEventListener('click', () => openSheet(...SHEETS.menu));
   hd.append(play, lcd, menu);
   // the selected drum's knobs: its sound on the top row, its channel tools underneath. Nothing is hidden off to the side.
   const kn = h('div', 'pkn'), nm = h('div', 'pknm'), nt = h('span'), r1 = h('div', 'krow'), r2 = h('div', 'krow'); nm.append(nt); kn.append(nm, r1, r2); let shown = '';
@@ -1181,7 +1282,7 @@ function buildPhone() {
 const THEME_LS = 'md442-theme';
 let theme = 'light'; try { theme = localStorage.getItem(THEME_LS) || root.dataset.themeDefault || 'light'; } catch (_) {}
 function applyTheme() {
-  root.dataset.theme = theme; document.documentElement.dataset.mdTheme = theme;
+  root.dataset.theme = theme; root.dataset.style = S.style; document.documentElement.dataset.mdTheme = theme;
   const m = document.querySelector('meta[name="theme-color"]'); if (m && PHONE) m.content = theme === 'dark' ? '#202225' : '#dcdddf';
   if (PHONE) { document.documentElement.style.background = document.body.style.background = theme === 'dark' ? '#202225' : '#c9cbce'; }
 }
@@ -1321,7 +1422,7 @@ const GUIDE = [
     'Press CONNECT here. Press play in Live: MD|442 starts with it and follows its tempo.',
     'To get the sound into Live, press REC here, play, press REC again and drag the WAV onto a track. To record it live, route your computer audio into Live with BlackHole (Mac) or VB-CABLE (Windows).',
     'Your SMK-37 can play MD|442 and Live together on a Mac. In Live, MIDI Ports: Track On for the SMK-37.',
-    'To get the beat into Live as notes, press MIDI ↓ under MY BEATS and drop the .mid file on a track (in Chrome or Edge you can drag the key straight onto it). Drums are on channel 1 from C1, bass on 2, stab on 3, so it plays the MD|442 plugin or a Drum Rack.']],
+    'To get the beat into Live as notes, press MIDI ↓ under MY BEATS and drop the .mid file on a track (in Chrome or Edge you can drag the key straight onto it). Drums are on channel 1 from C1, bass on 2, stab on 3, the sampler on 4 (C3 to G3 are slices 1 to 8, G#3 lets the loop play on), so it plays the MD|442 plugin or a Drum Rack.']],
   ['MASCHINE', [
     'Turn on the IAC Driver (Mac) or a loopMIDI port (Windows), as in the Ableton steps.',
     'In Maschine: Preferences, MIDI, Output: enable the IAC Driver. Then File, Sync: Send MIDI Clock.',
@@ -1360,8 +1461,8 @@ function kbMuteMask() { let m = 0; KB_DRUMS.forEach((k, i) => { if (S.mute[k] ||
 setInterval(() => {
   if (!kbx.live || !kbx.out || !S.scenes || !S.scenes[S.sc] || S.sc > 7) return;
   try {
-    const f = kbFrame(0x20 | (8 + S.sc), S.scenes[S.sc]), fs = f.join(',');
-    if (fs !== kbx.lastF) { kbx.lastF = fs; kbx.out.send(f); }
+    const f = kbFrame(0x20 | (8 + S.sc), S.scenes[S.sc]), fb = kbBreak(0x20 | (8 + S.sc), S.scenes[S.sc]), fs = f.join(',') + '|' + fb.join(',');
+    if (fs !== kbx.lastF) { kbx.lastF = fs; kbx.out.send(f); kbx.out.send(fb); }
     const m = kbMuteMask(), ms = String(m);
     if (ms !== kbx.lastM) { kbx.lastM = ms; kbx.out.send([0xF0, 0x7D, 0x46, 0x4C, 51, m & 0x7F, (m >> 7) & 0x0F, 0xF7]); }
   } catch (_) { kbx.out = null; }
@@ -1379,6 +1480,14 @@ function kbFrame(slot, sc) {
   KB_ROWS.forEach(k => f.push(...kbBits(sc.g[k] || Array(16).fill(false))));
   sc.n.forEach(n => f.push(clamp(Math.round(n) + 64, 0, 127)));
   f.push(0xF7); return f;
+}
+// MD|187 / MD|888 firmware (cmd 52): the SAMPLE row as the keyboard's break track, which bank slot, the chop, and (MD|187) the kick on the 808.
+// Sent after cmd 50 for the same slot, without waiting for an answer: firmware without it simply ignores it.
+//   F0 7D 46 4C 52 slot brk_slot complex steps[3 x 7 bits] slices[16] flags F7
+function kbBreak(slot, sc) {
+  const f = [0xF0, 0x7D, 0x46, 0x4C, 52, slot, Math.round(P['sm.bank']) % 4, clamp(Math.round(P['sm.chop']), 0, 100), ...kbBits(sc.g.SM || Array(16).fill(false))];
+  for (let i = 0; i < 16; i++) f.push(sc.g.SM && sc.g.SM[i] ? clamp(sc.sl ? sc.sl[i] | 0 : 0, 0, 8) : 0);
+  f.push(S.style === '187' ? 1 : 0, 0xF7); return f;
 }
 function kbIn(e) {
   const d = e.data; if (!d || d[0] !== 0xF0 || d[1] !== 0x7D || d[2] !== 0x46 || d[3] !== 0x4C) return;
@@ -1398,9 +1507,10 @@ async function sendToKeyboard(quiet) {
   const scenes = S.scenes.slice(0, 8);
   for (const out of kbx.outs) {                     // the first output that answers is the keyboard
     if (!(await kbAsk(out, kbFrame(8, scenes[0])))) continue;
-    for (let i = 1; i < scenes.length; i++) await kbAsk(out, kbFrame(8 + i, scenes[i]));
+    try { out.send(kbBreak(8, scenes[0])); } catch (_) {}
+    for (let i = 1; i < scenes.length; i++) { await kbAsk(out, kbFrame(8 + i, scenes[i])); try { out.send(kbBreak(8 + i, scenes[i])); } catch (_) {} }
     kbx.ok = true; kbx.out = out; kbx.lastF = kbx.lastM = ''; drawAll();
-    toast('Sent to ' + (out.name || 'the keyboard') + ': ' + scenes.length + (scenes.length > 1 ? ' scenes on patterns 9–' + (8 + scenes.length) : ' scene on pattern 9') + '. The dub stab stays on the computer.');
+    toast('Sent to ' + (out.name || 'the keyboard') + ': ' + scenes.length + (scenes.length > 1 ? ' scenes on patterns 9–' + (8 + scenes.length) : ' scene on pattern 9') + '. The dub stab stays on the computer' + (S.style === '442' ? '.' : '; the SAMPLE row plays the keyboard\'s own ' + STYLES[S.style].name + ' bank.'));
     return;
   }
   if (!quiet) toast('No MD|442 keyboard answered. Connect it by USB and check it runs MD|442 firmware 1.1 or newer.');
@@ -1426,6 +1536,8 @@ const midiKey = () => { const b = key('MIDI · DAW', toggleMidi, 'led'); return 
 if (!restore()) loadPreset(FIRST);
 applyTheme();
 (PHONE ? buildPhone : buildDesk)();
+live(root, () => { if (root.dataset.style !== S.style) root.dataset.style = S.style; });   // MD|442 green, MD|187 amber, MD|888 red, as on the keyboards
+preloadBank(P['sm.bank']);
 let mbuf = null, cbuf = null, lvl = 0; const chLvl = {};
 function frame() {
   requestAnimationFrame(frame);
@@ -1439,5 +1551,5 @@ function frame() {
 requestAnimationFrame(frame);
 root.addEventListener('pointerdown', boot, { capture: true, once: true });
 ['touchend', 'click'].forEach(ev => root.addEventListener(ev, () => { if (!ac || ac.state !== 'running') boot(); }, { capture: true, passive: true }));   // iOS only starts sound from a touch that ends, so make sure that one counts too      // build the sound engine on the first touch, before the finger lifts
-window.MD442 = { P, S, DEF, KEYS, PRESETS, set, select, setStep, setPlaying, pickPreset, render, renderLR, install, toggleTheme, askSignup, midi, onMidi, fit: fitDesk, get playing() { return playing; }, get beats() { return beats; }, get ac() { return ac; }, get E() { return E; } };
+window.MD442 = { P, S, DEF, KEYS, PRESETS, VPRESETS, STYLES, BANKS, pickStyle, preloadBank, midiBytes, kbFrame, kbBreak, beatFile, mkEngine, apply, playStep, scene, set, select, setStep, setPlaying, pickPreset, render, renderLR, install, toggleTheme, askSignup, midi, onMidi, fit: fitDesk, get playing() { return playing; }, get beats() { return beats; }, get ac() { return ac; }, get E() { return E; } };
 })();
