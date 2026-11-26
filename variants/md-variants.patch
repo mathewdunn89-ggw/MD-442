@@ -738,7 +738,7 @@ index 9f5432e..303c2c1 100644
          fm1_led[i] = nl[i];
      smk_keys_lit = keys;
 diff --git a/firmware/src/app/project.c b/firmware/src/app/project.c
-index 4914d7c..84fb782 100644
+index 4914d7c..22a96f0 100644
 --- a/firmware/src/app/project.c
 +++ b/firmware/src/app/project.c
 @@ -16,6 +16,7 @@
@@ -775,7 +775,7 @@ index 4914d7c..84fb782 100644
      proj.set.clk_out = 1;
      proj.set.notes_out = 0;
 +#if defined(MD_VARIANT) && MD_VARIANT == 187
-+    proj.set.bpm_x10 = 900;             /* MD|187: boom-bap */
++    proj.set.bpm_x10 = 960;             /* MD|187: boom-bap (its sample bank is cut at 96) */
 +#elif defined(MD_VARIANT) && MD_VARIANT == 888
 +    proj.set.bpm_x10 = 1550;            /* MD|888: hard techno */
 +#else
@@ -1036,7 +1036,7 @@ index f469297..250fdff 100755
          if not re.fullmatch(r"[A-Z0-9]{1,7}", fam):
 diff --git a/tools/md_gen_presets.py b/tools/md_gen_presets.py
 new file mode 100644
-index 0000000..5e2df22
+index 0000000..32e4885
 --- /dev/null
 +++ b/tools/md_gen_presets.py
 @@ -0,0 +1,172 @@
@@ -1056,7 +1056,7 @@ index 0000000..5e2df22
 +T909 = ["BD", "SD", "LT", "MT", "HT", "RS", "CP", "CH", "OH", "CR", "RD"]
 +T808 = ["BD", "SD", "LT", "MT", "HT", "RS", "CP", "CB", "CY", "OH", "CH"]
 +
-+# --------------------------------------------------------------------------- MD|187: 90s hip-hop, 90 BPM
++# --------------------------------------------------------------------------- MD|187: 90s hip-hop, 96 BPM
 +# slots: 0 BOOMBP (the dusty break), 1 DRUMS (one-shots: kick, kick 2, snare, rim, hat, open hat, shaker,
 +# clap), 2 STABS (Dm9, Gm9, horns, horns 2, strings, strings A7b9, organ, Rhodes low), 3 VOX (HEY, YO, UH,
 +# HO, AHH, YEAH, HUH, scratch)
@@ -1214,7 +1214,7 @@ index 0000000..5e2df22
 +    main()
 diff --git a/tools/md_gen_samples.py b/tools/md_gen_samples.py
 new file mode 100644
-index 0000000..865eb26
+index 0000000..65f65eb
 --- /dev/null
 +++ b/tools/md_gen_samples.py
 @@ -0,0 +1,464 @@
@@ -1224,7 +1224,7 @@ index 0000000..865eb26
 +taken from a record), written as the one-bar / two-bar WAVs tools/gen_break_bank.py compiles in
 +(X0X_BREAK_BANK=DIR ./build.sh). Deterministic (fixed seeds).
 +
-+  tools/md_gen_samples.py 187 OUTDIR     MD|187: BOOMBAP (a dusty break), DRUMS, STABS, VOX (8 one-shots each)
++  tools/md_gen_samples.py 187 OUTDIR     MD|187 (96 BPM): BOOMBP (a dusty break), DRUMS, STABS, VOX (8 one-shots each)
 +  tools/md_gen_samples.py 888 OUTDIR     MD|888: RUMBLE, GABBA, TRANCE (2 bars), HITS
 +
 +A one-shot bank is a loop of 8 equal slices: the BREAK part's slice 1..8, so a pattern step plays one
@@ -1571,7 +1571,7 @@ index 0000000..865eb26
 +
 +
 +def bank_187():
-+    bpm = 90
++    bpm = 96
 +    out = {}
 +    # BOOMBAP: one dusty bar, swung 16ths (MPC 58 %)
 +    n = bar_len(bpm)
@@ -1670,7 +1670,7 @@ index 0000000..865eb26
 +    out = Path(sys.argv[2])
 +    out.mkdir(parents=True, exist_ok=True)
 +    bank = bank_187() if sys.argv[1] == "187" else bank_888()
-+    bpm = 90 if sys.argv[1] == "187" else 155
++    bpm = 96 if sys.argv[1] == "187" else 155
 +    lines = [f"# name bars bpm (synthesised by tools/md_gen_samples.py {sys.argv[1]}: no recordings)"]
 +    for name, (x, bars) in bank.items():
 +        y = norm(decimate(x), 0.92)

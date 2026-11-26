@@ -6,7 +6,7 @@ filters and effects, same PERFORM controls; each has its own sound, patterns and
 | Firmware | Style | Tempo | Patterns 1-8 |
 | --- | --- | --- | --- |
 | MD442 | techno and house | 142 | Peak Warehouse, Berlin Roll, Electro, Acid Jack, Deep House, Breakbeat, Dub Techno |
-| MD187 | 90s hip-hop: boom-bap, dusty sampled drums, stabs, vocal hits | 90 | Boom Bap, Dusty, Stab City, Vox Hits, Laid Back, Chop Shop, Horns, Scratch |
+| MD187 | 90s hip-hop: boom-bap, dusty sampled drums, stabs, vocal hits | 96 | Boom Bap, Dusty, Stab City, Vox Hits, Laid Back, Chop Shop, Horns, Scratch |
 | MD888 | hard techno: Berlin, gabba, rumble, trance stabs and hits | 155 | Warehouse, Gabba, Trance Stab, Industry, Acid 155, Schranz, Rolling, Peak Time |
 
 All MD187 and MD888 samples are synthesised from scratch (no recordings, nothing taken from a record).

@@ -11,7 +11,7 @@ echo "Quit Chrome tabs with MD|442, M-VAVE's editor and any DAW first: only one 
 echo
 echo "Which firmware?"
 echo "  1) MD442  techno and house (your seven MD|442 beats)"
-echo "  2) MD187  90s hip-hop: boom-bap, dusty samples, stabs, vocal hits (90 BPM)"
+echo "  2) MD187  90s hip-hop: boom-bap, dusty samples, stabs, vocal hits (96 BPM)"
 echo "  3) MD888  hard techno: Berlin, gabba, rumble, trance stabs (155 BPM)"
 printf "Firmware (1-3): "; read v
 case "$v" in 1) V=md442;; 2) V=md187;; 3) V=md888;; *) echo "Cancelled."; exit 1;; esac
