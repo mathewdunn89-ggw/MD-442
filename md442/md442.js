@@ -776,7 +776,7 @@ const fileName = (n, ext) => (String(n || 'MD442 beat').replace(/[^\w\- ]+/g, ''
 // the DAW plugin keeps the sampler as its BREAK row (scenes[].brk: . off, 1-8 a slice, - rings on, g the loop plays on) and brk.* settings;
 // a file carries both, so the web, phone, desktop apps and the plugin all read each other's beats
 const brkRow = sc => sc.g.SM.map((on, i) => { if (!on) return '.'; if (sc.sl[i]) return String(sc.sl[i]); let j = i - 1; while (j >= 0 && sc.g.SM[j] && !sc.sl[j]) j--; return i > 0 && sc.g.SM[i - 1] && j >= 0 && sc.g.SM[j] && sc.sl[j] ? '-' : 'g'; }).join('');
-const brkP = Q => { const b = Math.round(Q['sm.bank']); return { 'brk.kit': S.style === '442' && !S.scenes.some(sc => sc.g.SM.some(Boolean)) ? 0 : b < 4 ? 1 : 2, 'brk.slot': b % 4, 'brk.level': clamp(Math.round(100 * Math.pow(10, (Q['lvl.SM'] - LEVEL.SM) / 20)), 0, 127), 'brk.complex': Q['sm.chop'], 'brk.pitch': Q['sm.tune'] }; };
+const brkP = Q => { const b = Math.round(Q['sm.bank']); return { 'brk.kit': S.style === '442' && !S.scenes.some(sc => sc.g.SM.some(Boolean)) ? 0 : b < 4 ? 1 : 2, 'brk.slot': b % 4, 'brk.level': clamp(Math.round(100 * Math.pow(10, (Q['lvl.SM'] - LEVEL.SM) / 20)), 0, 127), 'brk.complex': Q['sm.chop'], 'brk.pitch': Q['sm.tune'], 'pan.BRK': Q['pan.SM'], 'flt.BRK': Q['flt.SM'], 'drv.BRK': Q['drv.SM'], 'rev.BRK': Q['rev.SM'], 'ech.BRK': Q['ech.SM'] }; };
 function beatFile() { storeMix(); return { format: 'md442-beat', version: 1, style: S.style, name: S.preset || 'MD442 beat', P: Object.assign({}, P, brkP(P)), scenes: S.scenes.map(sc => { const c = copyScene(sc); const r = brkRow(sc); if (r !== '................') c.brk = r; return c; }), last: S.last, trim: trimOf() }; }
 async function saveAs(blob, name, desc, accept) {
   if (window.showSaveFilePicker && self === top) {
@@ -825,6 +825,7 @@ function normBeat(x) {   // a beat from any MD|442: the web app, the phone app, 
     const kit = Math.round(x.P['brk.kit']), slot = num('brk.slot') ? clamp(Math.round(x.P['brk.slot']), 0, 3) : 0;
     if (kit > 0) Pn['sm.bank'] = (kit - 1) * 4 + slot; if (!x.style && kit > 0) x.style = kit === 1 ? '187' : '888';
     if (num('brk.level')) Pn['lvl.SM'] = kit > 0 ? half(LEVEL.SM + 20 * Math.log10(Math.max(1, x.P['brk.level']) / 100)) : -40;
+    ['pan', 'flt', 'drv', 'rev', 'ech'].forEach(t => { if (num(t + '.BRK') && !num(t + '.SM')) Pn[t + '.SM'] = clamp(x.P[t + '.BRK'], DEF[t + '.SM'].mn, DEF[t + '.SM'].mx); });   // the plugin's BREAK channel tools
     if (num('brk.complex')) Pn['sm.chop'] = clamp(x.P['brk.complex'], 0, 100); if (num('brk.pitch')) Pn['sm.tune'] = clamp(x.P['brk.pitch'], -12, 12);
   }
   Object.keys(DEF).forEach(k => { if (num(k)) Pn[k] = clamp(x.P[k], DEF[k].mn, DEF[k].mx); });
