@@ -18,10 +18,29 @@ static void writeWav(const char* path, const std::vector<float>& L, const std::v
     std::fclose(f);
 }
 
+// the break loops, straight from styles/samples (16-bit mono WAV)
+static Loop readWav(const std::string& path, int bars, double bpm) {
+    Loop L; L.bars = bars; L.bpm = bpm; FILE* f = std::fopen(path.c_str(), "rb"); if (!f) return L;
+    std::vector<unsigned char> d; unsigned char buf[65536]; size_t n; while ((n = std::fread(buf, 1, sizeof buf, f)) > 0) d.insert(d.end(), buf, buf + n); std::fclose(f);
+    size_t p = 12; uint16_t ch = 1, bits = 16;
+    while (p + 8 <= d.size()) {
+        uint32_t sz = d[p + 4] | d[p + 5] << 8 | d[p + 6] << 16 | (uint32_t)d[p + 7] << 24;
+        if (!std::memcmp(&d[p], "fmt ", 4)) { ch = (uint16_t)(d[p + 10] | d[p + 11] << 8); L.sr = d[p + 12] | d[p + 13] << 8 | d[p + 14] << 16; bits = (uint16_t)(d[p + 22] | d[p + 23] << 8); }
+        if (!std::memcmp(&d[p], "data", 4) && bits == 16) { for (size_t i = p + 8; i + 1 < p + 8 + sz && i + 1 < d.size(); i += 2 * ch) L.data.push_back((int16_t)(d[i] | d[i + 1] << 8) / 32768.f); break; }
+        p += 8 + sz + (sz & 1);
+    }
+    return L;
+}
+static void loadLoops(Engine& e, const std::string& dir) {
+    const char* N[2][4] = {{"BOOMBP", "DRUMS", "STABS", "VOX"}, {"RUMBLE", "GABBA", "TRANCE", "HITS"}};
+    for (int k = 0; k < 2; ++k) for (int s = 0; s < 4; ++s)
+        e.loops[(size_t)k + 1][(size_t)s] = readWav(dir + (k ? "/md888/" : "/md187/") + N[k][s] + ".wav", k == 1 && s == 2 ? 2 : 1, k ? 155 : 96);
+}
+
 int main(int argc, char** argv) {
     if (argc < 4) { std::fprintf(stderr, "render out.wav preset what [secs] [rate]\n"); return 1; }
     int preset = std::atoi(argv[2]); double secs = argc > 4 ? std::atof(argv[4]) : 2.5; int sr = argc > 5 ? std::atoi(argv[5]) : 44100;
-    Engine e; e.loadPreset(preset);
+    Engine e; loadLoops(e, std::string(MD442_STYLES_DIR) + "/samples"); e.loadPreset(preset);
     for (int a = 6; a < argc; ++a) { std::string kv = argv[a]; auto q = kv.find('='); if (q != std::string::npos) { int j = defIndex(kv.substr(0, q)); if (j >= 0) e.P[(size_t)j] = std::atof(kv.c_str() + q + 1); } }
     bool live = false; for (int a = 6; a < argc; ++a) if (std::string(argv[a]) == "live") live = true;
     e.prepare(sr, live); if (live) std::this_thread::sleep_for(std::chrono::milliseconds(50));

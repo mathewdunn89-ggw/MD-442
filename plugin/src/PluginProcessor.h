@@ -7,6 +7,7 @@
 //   notes C1 (36) up to C2 (48) and C3 (60) up to C4 (72) play Kick, Snare, Clap, Rim, Low/Mid/Hi tom, Closed/Open hat, Crash, Ride, Bass, Stab
 //   (C1 is the Ableton Drum Rack and Maschine pad layout; C3 is where Maschine's keyboard mode starts)
 //   channel 2 plays the bass at the note's pitch, channel 3 plays the stab chord on that root
+//   C#2 (49) to G#2 (56), and C#4 (73) to G#4 (80), play the 8 slices of the BREAK loop
 //   any CC can be learnt to any knob (right-click a knob, MIDI learn, turn a knob on the controller)
 class MD442Processor : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener {
 public:
@@ -23,10 +24,10 @@ public:
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 4.0; }
-    int getNumPrograms() override { return (int)md442::presetSources().size(); }
+    int getNumPrograms() override { return md442::Engine::numPresets(); }
     int getCurrentProgram() override { return program; }
     void setCurrentProgram(int index) override { loadPreset(index); }
-    const juce::String getProgramName(int index) override { return index >= 0 && index < getNumPrograms() ? md442::presetSources()[(size_t)index].name : ""; }
+    const juce::String getProgramName(int index) override { return index >= 0 && index < getNumPrograms() ? juce::String(md442::Engine::presetStyle(index) + " " + md442::Engine::presetName(index)) : juce::String(); }
     void changeProgramName(int, const juce::String&) override {}
     void getStateInformation(juce::MemoryBlock& destData) override;
     void setStateInformation(const void* data, int sizeInBytes) override;

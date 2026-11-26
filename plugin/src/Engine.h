@@ -16,6 +16,9 @@ struct Part {   // one sounding piece of a hit (a resonator, a noise burst ...),
     virtual double tick(double t) = 0;
 };
 
+// one loop of a break kit: mono samples, how many bars it is and at what tempo
+struct Loop { std::vector<float> data; double sr = 22050; int bars = 1; double bpm = 120; };
+
 struct Transport { bool hostKnown = false, hostPlaying = false; double ppq = 0, bpm = 120; };
 
 class Engine {
@@ -31,7 +34,13 @@ public:
     std::array<bool, NUM_KEYS> mute {}; std::array<bool, 3> kill {}; std::string preset = "Peak Warehouse"; double beatTrim = 0; bool hasBeatTrim = false;   // a saved beat carries its own loudness trim
     bool seqOn = true;            // play the pattern while the DAW plays
     bool internalPlay = false;    // the plugin's own PLAY, used while the DAW is stopped
-    void loadPreset(int idx);
+    void loadPreset(int idx);    // 0-6 MD442, then the MD187 and MD888 patterns (Styles.h)
+    static int numPresets();
+    static std::string presetName(int idx);
+    static std::string presetStyle(int idx);
+    std::array<std::array<Loop, 4>, 3> loops;   // [kit 1 MD187, 2 MD888][slot]; kit 0 is empty
+    void slice(int n, double vel = 1);           // play slice n (0-7) of the current loop, from a pad
+    const char* loopName(int kit, int slot) const;
     void apply(bool snap = false);
     bool off(int k) const { return mute[(size_t)k] || (solo >= 0 && solo != k); }
     Scene& scene() { return scenes[(size_t)std::clamp(sc, 0, (int)scenes.size() - 1)]; }
@@ -60,7 +69,7 @@ private:
         Shaper entry; Biquad stHp; Shaper cdrv; MovingBiquad clp, chp; Smooth gain, pan, sv, sd;
         double in = 0;
     } chs[NUM_SOUND];
-    Smooth rum; Biquad rumLp;
+    Smooth rum, brkGain; Biquad rumLp;
     Param duck { 1 };
     // reverb
     DelayLine pre; Convolver cv[2]; Param cvg[2] { Param(1), Param(0) }; int cvA = 0; double irSecs = 0, irWantAt = -1; bool irPending = false;
@@ -74,9 +83,14 @@ private:
     // master
     MovingBiquad lo[2], mid[2], hi[2], lp1[2], lp2[2], hp1[2], hp2[2]; Shaper drv[2]; Smooth mst; Compressor comp;
     // sequencer
-    struct Pending { double t; int idx; };
+    struct Pending { double t; int idx; long long bar; };
+    struct BrkPart; std::unique_ptr<Part> brk;   // the BREAK plays one sound at a time
+    void brkStep(char c, int idx, long long bar, double t, double vel);
+    void brkStart(double from, double to, double t, double vel);
+    void brkStop(double t);
+    Rng brkRng { 777 };
     std::vector<Pending> pending; double seqPpq = 0; bool wasRunning = false; long long lastStep = -1;
-    void playStep(int idx, double t);
+    void playStep(int idx, double t, long long bar = 0);
     void runSequencer(int n, const Transport& tr);
     double trim() const;
     void setT(Smooth& s, double v, double tc, bool snap) { if (snap) s.snap(v); else s.set(v, tc, sr); }

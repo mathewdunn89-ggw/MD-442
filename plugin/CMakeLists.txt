@@ -39,6 +39,11 @@ juce_add_plugin(MD442
     MICROPHONE_PERMISSION_ENABLED FALSE
     FORMATS ${MD442_FORMATS})
 
+# the MD187 and MD888 break loops, built into the plugin
+juce_add_binary_data(MD442Samples SOURCES
+    styles/samples/md187/BOOMBP.wav styles/samples/md187/DRUMS.wav styles/samples/md187/STABS.wav styles/samples/md187/VOX.wav
+    styles/samples/md888/RUMBLE.wav styles/samples/md888/GABBA.wav styles/samples/md888/TRANCE.wav styles/samples/md888/HITS.wav)
+
 target_sources(MD442 PRIVATE
     src/Engine.cpp
     src/PluginProcessor.cpp
@@ -52,6 +57,7 @@ target_compile_definitions(MD442 PUBLIC
     JUCE_DISPLAY_SPLASH_SCREEN=0)
 
 target_link_libraries(MD442 PRIVATE
+    MD442Samples
     juce::juce_audio_utils
     juce::juce_dsp
     PUBLIC
@@ -63,3 +69,4 @@ target_link_libraries(MD442 PRIVATE
 add_executable(md442_render tools/render.cpp src/Engine.cpp)
 find_package(Threads REQUIRED)
 target_link_libraries(md442_render PRIVATE Threads::Threads)
+target_compile_definitions(md442_render PRIVATE MD442_STYLES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/styles")

@@ -1,0 +1,519 @@
+{
+ "MD187": {
+  "bpm": 96,
+  "style": "90s hip-hop boom-bap",
+  "samples": "samples/md187 (BOOMBP, DRUMS, STABS, VOX: 1 bar each at 96 BPM, 8 equal slices = 8 one-shots except BOOMBP)",
+  "slots": [
+   "BOOMBP",
+   "DRUMS",
+   "STABS",
+   "VOX"
+  ],
+  "patterns": [
+   {
+    "name": "BOOM BAP",
+    "swing": 32,
+    "d808": {
+     "BD": "x......x..x....."
+    },
+    "d909": {
+     "SD": "....x.......x...",
+     "CH": "x.x.x.x.x.x.x.x.",
+     "OH": "..............x."
+    },
+    "acc909": "....x.......x...",
+    "brk": {
+     "slot": 0,
+     "steps": "gggggggggggggggg",
+     "complex": 0,
+     "level": 70
+    },
+    "bass": {
+     "root": 38,
+     "row": [
+      "0",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "0",
+      ".",
+      ".",
+      "s3",
+      "5",
+      ".",
+      ".",
+      ".",
+      "."
+     ]
+    }
+   },
+   {
+    "name": "DUSTY",
+    "swing": 36,
+    "d808": {
+     "BD": "x.........x....."
+    },
+    "d909": {
+     "CH": "..x...x...x...x."
+    },
+    "brk": {
+     "slot": 1,
+     "steps": "1-..3-.2.1-3-..5",
+     "complex": 0,
+     "level": 100
+    },
+    "bass": {
+     "root": 38,
+     "row": [
+      "0",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "0",
+      ".",
+      ".",
+      "-2",
+      ".",
+      "."
+     ]
+    }
+   },
+   {
+    "name": "STAB CITY",
+    "swing": 30,
+    "d808": {
+     "BD": "x......x.x......"
+    },
+    "d909": {
+     "SD": "....x.......x...",
+     "CH": "x.x.x.x.x.x.x.x.",
+     "RS": ".......x......x."
+    },
+    "acc909": "....x.......x...",
+    "brk": {
+     "slot": 2,
+     "steps": "1-......2-....3.",
+     "complex": 0,
+     "level": 95
+    },
+    "bass": {
+     "root": 38,
+     "row": [
+      "0",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "0",
+      ".",
+      "5",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "."
+     ]
+    }
+   },
+   {
+    "name": "VOX HITS",
+    "swing": 32,
+    "d808": {
+     "BD": "x.....x...x....."
+    },
+    "d909": {
+     "SD": "....x.......x...",
+     "CP": "............x...",
+     "CH": "x.xxx.x.x.xxx.x."
+    },
+    "brk": {
+     "slot": 3,
+     "steps": "..1-......2-..8-",
+     "complex": 0,
+     "level": 90
+    },
+    "bass": {
+     "root": 38,
+     "row": [
+      "0",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "0",
+      ".",
+      ".",
+      ".",
+      "3",
+      ".",
+      ".",
+      ".",
+      ".",
+      "."
+     ]
+    }
+   },
+   {
+    "name": "LAID BACK",
+    "swing": 48,
+    "d808": {
+     "BD": "x.......x.x....."
+    },
+    "d909": {
+     "RS": "....x.......x...",
+     "CH": "x.x.x.x.x.x.x.x.",
+     "OH": "......x........."
+    },
+    "brk": {
+     "slot": 1,
+     "steps": "......7-......7-",
+     "complex": 0,
+     "level": 80
+    },
+    "bass": {
+     "root": 36,
+     "row": [
+      "0",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "0",
+      ".",
+      "s7",
+      "5",
+      ".",
+      ".",
+      ".",
+      "."
+     ]
+    }
+   },
+   {
+    "name": "CHOP SHOP",
+    "swing": 28,
+    "d808": {
+     "BD": "x.........x....."
+    },
+    "d909": {
+     "CH": "x.x.x.x.x.x.x.x."
+    },
+    "brk": {
+     "slot": 0,
+     "steps": "gggggggggggggggg",
+     "complex": 65,
+     "level": 100
+    },
+    "bass": {
+     "root": 38,
+     "row": [
+      "0",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "0",
+      ".",
+      ".",
+      ".",
+      ".",
+      "."
+     ]
+    }
+   },
+   {
+    "name": "HORNS",
+    "swing": 30,
+    "d808": {
+     "BD": "x......x..x....."
+    },
+    "d909": {
+     "SD": "....x.......x...",
+     "CH": "x.x.x.x.x.x.x.x.",
+     "CR": "x..............."
+    },
+    "acc909": "....x.......x...",
+    "brk": {
+     "slot": 2,
+     "steps": "3-.4-.......3-4-",
+     "complex": 0,
+     "level": 95
+    },
+    "bass": {
+     "root": 38,
+     "row": [
+      "0",
+      ".",
+      ".",
+      "0",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "a5",
+      ".",
+      ".",
+      ".",
+      ".",
+      "."
+     ]
+    }
+   },
+   {
+    "name": "SCRATCH",
+    "swing": 34,
+    "d808": {
+     "BD": "x......x..x..x.."
+    },
+    "d909": {
+     "SD": "....x.......x...",
+     "CH": "x.x.x.x.x.x.x.x."
+    },
+    "brk": {
+     "slot": 3,
+     "steps": "........8-8-.8-.",
+     "complex": 0,
+     "level": 90
+    },
+    "bass": {
+     "root": 38,
+     "row": [
+      "0",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "0",
+      ".",
+      ".",
+      "0",
+      ".",
+      ".",
+      ".",
+      ".",
+      "."
+     ]
+    }
+   }
+  ]
+ },
+ "MD888": {
+  "bpm": 155,
+  "style": "hard techno: Berlin, gabba, rumble, trance stabs",
+  "samples": "samples/md888 (RUMBLE, GABBA, HITS: 1 bar; TRANCE: 2 bars, 8 slices)",
+  "slots": [
+   "RUMBLE",
+   "GABBA",
+   "TRANCE",
+   "HITS"
+  ],
+  "patterns": [
+   {
+    "name": "WAREHOUSE",
+    "swing": 0,
+    "d909": {
+     "BD": "x...x...x...x...",
+     "CH": "xxxxxxxxxxxxxxxx",
+     "OH": "..x...x...x...x.",
+     "CP": "....x.......x..."
+    },
+    "acc909": "x...x...x...x...",
+    "brk": {
+     "slot": 0,
+     "steps": "gggggggggggggggg",
+     "complex": 0,
+     "level": 90
+    },
+    "bass": null
+   },
+   {
+    "name": "GABBA",
+    "swing": 0,
+    "d909": {
+     "CH": "..x...x...x...x.",
+     "CP": "....x.......x..."
+    },
+    "brk": {
+     "slot": 1,
+     "steps": "gggggggggggggggg",
+     "complex": 0,
+     "level": 110
+    },
+    "bass": {
+     "root": 45,
+     "row": [
+      "a0",
+      ".",
+      "0",
+      ".",
+      "a0",
+      ".",
+      "0",
+      ".",
+      "a0",
+      ".",
+      "0",
+      ".",
+      "a0",
+      ".",
+      "s0",
+      "12"
+     ]
+    }
+   },
+   {
+    "name": "TRANCE STAB",
+    "swing": 0,
+    "d909": {
+     "BD": "x...x...x...x...",
+     "CH": "x.x.x.x.x.x.x.x.",
+     "OH": "..x...x...x...x.",
+     "RD": "x.x.x.x.x.x.x.x."
+    },
+    "brk": {
+     "slot": 2,
+     "steps": "..1-..1-..2-..3-",
+     "complex": 0,
+     "level": 95
+    },
+    "bass": null
+   },
+   {
+    "name": "INDUSTRY",
+    "swing": 0,
+    "d909": {
+     "BD": "x...x...x...x...",
+     "CH": "xxxxxxxxxxxxxxxx",
+     "RS": "...x..x....x..x."
+    },
+    "acc909": "x...x...x...x...",
+    "brk": {
+     "slot": 3,
+     "steps": "..1-......7-..5-",
+     "complex": 0,
+     "level": 90
+    },
+    "bass": null
+   },
+   {
+    "name": "ACID 155",
+    "swing": 0,
+    "d909": {
+     "BD": "x...x...x...x...",
+     "CH": "..x...x...x...x.",
+     "CP": "....x.......x..."
+    },
+    "brk": {
+     "slot": 0,
+     "steps": "gggggggggggggggg",
+     "complex": 0,
+     "level": 70
+    },
+    "bass": {
+     "root": 45,
+     "row": [
+      "a0",
+      "0",
+      "s12",
+      "0",
+      "3",
+      "a0",
+      "s0",
+      "10",
+      "0",
+      "a12",
+      "0",
+      "s7",
+      "a0",
+      "0",
+      "3",
+      "s15"
+     ]
+    }
+   },
+   {
+    "name": "SCHRANZ",
+    "swing": 0,
+    "d909": {
+     "BD": "x...x...x...x...",
+     "CH": "xxxxxxxxxxxxxxxx",
+     "LT": "..x...x...x...x.",
+     "MT": ".x...x...x...x..",
+     "HT": "...x...x...x...x"
+    },
+    "acc909": "x...x...x...x...",
+    "brk": {
+     "slot": 0,
+     "steps": "gggggggggggggggg",
+     "complex": 0,
+     "level": 75
+    },
+    "bass": null
+   },
+   {
+    "name": "ROLLING",
+    "swing": 0,
+    "d909": {
+     "BD": "x...x...x...x...",
+     "OH": "..x...x...x...x.",
+     "CH": "x.xxx.xxx.xxx.xx"
+    },
+    "d808": {
+     "RS": ".x..x..x.x..x..x"
+    },
+    "brk": {
+     "slot": 0,
+     "steps": "gggggggggggggggg",
+     "complex": 0,
+     "level": 95
+    },
+    "bass": null
+   },
+   {
+    "name": "PEAK TIME",
+    "swing": 0,
+    "d909": {
+     "BD": "x...x...x...x...",
+     "CP": "....x.......x...",
+     "OH": "..x...x...x...x.",
+     "RD": "x.x.x.x.x.x.x.x.",
+     "CR": "x..............."
+    },
+    "acc909": "x...x...x...x...",
+    "brk": {
+     "slot": 2,
+     "steps": "1-..1-..6-..7-.4",
+     "complex": 0,
+     "level": 100
+    },
+    "bass": null
+   }
+  ]
+ },
+ "notes": "Rows are 16 steps (x = hit). Swing is X0X's 0..100 (0 = straight, 100 = 75% shuffle). brk.steps: digit = that slice of loop brk.slot on this step, '-' = keep ringing, 'g' = generator (play the loop through). bass.row: semitones from root (MIDI note, 303 octave convention: the firmware plays note-24), a = accent, s = slide, '.' = rest."
+}

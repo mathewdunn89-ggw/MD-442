@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "Styles.h"
 
 namespace md442 {
 
@@ -73,8 +74,30 @@ Engine::Engine() {
 }
 Engine::~Engine() { if (irThread.joinable()) irThread.join(); }
 
+int Engine::numPresets() { return (int)(presetSources().size() + stylePresets().size()); }
+std::string Engine::presetName(int idx) {
+    int n = (int)presetSources().size(); if (idx < n) return presetSources()[(size_t)idx].name;
+    return idx - n < (int)stylePresets().size() ? stylePresets()[(size_t)(idx - n)].name : "";
+}
+std::string Engine::presetStyle(int idx) { int n = (int)presetSources().size(); return idx < n ? "MD442" : stylePresets()[(size_t)(idx - n)].style; }
+const char* Engine::loopName(int kit, int slot) const {
+    static const char* N[3][4] = {{"-", "-", "-", "-"}, {"BOOMBAP", "DRUMS", "STABS", "VOX"}, {"RUMBLE", "GABBA", "TRANCE", "HITS"}};
+    return N[std::clamp(kit, 0, 2)][std::clamp(slot, 0, 3)];
+}
+
 void Engine::loadPreset(int idx) {
-    const auto& src = presetSources(); if (idx < 0 || idx >= (int)src.size()) return;
+    const auto& src = presetSources();
+    if (idx >= (int)src.size() && idx < numPresets()) {   // an MD187 or MD888 pattern
+        const auto& sp = stylePresets()[(size_t)(idx - (int)src.size())]; double vol = pv("vol");
+        for (size_t i = 0; i < defs().size(); ++i) P[i] = defs()[i].df;
+        for (auto& kv : sp.P) { int j = defIndex(kv.first); if (j >= 0) P[(size_t)j] = kv.second; }
+        p("vol") = vol; preset = sp.name; hasBeatTrim = true; beatTrim = sp.trim;
+        Scene sc; for (int k = 0; k < NUM_KEYS; ++k) for (int i = 0; i < 16; ++i) sc.g[(size_t)k][(size_t)i] = sp.g[(size_t)k][i] == 'x';
+        for (int i = 0; i < 16; ++i) { sc.n[(size_t)i] = sp.n[(size_t)i]; sc.brk[(size_t)i] = sp.brk[i]; }
+        scenes.assign(1, sc); this->sc = 0; chain = false; last = 16; mute.fill(false); pend = -1;
+        return;
+    }
+    if (idx < 0 || idx >= (int)src.size()) return;
     auto c = convertPreset(src[(size_t)idx]); double vol = pv("vol");
     for (size_t i = 0; i < defs().size(); ++i) P[i] = defs()[i].df;
     for (auto& kv : c.v) { int j = defIndex(kv.first); if (j >= 0) P[(size_t)j] = kv.second; }
@@ -84,7 +107,7 @@ void Engine::loadPreset(int idx) {
 double Engine::trim() const { if (hasBeatTrim) return beatTrim; for (auto& s : presetSources()) if (preset == s.name) return s.trim; return 0; }
 
 void Engine::prepare(double sampleRate, bool isLive) {
-    sr = sampleRate; live = isLive; now = 0; parts.clear(); pending.clear();
+    sr = sampleRate; live = isLive; now = 0; parts.clear(); pending.clear(); brk.reset();
     pulse.assign((size_t)std::ceil(sr * .004), 0.f); { double n = sr * .0008; for (size_t i = 0; i < pulse.size(); ++i) pulse[i] = (float)(i < n ? 1 : std::exp(-(i - n) / (n * .6))); }
     for (int i = 0; i < 6; ++i) { hat.o[i] = Osc(); hat.o[i].type = Osc::SQUARE; hat.f[i].snap(HAT_F[i]); crb.o[i].type = Osc::SQUARE; crb.f[i].snap(HAT_F[i]); rdb.o[i].type = Osc::SQUARE; rdb.f[i].snap(RIDE_F[i]); }
     for (int k = 0; k < NUM_SOUND; ++k) {
@@ -166,6 +189,7 @@ void Engine::apply(bool snap) {
         filt(c.clp, c.chp, P[(size_t)defIndex("flt." + id)], snap);
         setT(c.sv, v, .04, snap); setT(c.sd, d, .04, snap);
     }
+    setT(brkGain, pv("brk.level") / 100 * .45, .02, snap);
     setT(fb, pv("fx.efb") / 100 * .9, .05, snap);
     setT(dtime, std::min(1.95, 60 / effBpm / 4 * ETIMES[std::clamp((int)std::lround(pv("fx.etime")), 0, 5)].sixteenths), .08, snap);
     double v = pv("fx.filter"); bool lo_ = v < -4, hi_ = v > 4;   // 24 dB per octave either way
@@ -183,7 +207,7 @@ void Engine::apply(bool snap) {
     for (int i = 0; i < 6; ++i) { setT(crb.f[i], HAT_F[i] * 1.12 * cr, .01, snap); setT(rdb.f[i], RIDE_F[i] * 1.5 * rd, .01, snap); }
 }
 
-void Engine::stopAll() { parts.clear(); pending.clear(); }
+void Engine::stopAll() { parts.clear(); pending.clear(); brk.reset(); }
 
 void Engine::voice(int k, double t, int stepIdx, double vel, const int* note) {
     if (k < 0 || k >= NUM_SOUND) return;
@@ -270,9 +294,49 @@ void Engine::voice(int k, double t, int stepIdx, double vel, const int* note) {
     }
 }
 
-void Engine::playStep(int idx, double t) {
+// ---------------------------------------------------------------- the BREAK
+struct Engine::BrkPart : Part {
+    const Loop* L = nullptr; double pos = 0, to = 0, rate = 1, fade = 1, fadeStep = 0; double t0 = 0; bool stopping = false;
+    double tick(double t) override {
+        if (!L || pos >= to - 1) return 0;
+        size_t i = (size_t)pos; double f = pos - (double)i, x = L->data[i] * (1 - f) + L->data[std::min(i + 1, L->data.size() - 1)] * f;
+        double att = std::min(1.0, (t - t0) / .002);   // 2 ms in, so a slice never clicks
+        double rel = std::min(1.0, (to - pos) / (L->sr * .003));
+        if (stopping) { fade -= fadeStep; if (fade <= 0) { fade = 0; pos = to; } }
+        pos += rate;
+        return x * att * rel * fade;
+    }
+};
+void Engine::brkStop(double) { if (brk) { auto* b = static_cast<BrkPart*>(brk.get()); if (!b->stopping) { b->stopping = true; b->fadeStep = 1 / (.004 * sr); } } }
+void Engine::brkStart(double from, double to, double t, double vel) {
+    int kit = (int)std::lround(pv("brk.kit")), slot = (int)std::lround(pv("brk.slot"));
+    if (kit < 1 || kit > 2) return; const Loop& L = loops[(size_t)kit][(size_t)std::clamp(slot, 0, 3)]; if (L.data.empty()) return;
+    // the old sound fades out over 4 ms while the new one starts: it lives on as an ordinary part
+    if (brk) { brkStop(t); auto* b = static_cast<BrkPart*>(brk.release()); b->ch = -1; b->stop = t + .01; parts.emplace_back(b); }
+    auto* b = new BrkPart(); b->L = &L; b->pos = from * (double)L.data.size(); b->to = to * (double)L.data.size();
+    b->rate = L.sr / sr * std::pow(2, pv("brk.pitch") / 12); b->t0 = t; b->vel = vel; b->ch = -1; b->start = t - .5 / sr; b->stop = 1e18;
+    brk.reset(b); hitFlags.fetch_or(1u << 14);
+}
+void Engine::slice(int n, double vel) { if (n < 0 || n > 7) return; brkStart(n / 8.0, (n + 1) / 8.0, now + 1 / sr, vel); }
+void Engine::brkStep(char c, int idx, long long bar, double t, double vel) {
+    if (c == '-') return;
+    if (c == '.') { brkStop(t); return; }
+    if (c >= '1' && c <= '8') { int n = c - '1'; brkStart(n / 8.0, (n + 1) / 8.0, t, vel); return; }
+    if (c == 'g') {   // play the loop through: start at this step's place in it, and let it run on into the next
+        int kit = (int)std::lround(pv("brk.kit")), slot = (int)std::lround(pv("brk.slot")); if (kit < 1 || kit > 2) return;
+        int bars = std::max(1, loops[(size_t)kit][(size_t)std::clamp(slot, 0, 3)].bars), segs = bars * 16;
+        int seg = (int)((bar % bars) * 16 + idx);
+        if (brkRng.next() * .5 + .5 < pv("brk.complex") / 100) seg = (int)((brkRng.next() * .5 + .5) * segs) % segs;   // CHOP: jump to another 16th of the loop
+        else if (brk) { auto* b = static_cast<BrkPart*>(brk.get()); double want = (double)seg / segs * (double)b->L->data.size();
+            if (!b->stopping && b->L && std::fabs(b->pos - want) < b->L->sr * .012) return; }   // already right there: let it run, no retrigger
+        brkStart((double)seg / segs, 1.0, t, vel);
+    }
+}
+
+void Engine::playStep(int idx, double t, long long bar) {
     auto& s = scene(); double acc = s.g[AC][(size_t)idx] && !mute[AC] ? std::pow(10, pv("accent") / 20) : 1;
     for (int k = 0; k < NUM_SOUND; ++k) if (s.g[(size_t)k][(size_t)idx] && !off(k)) voice(k, t, idx, acc);
+    brkStep(s.brk[(size_t)idx], idx, bar, t, 1);
 }
 
 // steps fall on 16th notes of the DAW's timeline (or the plugin's own clock while the DAW is stopped)
@@ -281,7 +345,7 @@ void Engine::runSequencer(int n, const Transport& tr) {
     if (tr.hostKnown && tr.bpm > 0 && std::fabs(tr.bpm - effBpm) > 1e-6) { effBpm = tr.bpm; apply(); }
     else if (!tr.hostKnown && std::fabs(pv("bpm") - effBpm) > 1e-6) { effBpm = pv("bpm"); apply(); }
     if (!running) {
-        if (wasRunning) { pending.clear(); playhead = -1; if (pend >= 0) { sc = pend; pend = -1; } }
+        if (wasRunning) { pending.clear(); brkStop(now); playhead = -1; if (pend >= 0) { sc = pend; pend = -1; } }
         wasRunning = false; lastStep = -1; return;
     }
     double ppq0 = host ? tr.ppq : seqPpq;
@@ -299,7 +363,7 @@ void Engine::runSequencer(int n, const Transport& tr) {
         }
         double at = now + ((double)st / 4 - ppq0) / ppqPerSample / sr;
         double sh = idx % 2 ? (pv("shuffle") / 100 - .5) * 2 * stepLen : 0;
-        pending.push_back({std::max(at + sh, now), idx});
+        pending.push_back({std::max(at + sh, now), idx, st / L});
     }
     if (!host) seqPpq = ppq1;
     wasRunning = true;
@@ -331,18 +395,21 @@ void Engine::process(float* L, float* R, int n, const Transport& tr) {
         // hits that are due
         if (!pending.empty()) {
             for (size_t i = 0; i < pending.size();) {
-                if (pending[i].t <= t + dt * .5) { playStep(pending[i].idx, t); head = pending[i].idx; pending.erase(pending.begin() + (long)i); }
+                if (pending[i].t <= t + dt * .5) { playStep(pending[i].idx, t, pending[i].bar); head = pending[i].idx; pending.erase(pending.begin() + (long)i); }
                 else ++i;
             }
         }
         hat.tick(sr); crb.tick(sr); rdb.tick(sr);
         for (auto& c : chs) c.in = 0;
+        double brkIn = 0;
         for (size_t i = 0; i < parts.size();) {
             auto& pp = parts[i];
             if (t >= pp->stop) { parts[i] = std::move(parts.back()); parts.pop_back(); continue; }
             if (t < pp->start) { ++i; continue; }
-            chs[pp->ch].in += pp->tick(t) * pp->vel; ++i;
+            if (pp->ch < 0) brkIn += pp->tick(t) * pp->vel; else chs[pp->ch].in += pp->tick(t) * pp->vel;
+            ++i;
         }
+        if (brk) brkIn += brk->tick(t) * brk->vel;
         double duckG = duck.next(t);
         double mixL = 0, mixR = 0, dkL = 0, dkR = 0, revIn = 0, dlyIn = 0;
         for (int k = 0; k < NUM_SOUND; ++k) {
@@ -356,6 +423,8 @@ void Engine::process(float* L, float* R, int n, const Transport& tr) {
             else { dkL += y * gl; dkR += y * gr; }
             revIn += y * c.sv.next(); dlyIn += y * c.sd.next();
         }
+        // the BREAK sits in the middle, under the kick's duck, with a touch of the room
+        { double b = brkIn * brkGain.next(); dkL += b; dkR += b; revIn += b * .08; }
         // dub delay: every repeat darker than the last, a little of it into the room
         double d = dl.read(dtime.next()), f = dhp.process(dlp.process(d));
         dl.write(dlyIn + f * fb.next());

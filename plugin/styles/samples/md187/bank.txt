@@ -1,0 +1,5 @@
+# name bars bpm (synthesised by tools/md_gen_samples.py 187: no recordings)
+BOOMBP 1 96
+DRUMS 1 96
+STABS 1 96
+VOX 1 96

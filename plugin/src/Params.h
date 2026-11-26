@@ -35,7 +35,7 @@ static const int NOTE_CYCLE[] = {0, 3, 5, 7, 10, 12, -2};
 struct ETime { const char* name; double sixteenths; };
 static const ETime ETIMES[] = {{"1/16", 1}, {"1/8 T", 4.0 / 3}, {"1/8", 2}, {"3/16", 3}, {"1/4", 4}, {"3/8", 6}};
 
-enum Fmt { F_DB, F_HZ, F_MS, F_PC, F_ST, F_BPM, F_KEY, F_CHORD, F_ETIME, F_PAN, F_FILTER, F_SEC };
+enum Fmt { F_DB, F_HZ, F_MS, F_PC, F_ST, F_BPM, F_KEY, F_CHORD, F_ETIME, F_PAN, F_FILTER, F_SEC, F_KIT, F_SLOT, F_NUM };
 
 struct ParamDef { std::string id; double mn, mx, df; std::string label; Fmt f; bool exp; double step; };
 
@@ -65,6 +65,9 @@ inline std::string formatValue(const ParamDef& d, double v) {
         case F_ETIME: return ETIMES[std::clamp((int)std::lround(v), 0, 5)].name;
         case F_PAN: if (std::fabs(v) < 3) return "C"; std::snprintf(b, sizeof b, "%s %d", v < 0 ? "L" : "R", (int)std::lround(std::fabs(v))); return b;
         case F_FILTER: if (std::fabs(v) < 4) return "OFF"; return (v < 0 ? "LP " + fmtHz(lpHz(v)) : "HP " + fmtHz(hpHz(v)));
+        case F_KIT: { static const char* k[] = {"OFF", "MD187", "MD888"}; return k[std::clamp((int)std::lround(v), 0, 2)]; }
+        case F_SLOT: std::snprintf(b, sizeof b, "LOOP %d", (int)std::lround(v) + 1); return b;
+        case F_NUM: std::snprintf(b, sizeof b, "%d", (int)std::lround(v)); return b;
     }
     return "";
 }
@@ -91,6 +94,9 @@ inline const std::vector<ParamDef>& defs() {
     D("st.tone", 300, 12000, 2500, "Stab tone", F_HZ, true); D("st.decay", 80, 1700, 400, "Stab decay", F_MS, true); D("st.chord", 0, 6, 1, "Chord", F_CHORD); D("st.echo", 0, 100, 0, "Stab echo", F_PC); D("st.verb", 0, 100, 0, "Stab verb", F_PC);
     D("fx.filter", -100, 100, 0, "Filter", F_FILTER); D("fx.verb", 0, 100, 0, "Reverb", F_PC); D("fx.space", 0, 100, 0, "Space", F_PC); D("fx.drive", 0, 100, 0, "Drive", F_PC);
     D("fx.vdec", .3, 4, 1.6, "Reverb decay", F_SEC, true); D("fx.etime", 0, 5, 3, "Echo time", F_ETIME); D("fx.efb", 0, 95, 50, "Echo feedback", F_PC);
+    // the BREAK: MD187 / MD888 loops and their 8 slices (off on MD442's own patterns)
+    D("brk.kit", 0, 2, 0, "Break kit", F_KIT); D("brk.slot", 0, 3, 0, "Break loop", F_SLOT); D("brk.level", 0, 127, 90, "Break level", F_NUM);
+    D("brk.complex", 0, 100, 0, "Break chop", F_PC); D("brk.pitch", -12, 12, 0, "Break pitch", F_ST, false, .5);
     const double LEVEL[] = {0, -3, -4, -8, -6, -6, -6, -3, -4, -6, -8, -7, -6};
     const double PAN[] = {0, 0, 0, -12, -30, 0, 30, 18, -18, -24, 26, 0, 0};
     const double RV[] = {0, .5, .7, .45, .5, .55, .55, .16, .24, .3, .2, 0, 0}, DV[] = {0, .32, .45, .4, .4, .5, .5, .1, .18, .2, .12, 0, 0};

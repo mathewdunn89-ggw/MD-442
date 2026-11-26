@@ -15,7 +15,9 @@ juce::String toJson(const Engine& e, const juce::String& name) {
         auto* s = new juce::DynamicObject(); auto* g = new juce::DynamicObject();
         for (int k = 0; k < NUM_KEYS; ++k) { juce::Array<juce::var> row; for (int i = 0; i < STEPS; ++i) row.add((bool)sc.g[(size_t)k][(size_t)i]); g->setProperty(voices()[(size_t)k].id, row); }
         juce::Array<juce::var> n; for (int i = 0; i < STEPS; ++i) n.add(sc.n[(size_t)i]);
-        s->setProperty("g", juce::var(g)); s->setProperty("n", n); scenes.add(juce::var(s));
+        s->setProperty("g", juce::var(g)); s->setProperty("n", n);
+        juce::String brk; for (char c : sc.brk) brk += juce::String::charToString(c); if (brk != "................") s->setProperty("brk", brk);   // the BREAK row, MD187 / MD888
+        scenes.add(juce::var(s));
     }
     root->setProperty("scenes", scenes); root->setProperty("last", e.last);
     root->setProperty("trim", e.hasBeatTrim ? e.beatTrim : [&] { for (auto& s : presetSources()) if (e.preset == s.name) return s.trim; return 0.0; }());
@@ -45,6 +47,7 @@ bool fromJson(Engine& e, const juce::String& json, juce::String& name, bool setT
         Scene sc;
         for (int k = 0; k < NUM_KEYS; ++k) { auto r = s["g"][voices()[(size_t)k].id]; if (r.isArray()) for (int i = 0; i < STEPS; ++i) sc.g[(size_t)k][(size_t)i] = (bool)r[i]; }
         for (int i = 0; i < STEPS; ++i) sc.n[(size_t)i] = (int)s["n"][i];
+        auto brk = s["brk"].toString(); if (brk.length() == STEPS) for (int i = 0; i < STEPS; ++i) { auto c = (char)brk[i]; sc.brk[(size_t)i] = juce::String(".-g12345678").containsChar(c) ? c : '.'; }
         e.scenes.push_back(sc);
     }
     e.sc = 0; e.pend = -1; e.chain = false; e.last = juce::jlimit(1, 16, v["last"].isVoid() ? 16 : (int)v["last"]);

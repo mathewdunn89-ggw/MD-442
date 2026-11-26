@@ -2,6 +2,7 @@
 #include "BeatIO.h"
 
 using namespace md442;
+static constexpr int ROWS = NUM_KEYS + 1, BREAK = NUM_KEYS;   // the 14 rows of MD|442, then the BREAK (MD187 / MD888 loops)
 
 static juce::String pidOf(const std::string& k) { return juce::String(k).replace(".", "_"); }
 
@@ -48,7 +49,9 @@ void Knob::paint(juce::Graphics& g) {
     g.setColour(ui::text); g.setFont(juce::FontOptions(11.f, juce::Font::bold)); g.drawText(label, r.removeFromTop(13), juce::Justification::centred);
     g.setColour(ui::dim); g.setFont(juce::FontOptions(10.5f));
     bool learning = ed.proc.learnTarget.load() == defIdx;
-    g.drawText(learning ? juce::String("TURN A KNOB") : juce::String(defIdx >= 0 ? formatValue(defs()[(size_t)defIdx], slider.getValue()) : ""), r, juce::Justification::centred);
+    juce::String val = defIdx >= 0 ? juce::String(formatValue(defs()[(size_t)defIdx], slider.getValue())) : juce::String();
+    if (key == "brk.slot") val = ed.proc.engine.loopName((int)std::lround(ed.proc.engine.pv("brk.kit")), (int)std::lround(slider.getValue()));
+    g.drawText(learning ? juce::String("TURN A KNOB") : val, r, juce::Justification::centred);
 }
 void Knob::mouseDown(const juce::MouseEvent& e) {
     if (!e.mods.isPopupMenu() || defIdx < 0) return;
@@ -67,16 +70,30 @@ void Knob::mouseDown(const juce::MouseEvent& e) {
 
 // ------------------------------------------------------------------ step grid
 juce::Rectangle<float> StepGrid::cellRect(int row, int step) const {
-    float x0 = (float)(nameW + msW * 2 + 6), w = (getWidth() - x0) / STEPS, h = (float)getHeight() / NUM_KEYS;
+    float x0 = (float)(nameW + msW * 2 + 6), w = (getWidth() - x0) / STEPS, h = (float)getHeight() / ROWS;
     return { x0 + step * w + (step / 4) * 0.f, row * h, w, h };
 }
-int StepGrid::rowAt(float y) const { return juce::jlimit(0, NUM_KEYS - 1, (int)(y / ((float)getHeight() / NUM_KEYS))); }
+int StepGrid::rowAt(float y) const { return juce::jlimit(0, ROWS - 1, (int)(y / ((float)getHeight() / ROWS))); }
 int StepGrid::stepAt(float x) const { float x0 = (float)(nameW + msW * 2 + 6); if (x < x0) return -1; return juce::jlimit(0, STEPS - 1, (int)((x - x0) / ((getWidth() - x0) / STEPS))); }
 
 void StepGrid::paint(juce::Graphics& g) {
     auto& e = ed.proc.engine; Scene sc; std::array<bool, NUM_KEYS> mute; int solo, last;
     { const juce::ScopedLock l(ed.proc.lock); sc = e.scene(); mute = e.mute; solo = e.solo; last = e.last; }
-    int sel = ed.proc.selected; float h = (float)getHeight() / NUM_KEYS;
+    int sel = ed.proc.selected; float h = (float)getHeight() / ROWS;
+    int kit = (int)std::lround(e.pv("brk.kit"));
+    {   // the BREAK row
+        int k = BREAK; float y = k * h; auto name = juce::Rectangle<float>(0, y + 1, (float)nameW, h - 2);
+        g.setColour(k == sel ? ui::accent : ((flash >> 14) & 1u) ? ui::cell.brighter(.3f) : ui::cell); g.fillRoundedRectangle(name, 3);
+        g.setColour(k == sel ? juce::Colours::black : kit ? ui::text : ui::dim); g.setFont(juce::FontOptions(11.f, juce::Font::bold));
+        g.drawText(kit ? juce::String("BREAK ") + (kit == 1 ? "187" : "888") : juce::String("BREAK"), name.reduced(6, 0), juce::Justification::centredLeft);
+        for (int i = 0; i < STEPS; ++i) {
+            auto c = cellRect(k, i).reduced(2, 2); char ch = sc.brk[(size_t)i];
+            juce::Colour col = ch == '.' ? ((i / 4) % 2 ? ui::cell : ui::cell.brighter(.06f)) : ch == '-' ? ui::accent.withAlpha(.35f) : ch == 'g' ? juce::Colour(0xff3fbf6f) : ui::on;
+            if (i >= last) col = col.withAlpha(.25f); if (i == head) col = col.brighter(.35f);
+            g.setColour(col); g.fillRoundedRectangle(c, 3);
+            if (ch != '.') { g.setColour(juce::Colours::black); g.setFont(juce::FontOptions(10.f, juce::Font::bold)); g.drawText(ch == 'g' ? juce::String("LOOP") : ch == '-' ? juce::String("~") : juce::String::charToString(ch), c, juce::Justification::centred); }
+        }
+    }
     for (int k = 0; k < NUM_KEYS; ++k) {
         float y = k * h; auto name = juce::Rectangle<float>(0, y + 1, (float)nameW, h - 2);
         bool lit = (flash >> k) & 1u;
@@ -104,6 +121,14 @@ void StepGrid::paint(juce::Graphics& g) {
 void StepGrid::mouseDown(const juce::MouseEvent& m) {
     int k = rowAt((float)m.y), i = stepAt((float)m.x); auto& e = ed.proc.engine;
     if (m.x < nameW) { ed.select(k, true); return; }
+    if (k == BREAK) {   // click: rest -> slice 1..8 -> LOOP (play it through) -> ~ (keep ringing) -> rest. Right-click: rest
+        if (i < 0) return;
+        const juce::ScopedLock l(ed.proc.lock); auto& c = e.scene().brk[(size_t)i];
+        static const char cyc[] = ".12345678g-";
+        if (m.mods.isPopupMenu()) c = '.'; else { const char* p = std::strchr(cyc, c); c = cyc[p ? (p - cyc + 1) % 11 : 0]; }
+        if (c >= '1' && c <= '8' && !(ed.proc.hostPlaying() || e.internalPlay)) e.slice(c - '1');
+        repaint(); return;
+    }
     if (i < 0) {
         const juce::ScopedLock l(ed.proc.lock);
         if (m.x < nameW + msW + 3) { if (auto* p = ed.proc.muteParam[k]) p->setValueNotifyingHost(e.mute[(size_t)k] ? 0.f : 1.f); }
@@ -120,12 +145,12 @@ void StepGrid::mouseDown(const juce::MouseEvent& m) {
 // double-click a drum's key mutes it, as on the web and phone apps (a single click selects and plays it)
 void StepGrid::mouseDoubleClick(const juce::MouseEvent& m) {
     if (m.x >= nameW) return;
-    int k = rowAt((float)m.y); const juce::ScopedLock l(ed.proc.lock);
+    int k = rowAt((float)m.y); if (k >= NUM_KEYS) return; const juce::ScopedLock l(ed.proc.lock);
     if (auto* p = ed.proc.muteParam[k]) p->setValueNotifyingHost(ed.proc.engine.mute[(size_t)k] ? 0.f : 1.f);
     repaint();
 }
 void StepGrid::mouseDrag(const juce::MouseEvent& m) {
-    if (painting < 0) return; int i = stepAt((float)m.x); if (i < 0 || i == lastCell) return;
+    if (painting < 0 || painting >= NUM_KEYS) return; int i = stepAt((float)m.x); if (i < 0 || i == lastCell) return;
     { const juce::ScopedLock l(ed.proc.lock); ed.proc.engine.scene().g[(size_t)painting][(size_t)i] = paintVal; }
     lastCell = i; repaint();
 }
@@ -220,10 +245,16 @@ MD442Editor::~MD442Editor() { stopTimer(); if (sender) sender->stopThread(3000);
 
 void MD442Editor::select(int k, bool sound) {
     proc.selected = k; rebuildVoiceKnobs(); grid.repaint();
-    if (sound && k < NUM_SOUND && !(proc.hostPlaying() || proc.engine.internalPlay)) { const juce::ScopedLock l(proc.lock); proc.engine.hit(k); }
+    if (sound && !(proc.hostPlaying() || proc.engine.internalPlay)) { const juce::ScopedLock l(proc.lock); if (k < NUM_SOUND) proc.engine.hit(k); else if (k == BREAK) proc.engine.slice(0); }
 }
 void MD442Editor::rebuildVoiceKnobs() {
     int k = proc.selected; lastSel = k; voiceKnobs.clear();
+    if (k == BREAK) {
+        for (auto& m : std::vector<std::pair<const char*, const char*>> {{"brk.kit", "KIT"}, {"brk.slot", "LOOP"}, {"brk.level", "LEVEL"}, {"brk.complex", "CHOP"}, {"brk.pitch", "PITCH"}})
+            addAndMakeVisible(voiceKnobs.add(new Knob(*this, m.first, m.second)));
+        voiceTitle = "BREAK: loops and 8 slices from MD187 / MD888. Click a step: slice 1-8, LOOP (plays the loop in time), ~ (keep ringing). Pads C#2-G#2 play the slices.";
+        resized(); repaint(); return;
+    }
     for (auto& kn : md442::voiceKnobs(k)) addAndMakeVisible(voiceKnobs.add(new Knob(*this, kn.key, kn.label)));
     if (k < NUM_SOUND) {
         std::string id = voices()[(size_t)k].id;
@@ -298,13 +329,15 @@ void MD442Editor::resized() {
 }
 
 void MD442Editor::showPresetMenu() {
-    juce::PopupMenu m; const auto& src = presetSources();
-    for (int i = 0; i < (int)src.size(); ++i) m.addItem(i + 1, src[(size_t)i].name, true, proc.beatName == src[(size_t)i].name);
+    juce::PopupMenu m; int np = Engine::numPresets();
+    juce::PopupMenu sub[3]; const char* styles[] = {"MD442", "MD187", "MD888"};
+    for (int i = 0; i < np; ++i) { auto st = Engine::presetStyle(i); int si = st == "MD187" ? 1 : st == "MD888" ? 2 : 0; sub[si].addItem(i + 1, Engine::presetName(i), true, proc.beatName == juce::String(Engine::presetName(i))); }
+    m.addSubMenu("MD442  techno and house", sub[0]); m.addSubMenu("MD187  90s hip-hop, 96 BPM", sub[1]); m.addSubMenu("MD888  hard techno, 155 BPM", sub[2]); (void)styles;
     auto beats = BeatIO::listBeats();
     if (!beats.isEmpty()) { m.addSeparator(); m.addSectionHeader("Your beats (Documents/MD-442/Beats)"); for (int i = 0; i < beats.size(); ++i) m.addItem(100 + i, beats[i].getFileNameWithoutExtension().upToFirstOccurrenceOf(".md442", false, true)); }
     m.addSeparator(); m.addItem(99, "Open the beats folder");
     m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presetBtn), [this, beats](int r) {
-        if (r >= 1 && r <= 7) { proc.loadPreset(r - 1); grid.repaint(); }
+        if (r >= 1 && r <= Engine::numPresets()) { proc.loadPreset(r - 1); grid.repaint(); }
         else if (r == 99) BeatIO::beatsFolder().startAsProcess();
         else if (r >= 100 && r - 100 < beats.size()) {
             juce::String name; bool ok;

@@ -7,6 +7,8 @@ namespace md442 {
 struct Scene {
     std::array<std::array<bool, STEPS>, NUM_KEYS> g {};
     std::array<int, STEPS> n {};
+    // the BREAK row: '.' rest (stops the sound), '1'-'8' a slice of the loop, '-' keep ringing, 'g' play the loop through in time
+    std::array<char, STEPS> brk { '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.' };
 };
 
 struct PresetSrc {

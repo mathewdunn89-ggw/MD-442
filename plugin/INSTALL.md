@@ -19,6 +19,7 @@ Mac: VST3 and Audio Unit (AU), Apple Silicon and Intel. Windows: VST3, 64-bit. B
 3. **Ableton Live**: Options > Preferences > Plug-Ins, turn on **Use VST3 Plug-in System Folders**, press **Rescan**. **Maschine**: Preferences > Plug-ins > Manager > **Rescan**.
 
 ## Playing it
+- **Three styles** in the preset menu: MD442 (techno and house, 7 patterns), MD187 (90s hip-hop, 96 BPM, 8 patterns) and MD888 (hard techno, 155 BPM, 8 patterns). MD187 and MD888 add the **BREAK** row: their loops (boom-bap, drums, stabs, vox / rumble, gabba, trance, hits) and 8 slices of each. Click a BREAK step to cycle slice 1-8, LOOP (plays the loop in time with the DAW) and ~ (keep ringing). Pads C#2 to G#2 play the 8 slices live.
 - **The pattern plays along with your DAW** at the DAW's tempo whenever the DAW plays. Turn **PATTERN** off to play MD-442 only from pads, keys or clips.
 - **Pads and keys**: notes from C1 (36) up to C2 (48) play Kick, Snare, Clap, Rim, Low tom, Mid tom, Hi tom, Closed hat, Open hat, Crash, Ride, Bass, Stab, the same layout as an Ableton Drum Rack. C3 (60) upward plays them too, for Maschine's keyboard mode. Hit hard (velocity above 100) for the accent.
 - **MIDI channel 2** plays the bass at the note's pitch, **channel 3** plays the dub stab chord on that root.
