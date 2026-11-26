@@ -68,7 +68,7 @@ private:
     struct Channel {
         Shaper entry; Biquad stHp; Shaper cdrv; MovingBiquad clp, chp; Smooth gain, pan, sv, sd;
         double in = 0;
-    } chs[NUM_SOUND];
+    } chs[NUM_SOUND], bch;   // bch: the BREAK's channel
     Smooth rum, brkGain; Biquad rumLp;
     Param duck { 1 };
     // reverb

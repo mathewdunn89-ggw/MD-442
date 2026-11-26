@@ -97,6 +97,9 @@ inline const std::vector<ParamDef>& defs() {
     // the BREAK: MD187 / MD888 loops and their 8 slices (off on MD442's own patterns)
     D("brk.kit", 0, 2, 0, "Break kit", F_KIT); D("brk.slot", 0, 3, 0, "Break loop", F_SLOT); D("brk.level", 0, 127, 90, "Break level", F_NUM);
     D("brk.complex", 0, 100, 0, "Break chop", F_PC); D("brk.pitch", -12, 12, 0, "Break pitch", F_ST, false, .5);
+    // the BREAK's channel tools, the same five as every drum
+    D("pan.BRK", -100, 100, 0, "Break pan", F_PAN); D("flt.BRK", -100, 100, 0, "Break filter", F_FILTER); D("drv.BRK", 0, 100, 0, "Break channel drive", F_PC);
+    D("rev.BRK", 0, 100, 20, "Break reverb send", F_PC); D("ech.BRK", 0, 100, 0, "Break echo send", F_PC);
     const double LEVEL[] = {0, -3, -4, -8, -6, -6, -6, -3, -4, -6, -8, -7, -6};
     const double PAN[] = {0, 0, 0, -12, -30, 0, 30, 18, -18, -24, 26, 0, 0};
     const double RV[] = {0, .5, .7, .45, .5, .55, .55, .16, .24, .3, .2, 0, 0}, DV[] = {0, .32, .45, .4, .4, .5, .5, .1, .18, .2, .12, 0, 0};

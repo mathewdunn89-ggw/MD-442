@@ -250,7 +250,8 @@ void MD442Editor::select(int k, bool sound) {
 void MD442Editor::rebuildVoiceKnobs() {
     int k = proc.selected; lastSel = k; voiceKnobs.clear();
     if (k == BREAK) {
-        for (auto& m : std::vector<std::pair<const char*, const char*>> {{"brk.kit", "KIT"}, {"brk.slot", "LOOP"}, {"brk.level", "LEVEL"}, {"brk.complex", "CHOP"}, {"brk.pitch", "PITCH"}})
+        for (auto& m : std::vector<std::pair<const char*, const char*>> {{"brk.kit", "KIT"}, {"brk.slot", "LOOP"}, {"brk.level", "LEVEL"}, {"brk.complex", "CHOP"}, {"brk.pitch", "PITCH"},
+                                                                        {"pan.BRK", "PAN"}, {"flt.BRK", "FILTER"}, {"drv.BRK", "DRIVE"}, {"rev.BRK", "VERB"}, {"ech.BRK", "ECHO"}})
             addAndMakeVisible(voiceKnobs.add(new Knob(*this, m.first, m.second)));
         voiceTitle = "BREAK: loops and 8 slices from MD187 / MD888. Click a step: slice 1-8, LOOP (plays the loop in time), ~ (keep ringing). Pads C#2-G#2 play the slices.";
         resized(); repaint(); return;

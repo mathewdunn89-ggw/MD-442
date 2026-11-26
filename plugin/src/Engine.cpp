@@ -115,6 +115,7 @@ void Engine::prepare(double sampleRate, bool isLive) {
         c.clp.init(Biquad::LOWPASS, sr, 22000, -3); c.chp.init(Biquad::HIGHPASS, sr, 10, -3);
         c.gain.snap(1); c.pan.snap(0); c.sv.snap(0); c.sd.snap(0);
     }
+    bch = Channel(); bch.clp.init(Biquad::LOWPASS, sr, 22000, -3); bch.chp.init(Biquad::HIGHPASS, sr, 10, -3); bch.pan.snap(0); bch.sv.snap(0); bch.sd.snap(0);
     chs[BD].entry.os2 = true; chs[BS].entry.os2 = true; chs[ST].stHp = Biquad(Biquad::HIGHPASS, sr, 170, .7);
     rumLp = Biquad(Biquad::LOWPASS, sr, 130, .7); rum.snap(0);
     duck = Param(1);
@@ -190,6 +191,8 @@ void Engine::apply(bool snap) {
         setT(c.sv, v, .04, snap); setT(c.sd, d, .04, snap);
     }
     setT(brkGain, pv("brk.level") / 100 * .45, .02, snap);
+    {   auto& c = bch; setT(c.pan, pv("pan.BRK") / 100, .02, snap); double cd = pv("drv.BRK") / 100; if (cd > .01) c.cdrv.set(1 + cd * 12, 1 - cd * .4); else c.cdrv.clear();
+        filt(c.clp, c.chp, pv("flt.BRK"), snap); setT(c.sv, pv("rev.BRK") / 100 * va, .04, snap); setT(c.sd, pv("ech.BRK") / 100 * sa, .04, snap); }
     setT(fb, pv("fx.efb") / 100 * .9, .05, snap);
     setT(dtime, std::min(1.95, 60 / effBpm / 4 * ETIMES[std::clamp((int)std::lround(pv("fx.etime")), 0, 5)].sixteenths), .08, snap);
     double v = pv("fx.filter"); bool lo_ = v < -4, hi_ = v > 4;   // 24 dB per octave either way
@@ -424,7 +427,12 @@ void Engine::process(float* L, float* R, int n, const Transport& tr) {
             revIn += y * c.sv.next(); dlyIn += y * c.sd.next();
         }
         // the BREAK sits in the middle, under the kick's duck, with a touch of the room
-        { double b = brkIn * brkGain.next(); dkL += b; dkR += b; revIn += b * .08; }
+        {   // through its own channel: drive, filter, level, pan, and the room and echo sends, like every drum
+            auto& c = bch; double x = c.chp.process(c.clp.process(c.cdrv.process(brkIn)));
+            double y = x * brkGain.next(), pn = c.pan.next(), a = (pn + 1) / 2;
+            dkL += y * std::cos(a * PI / 2) * 1.41421356; dkR += y * std::sin(a * PI / 2) * 1.41421356;   // centred = full level both sides, as before
+            revIn += y * c.sv.next(); dlyIn += y * c.sd.next();
+        }
         // dub delay: every repeat darker than the last, a little of it into the room
         double d = dl.read(dtime.next()), f = dhp.process(dlp.process(d));
         dl.write(dlyIn + f * fb.next());
