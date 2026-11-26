@@ -194,7 +194,7 @@ index 9bbe9f6..6ac144b 100644
 +#endif
 diff --git a/firmware/src/app/md_perform.c b/firmware/src/app/md_perform.c
 new file mode 100644
-index 0000000..a262b13
+index 0000000..a280016
 --- /dev/null
 +++ b/firmware/src/app/md_perform.c
 @@ -0,0 +1,333 @@
@@ -221,7 +221,7 @@ index 0000000..a262b13
 +
 +enum { MDI_N = 25, MDI_303A = 22, MDI_303B = 23, MDI_BRK = 24 };
 +static const uint8_t MD_ORD909[11] = {DR_BD, DR_SD, DR_CP, DR_CH, DR_OH, DR_LT, DR_MT, DR_HT, DR_RS, DR_CR, DR_RD};
-+static const uint8_t MD_ORD808[11] = {D8_BD, D8_SD, D8_CP, D8_CH, D8_OH, D8_CB, D8_LT, D8_MT, D8_HT, D8_RS, D8_CY};
++static const uint8_t MD_ORD808[11] = {D8_BD, D8_SD, D8_CP, D8_CH, D8_OH, D8_LT, D8_MT, D8_HT, D8_RS, D8_CY, D8_CB};   /* the 909's pad places */
 +static int8_t md_pos[MDF_N];          /* each instrument's filter: -63..63, 0 off (not saved: a set starts clean) */
 +static uint8_t md_res[MDF_N];
 +static uint8_t md_wheel;              /* the mod wheel, 0..127 (smk_wheels) */
