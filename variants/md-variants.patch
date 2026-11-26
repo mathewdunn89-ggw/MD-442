@@ -1475,7 +1475,7 @@ index 0000000..bebb2f4
 +    f->on = (uint8_t)(pos < 0 ? 1 : 2);
 +}
 diff --git a/firmware/src/seq/sequencer.c b/firmware/src/seq/sequencer.c
-index 6671921..68b3826 100644
+index 6671921..49cdb53 100644
 --- a/firmware/src/seq/sequencer.c
 +++ b/firmware/src/seq/sequencer.c
 @@ -141,8 +141,10 @@ static void fire_drum(seq_t *s, int k, int p, const seq_sink_t *o)
@@ -1536,7 +1536,17 @@ index 6671921..68b3826 100644
              tr->to_next = carry + L;
      }
      return changed;
-@@ -437,6 +463,8 @@ uint32_t seq_until_event(seq_t *s, uint32_t n)
+@@ -362,6 +388,9 @@ static void do_start(seq_t *s, int from_top, const seq_sink_t *o)
+     int t;
+     if (from_top)
+         bar_end(s, 1);                                /* cues, or the song's start bar */
++    s->mute &= ~s->one_clr_m;                         /* a return left waiting when it stopped: now */
++    s->vmute &= ~s->one_clr_v;
++    s->one_clr_m = s->one_clr_v = 0;
+     for (t = 0; t < NTRACKS; t++) {
+         seq_track_t *tr = &s->t[t];
+         if (from_top) {
+@@ -437,6 +466,8 @@ uint32_t seq_until_event(seq_t *s, uint32_t n)
      }
      if (!s->ext && s->send_clock && (e = s->clk_to_next >> 8) < m)
          m = e;
@@ -1545,7 +1555,7 @@ index 6671921..68b3826 100644
      return m ? m : 1;
  }
  
-@@ -488,6 +516,17 @@ void seq_advance(seq_t *s, uint32_t k, const seq_sink_t *o)
+@@ -488,6 +519,17 @@ void seq_advance(seq_t *s, uint32_t k, const seq_sink_t *o)
      }
      if (!s->ext && s->send_clock)
          s->clk_to_next = s->clk_to_next > dq ? s->clk_to_next - dq : 0;

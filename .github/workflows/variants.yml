@@ -40,13 +40,13 @@ jobs:
           for V in 442 187 888; do
             if [ $V = 442 ]; then FAM=X0X; BANK=; else FAM=MD$V; BANK="$PWD/build/md$V"; python3 tools/md_gen_samples.py $V "$BANK"; fi
             export MD_VARIANT=$V FELUCCA_DATA_FAMILY=$FAM X0X_BREAK_BANK="$BANK"
-            BOARD=smk37 MODEL=elite ./build.sh --release 1.3 > ../out/build-md$V-elite.log 2>&1 || { tail -60 ../out/build-md$V-elite.log; exit 1; }
+            BOARD=smk37 MODEL=elite ./build.sh --release 1.4 > ../out/build-md$V-elite.log 2>&1 || { tail -60 ../out/build-md$V-elite.log; exit 1; }
             tail -4 ../out/build-md$V-elite.log
             cp "$(ls -t build/*.fwsc | head -1)" ../out/md$V-smk37-elite.fwsc
-            BOARD=smk37 ./build.sh --release 1.3 > ../out/build-md$V-pro.log 2>&1 || { tail -60 ../out/build-md$V-pro.log; exit 1; }
+            BOARD=smk37 ./build.sh --release 1.4 > ../out/build-md$V-pro.log 2>&1 || { tail -60 ../out/build-md$V-pro.log; exit 1; }
             tail -4 ../out/build-md$V-pro.log
             cp "$(ls -t build/*.fwsc | head -1)" ../out/md$V-smk37-pro.fwsc
-            if ./build.sh --release 1.3 > ../out/build-md$V-fm1.log 2>&1; then
+            if ./build.sh --release 1.4 > ../out/build-md$V-fm1.log 2>&1; then
               cp "$(ls -t build/x0x-[0-9]*.fwsc | head -1)" ../out/md$V-fm1.fwsc
             else
               echo "::warning::MD$V for the FM-1 did not build (see build-md$V-fm1.log)"; tail -15 ../out/build-md$V-fm1.log
