@@ -806,6 +806,23 @@ index 1687dec..1c4bc1f 100644
          q = put_s(put_i(q, project_mem_pct()), "%  CPU ");
          put_s(put_i(q, (int)plat_cpu_pct()), "%");
          say(t, 0);
+diff --git a/firmware/src/app/undo.c b/firmware/src/app/undo.c
+index e151e42..a8d779c 100644
+--- a/firmware/src/app/undo.c
++++ b/firmware/src/app/undo.c
+@@ -17,8 +17,12 @@
+ #include <stdint.h>
+ 
+ #ifndef UNDO_POOL
++#if MD_FILTER
++#define UNDO_POOL 19456u                 /* MD|442 PERFORM: 1 KB less, for the performance filters (pool headroom) */
++#else
+ #define UNDO_POOL 20480u                 /* X0X 0.11: 4 KB less, for the 64-step project's shadow (pool headroom) */
+ #endif
++#endif
+ #define UNDO_MAX 32
+ #define UNDO_GAP 8u                    /* unchanged bytes between changes cheaper to keep than a new run */
+ 
 diff --git a/firmware/src/dsp/drum808.c b/firmware/src/dsp/drum808.c
 index 5ff572d..f2f967f 100644
 --- a/firmware/src/dsp/drum808.c
