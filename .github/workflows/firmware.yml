@@ -47,7 +47,7 @@ jobs:
           B=bundle/MD-442-firmware; mkdir -p "$B/tools"
           cp out/*.fwsc out/md442-smk37.patch out/INSTALL.md out/md442-controls.pdf "$B/"
           cp "firmware/Install MD-442 (Mac).command" "$B/" && chmod +x "$B/Install MD-442 (Mac).command"
-          cp x0x/tools/fm1_install.py "$B/tools/"
+          cp firmware/tools/fm1_install.py "$B/tools/"
           (cd bundle && zip -qrX ../out/md442-firmware.zip MD-442-firmware)
       - uses: actions/upload-artifact@v4
         with: { name: md442-smk37-firmware, path: out/ }
