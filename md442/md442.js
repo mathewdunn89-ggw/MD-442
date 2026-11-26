@@ -848,7 +848,7 @@ function toggleKeys() { S.keys.open = !S.keys.open; if (!S.keys.open) { down.cle
 
 /* one transport key: PLAY when stopped, STOP while playing (space bar, the SMK-37 and DAW sync still start and stop it) */
 function playKey() {
-  const b = key('PLAY', () => setPlaying(!playing), 'big go play');
+  const b = key('PLAY', () => { if (!learnAct('play')) setPlaying(!playing); }, 'big go play');
   return live(b, () => { b.classList.toggle('on', playing); b.textContent = playing ? (rec ? '■ STOP · REC' : '■ STOP') : '▶ PLAY'; b.classList.toggle('recon', !!rec && playing); b.setAttribute('aria-label', playing ? 'Stop' : 'Play'); b.setAttribute('aria-pressed', playing); });
 }
 /* instrument keys: tap to pick (and hear) a drum, double-tap (double-click) to mute or unmute it */
@@ -1260,9 +1260,10 @@ const NOMIDI = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test
 const GM = { 35: 'BD', 36: 'BD', 37: 'RS', 38: 'SD', 40: 'SD', 39: 'CP', 41: 'LT', 43: 'LT', 45: 'MT', 47: 'MT', 48: 'HT', 50: 'HT', 42: 'CH', 44: 'CH', 46: 'OH', 49: 'CR', 57: 'CR', 51: 'RD', 59: 'RD', 53: 'RD' };
 const midi = { on: false, access: null, names: [], learn: false, armP: null, armD: null, armA: null, cc: {}, note: {}, last: '', ck: [], ccHi: {}, synced: false };
 // actions a pad or button can be learned to: a scene, a drum's mute, the mute group
-const isAct = a => typeof a === 'string' && (a === 'grp' || /^(sc|m):/.test(a));
-const actName = a => a === 'grp' ? 'Mute group' : a.startsWith('sc:') ? 'Scene ' + (+a.slice(3) + 1) : a.startsWith('m:') ? 'Mute ' + (NAME[a.slice(2)] || '') : (NAME[a] || a);
-function doAct(a) { if (a === 'grp') { if (mq.size) fireGroup(); else toast('Make a mute group first: hold MUTE GROUP and tap the drums.'); } else if (a.startsWith('sc:')) setScene(+a.slice(3)); else if (a.startsWith('m:') && KEYS.includes(a.slice(2))) toggleMute(a.slice(2)); }
+const isAct = a => typeof a === 'string' && (a === 'grp' || a === 'play' || a === 'prev' || a === 'next' || /^(sc|m):/.test(a));
+function stepDrum(d) { const i = KEYS.indexOf(S.sel); select(KEYS[(i + d + KEYS.length) % KEYS.length]); lcdFlash(NAME[S.sel], 'Selected'); }
+const actName = a => a === 'play' ? 'Play / stop' : a === 'prev' ? 'Previous drum' : a === 'next' ? 'Next drum' : a === 'grp' ? 'Mute group' : a.startsWith('sc:') ? 'Scene ' + (+a.slice(3) + 1) : a.startsWith('m:') ? 'Mute ' + (NAME[a.slice(2)] || '') : (NAME[a] || a);
+function doAct(a) { if (a === 'play') { boot(); setPlaying(!playing); } else if (a === 'prev' || a === 'next') stepDrum(a === 'prev' ? -1 : 1); else if (a === 'grp') { if (mq.size) fireGroup(); else toast('Make a mute group first: hold MUTE GROUP and tap the drums.'); } else if (a.startsWith('sc:')) setScene(+a.slice(3)); else if (a.startsWith('m:') && KEYS.includes(a.slice(2))) toggleMute(a.slice(2)); }
 function learnAct(a) { if (!midi.learn) return false; midi.armA = a; midi.armP = midi.armD = null; drawAll(); toast('LEARN: now press the pad or button for ' + actName(a)); return true; }
 function clockTick(t) { midi.lastCk = performance.now(); const c = midi.ck; c.push(t); if (c.length > 25) c.shift(); if (c.length < 25 || (midi.ckN = (midi.ckN || 0) + 1) % 24) return; const bpm = 60000 / ((c[24] - c[0]) / 24 * 24); if (bpm >= DEF.bpm.mn && bpm <= DEF.bpm.mx) { if (!midi.synced) { midi.synced = true; drawAll(); } if (Math.abs(bpm - P.bpm) > .6) set('bpm', Math.round(bpm), true); } }
 // built-in map for Mathew's M-VAVE SMK-37 Elite: knobs on channel 1, two pads for the bass and the stab. Used only while nothing has been learned.
@@ -1275,7 +1276,9 @@ function midiHit(k, v) { if (!SOUND.includes(k) || off(k)) return; boot(); const
 function onMidi(e) {
   const d = e.data; if (!d || !d.length) return; const st = d[0];
   if (st === 0xF8) { clockTick(e.timeStamp || performance.now()); return; }
-  if (st === 0xFA || st === 0xFB) { boot(); setPlaying(true); return; } if (st === 0xFC) { setPlaying(false); return; } if (st >= 0xF0) return;
+  if (st === 0xFA || st === 0xFB) { boot(); setPlaying(true); return; } if (st === 0xFC) { setPlaying(false); return; }
+  if (st === 0xF0 && d[1] === 0x7F && d[3] === 0x06) { const c = d[4]; midi.last = 'MMC ' + c; if (c === 2 || c === 3) { boot(); setPlaying(true); } else if (c === 1 || c === 9) setPlaying(false); return; }
+  if (st >= 0xF0) return;
   const type = st & 0xF0, ch = (st & 15) + 1, a = d[1], b = d[2] || 0;
   if (type === 0x90 && b > 0) {
     const id = ch + ':' + a; midi.last = 'note ' + a + ' ch ' + ch;
@@ -1295,7 +1298,7 @@ function midiScan() { const acc = midi.access; if (!acc) return; midi.names = []
 async function midiConnect() {
   if (!navigator.requestMIDIAccess) { toast(NOMIDI); return false; }
   if (midi.access) { midiScan(); return true; }
-  try { midi.access = await navigator.requestMIDIAccess(); midi.access.onstatechange = midiScan; midiScan(); toast(midi.names.length ? 'MIDI: ' + midi.names.join(', ') : 'MIDI is on. Plug in or pair a controller and it will appear.'); return true; }
+  try { midi.access = await navigator.requestMIDIAccess({ sysex: true }).catch(() => navigator.requestMIDIAccess()); midi.access.onstatechange = midiScan; midiScan(); toast(midi.names.length ? 'MIDI: ' + midi.names.join(', ') : 'MIDI is on. Plug in or pair a controller and it will appear.'); return true; }
   catch (_) { toast('MIDI was not allowed. Allow it in the browser to use a controller.'); return false; }
 }
 function toggleMidi() { S.midiOpen = !S.midiOpen; if (S.midiOpen && !midi.access) midiConnect(); drawAll(); persist(); }
@@ -1384,7 +1387,8 @@ async function sendToKeyboard(quiet) {
 function buildMidi(box) {
   const stat = h('p', 'mstat'), row = h('div', 'kctl'), list = h('div', 'mlist'), lk = key('LEARN', midiLearn, 'led'), ck = key('CLEAR MAPPINGS', () => { midi.cc = {}; midi.note = {}; midiKeep(); drawAll(); toast('MIDI mappings cleared'); }), con = key('CONNECT', midiConnect), sk = key('SEND TO KEYBOARD', () => sendToKeyboard(false)), cko = key('CLOCK OUT', () => { midi.cko = !midi.cko; midiKeep(); if (midi.cko && !midi.access) midiConnect(); if (!midi.cko) clockStop(); drawAll(); toast(midi.cko ? 'Clock out on: MIDI devices follow MD|442\'s tempo, start and stop' : 'Clock out off'); }, 'led');
   live(cko, () => { cko.classList.toggle('on', !!midi.cko); cko.setAttribute('aria-pressed', !!midi.cko); });
-  row.append(con, lk, ck, cko, sk); box.append(stat, row, list, guide(), h('p', 'note', 'Pads on MIDI channel 10 play the drums with the standard drum notes (36 kick, 38 snare, 39 clap, 42 and 46 hats…). Keys play the bass or the stab, whichever the keyboard panel is set to. LEARN ties any hardware knob, fader or pad to anything on screen. Start, stop, continue and the tempo (MIDI clock) from a controller or a DAW are followed. CLOCK OUT does the opposite: an FM-1, an SMK-37 with MD|442 firmware, Maschine or Ableton follow MD|442\'s tempo, start and stop.'));
+  const dp = key('◀ DRUM', () => { if (!learnAct('prev')) stepDrum(-1); }), dn = key('DRUM ▶', () => { if (!learnAct('next')) stepDrum(1); });
+  row.append(con, lk, ck, cko, sk, dp, dn); box.append(stat, row, list, guide(), h('p', 'note', 'Pads on MIDI channel 10 play the drums with the standard drum notes (36 kick, 38 snare, 39 clap, 42 and 46 hats…). Keys play the bass or the stab, whichever the keyboard panel is set to. LEARN ties any hardware knob, fader, pad or button to anything on screen: a drum, a knob, ▶ PLAY, ◀ DRUM / DRUM ▶, MUTE or a scene. Press LEARN, click it on screen, then press the control. Start, stop, continue and the tempo (MIDI clock) from a controller or a DAW are followed. CLOCK OUT does the opposite: an FM-1, an SMK-37 with MD|442 firmware, Maschine or Ableton follow MD|442\'s tempo, start and stop.'));
   live(lk, () => { lk.classList.toggle('on', midi.learn); lk.setAttribute('aria-pressed', midi.learn); });
   live(stat, () => {
     stat.textContent = !navigator.requestMIDIAccess ? NOMIDI : !midi.access ? 'Press CONNECT and allow MIDI.' : (midi.names.length ? 'Connected: ' + midi.names.join(', ') : 'MIDI is on. No controller found yet.') + (midi.learn ? (midi.armP ? ' · LEARN: now move a hardware control for ' + DEF[midi.armP].lb : midi.armD ? ' · LEARN: now hit a pad for ' + NAME[midi.armD] : midi.armA ? ' · LEARN: now press a pad for ' + actName(midi.armA) : ' · LEARN: touch a knob, drum, scene or MUTE on screen') + (midi.synced ? ' · following MIDI clock' : '') : '') + (midi.last ? ' · last: ' + midi.last : '');
