@@ -1,3 +1,65 @@
+diff --git a/firmware/src/app/editor.c b/firmware/src/app/editor.c
+index 4ecc946..5512e4f 100644
+--- a/firmware/src/app/editor.c
++++ b/firmware/src/app/editor.c
+@@ -20,6 +20,13 @@ enum { ED_INFO = 1, ED_SMP_BEGIN = 11, ED_SMP_WRITE, ED_SMP_END, ED_SMP_ERASE, E
+  * MUTE (51): F0 7D 46 4C 51 lo7 hi4 F7, the 909's tracks muted on their own (bit = drum909.h order). Reply 51 rc. */
+ #define ED_MD442_PUT 50
+ #define ED_MD442_MUTE 51
++/* MD PUT BREAK (52, MD Hardware 1.3): F0 7D 46 4C 52 slot brk_slot complex steps_lo7 steps_mid7 steps_hi2
++ * slices[16] flags F7, sent right after cmd 50 for the same slot (slot | 0x20: live, no message). brk_slot 0..3:
++ * loop A = B; complex 0..100; steps: bit i = step i + 1; slices 0..8 (0: the generator / plays on); flags bit 0:
++ * the kick is the 808's (the 909's BD row moves to the 808's). Reply 52 slot rc. PING replies 0 and the
++ * firmware (442, 187, 888) as two 7-bit bytes. */
++#define ED_MD_PUT_BRK 52
++#define MD_PUT_BRK_LEN (6u + 16u + 1u)
+ #define MD442_PUT_LEN (6u + 13u * 3u + 16u)
+ #define ED_READ_MAX 224u                     /* X0X: SMP_READ's bytes a frame (the break page draws the slots) */
+ 
+@@ -185,7 +192,43 @@ static void ed_handle(const uint8_t *f, uint32_t n)
+         break;
+     case ED_PING:
+         ed_b(0);
++        ed_b((MD_VARIANT >> 7) & 0x7Fu);              /* MD Hardware: which firmware runs */
++        ed_b(MD_VARIANT & 0x7Fu);
+         break;
++    case ED_MD_PUT_BRK: {
++        pattern_t *pt;
++        uint32_t slot = a[0] & 0x1Fu, live = a[0] & 0x20u, i, steps;
++        if (na < MD_PUT_BRK_LEN || slot >= NPAT || a[1] > 3u || a[2] > 100u) {
++            ed_b(na ? a[0] : 0);
++            ed_b(1);
++            break;
++        }
++        pt = &proj.pat[slot];
++        steps = (uint32_t)a[3] | (uint32_t)a[4] << 7 | (uint32_t)(a[5] & 3u) << 14;
++        pt->brk.steps = steps;
++        pt->brk.slot_a = pt->brk.slot_b = a[1];
++        pt->brk.set[BRK_COMPLEX] = a[2];
++#if MD_VARIANT == 888
++        if (a[1] == 2u)
++            pt->brk.set[BRK_ALEN] = 3;                /* TRANCE is two bars: a slice a beat */
++#endif
++        for (i = 0; i < 16u; i++)
++            pt->brk.slice[i] = (uint8_t)(a[6u + i] > 8u ? 0u : a[6u + i]);
++        if (a[22] & 1u) {                             /* the kick on the 808 */
++            uint32_t w;
++            for (w = 0; w < NSW; w++) {
++                pt->drum[1].hit[0][w] = pt->drum[0].hit[0][w];
++                pt->drum[0].hit[0][w] = 0;
++            }
++            pt->drum[1].len = 16;
++        }
++        mark_dirty();
++        if (live && seq.ppat[PART_BRK] == (uint8_t)slot)
++            engine_brk_loops();                       /* the loops of the pattern playing may have changed */
++        ed_b(a[0]);
++        ed_b(0);
++        break;
++    }
+     case ED_MD442_PUT: {
+         pattern_t *pt;
+         uint32_t r, bpm, st;
 diff --git a/firmware/src/app/engine.c b/firmware/src/app/engine.c
 index baf5e5d..b70cc1f 100644
 --- a/firmware/src/app/engine.c
