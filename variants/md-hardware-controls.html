@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MD Hardware: SMK-37 Elite PERFORM controls</title>
+<style>
+  @page { size: A4 landscape; margin: 9mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Inter", "Helvetica Neue", Arial, sans-serif; color: #15161a; margin: 0; font-size: 10.2px; line-height: 1.35; }
+  h1 { font-size: 21px; margin: 0; letter-spacing: -0.3px; }
+  h1 span { color: #1db954; }
+  .sub { color: #5c6070; font-size: 10.5px; margin: 2px 0 8px; }
+  .grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 10px; }
+  .card { border: 1px solid #dfe1e7; border-radius: 8px; padding: 8px 10px; }
+  .card h2 { font-size: 11.5px; margin: 0 0 5px; text-transform: uppercase; letter-spacing: 0.6px; color: #3a3d48; }
+  table { border-collapse: collapse; width: 100%; }
+  td { padding: 2.6px 4px; vertical-align: top; border-bottom: 1px solid #eef0f3; }
+  td:first-child { font-weight: 700; white-space: nowrap; width: 34%; }
+  tr:last-child td { border-bottom: none; }
+  .k { display: inline-block; background: #15161a; color: #fff; border-radius: 3px; padding: 0 4px; font-size: 9.3px; font-weight: 700; }
+  .sh { background: #e8a10f; color: #15161a; }
+  .fw { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .fw div { border-radius: 6px; padding: 6px 7px; color: #fff; }
+  .fw b { font-size: 13px; display: block; }
+  .g { background: #138a43; } .a { background: #b8730a; } .r { background: #b3261e; }
+  .note { color: #5c6070; font-size: 9.2px; margin-top: 5px; }
+  svg text { font-family: inherit; }
+</style>
+</head>
+<body>
+<h1>MD<span>|</span>Hardware &nbsp;PERFORM controls &middot; M-VAVE SMK-37 Elite</h1>
+<div class="sub">One layout for all three firmwares: MD442, MD187 and MD888. <b>PATCH</b> is SHIFT: hold it for the
+<span class="k sh">PATCH +</span> combos. Version 1.3, not yet tested on a keyboard.</div>
+
+<div class="grid">
+<div>
+  <div class="card">
+    <svg viewBox="0 0 560 250" width="100%">
+      <rect x="2" y="2" width="556" height="246" rx="12" fill="#1c1d22"/>
+      <!-- screen -->
+      <rect x="18" y="18" width="92" height="62" rx="4" fill="#0e3b22" stroke="#2a2c33"/>
+      <text x="64" y="46" fill="#3dff7a" font-size="11" text-anchor="middle" font-weight="700">MD|187</text>
+      <text x="64" y="60" fill="#8fd9a8" font-size="7.5" text-anchor="middle">909 SD FILTER LP 40</text>
+      <!-- knobs 2x4 -->
+      <g font-size="8" fill="#cfd2da" text-anchor="middle">
+        <circle cx="140" cy="34" r="12" fill="#3a3c45"/><text x="140" y="56">K1 VOL</text>
+        <circle cx="180" cy="34" r="12" fill="#1db954"/><text x="180" y="56" fill="#7ff0a8">K2 FILTER</text>
+        <circle cx="220" cy="34" r="12" fill="#1db954"/><text x="220" y="56" fill="#7ff0a8">K3 RESO</text>
+        <circle cx="260" cy="34" r="12" fill="#1db954"/><text x="260" y="56" fill="#7ff0a8">K4 TONE</text>
+        <circle cx="140" cy="78" r="12" fill="#3a3c45"/><text x="140" y="100">K5</text>
+        <circle cx="180" cy="78" r="12" fill="#3a3c45"/><text x="180" y="100">K6</text>
+        <circle cx="220" cy="78" r="12" fill="#3a3c45"/><text x="220" y="100">K7</text>
+        <circle cx="260" cy="78" r="12" fill="#3a3c45"/><text x="260" y="100">K8</text>
+        <text x="200" y="113" fill="#8d91a0">K5-K8: the 4 knobs on screen</text>
+      </g>
+      <!-- faders -->
+      <g font-size="8" fill="#cfd2da" text-anchor="middle">
+        <rect x="292" y="20" width="6" height="80" rx="3" fill="#3a3c45"/><rect x="286" y="52" width="18" height="9" rx="2" fill="#9aa0ad"/>
+        <rect x="322" y="20" width="6" height="80" rx="3" fill="#3a3c45"/><rect x="316" y="40" width="18" height="9" rx="2" fill="#9aa0ad"/>
+        <rect x="352" y="20" width="6" height="80" rx="3" fill="#3a3c45"/><rect x="346" y="60" width="18" height="9" rx="2" fill="#9aa0ad"/>
+        <rect x="382" y="20" width="6" height="80" rx="3" fill="#3a3c45"/><rect x="376" y="46" width="18" height="9" rx="2" fill="#9aa0ad"/>
+        <text x="340" y="113">909 808 303A 303B levels</text>
+      </g>
+      <!-- right buttons -->
+      <g font-size="7.5" text-anchor="middle">
+        <rect x="410" y="20" width="62" height="18" rx="4" fill="#e8a10f"/><text x="441" y="32" fill="#15161a" font-weight="700">KNOB BANK</text>
+        <text x="441" y="47" fill="#ffd27a">MUTE PADS</text>
+        <rect x="480" y="20" width="62" height="18" rx="4" fill="#3a3c45"/><text x="511" y="32" fill="#fff">FADER BANK</text>
+        <rect x="410" y="56" width="30" height="18" rx="4" fill="#4a7dff"/><text x="425" y="68" fill="#fff" font-weight="700">&lt;</text>
+        <rect x="444" y="56" width="30" height="18" rx="4" fill="#4a7dff"/><text x="459" y="68" fill="#fff" font-weight="700">&gt;</text>
+        <text x="442" y="85" fill="#a9c0ff">BARS / OCTAVE</text>
+        <rect x="480" y="56" width="30" height="18" rx="4" fill="#d94fd0"/><text x="495" y="68" fill="#fff" font-weight="700">OCT-</text>
+        <rect x="514" y="56" width="30" height="18" rx="4" fill="#d94fd0"/><text x="529" y="68" fill="#fff" font-weight="700">OCT+</text>
+        <text x="512" y="85" fill="#f2a8ee">INSTRUMENT</text>
+        <rect x="410" y="94" width="62" height="18" rx="4" fill="#e8a10f"/><text x="441" y="106" fill="#15161a" font-weight="700">PATCH = SHIFT</text>
+      </g>
+      <!-- pads 2x8 -->
+      <g font-size="8" text-anchor="middle" fill="#fff">
+        <text x="280" y="134" fill="#8d91a0">PADS: steps 1-8 / 9-16 &middot; PATCH + pad: pattern &middot; MUTE: 1-11 tracks, 12-16 parts</text>
+        <g id="pads"></g>
+      </g>
+      <g font-size="8" text-anchor="middle">
+        <rect x="24"  y="142" width="58" height="40" rx="5" fill="#d9822b"/><text x="53"  y="166">1 BD</text>
+        <rect x="88"  y="142" width="58" height="40" rx="5" fill="#d9822b"/><text x="117" y="166">2 SD</text>
+        <rect x="152" y="142" width="58" height="40" rx="5" fill="#d9822b"/><text x="181" y="166">3 CP</text>
+        <rect x="216" y="142" width="58" height="40" rx="5" fill="#d9822b"/><text x="245" y="166">4 CH</text>
+        <rect x="280" y="142" width="58" height="40" rx="5" fill="#d9822b"/><text x="309" y="166">5 OH</text>
+        <rect x="344" y="142" width="58" height="40" rx="5" fill="#d9822b"/><text x="373" y="166">6 LT</text>
+        <rect x="408" y="142" width="58" height="40" rx="5" fill="#d9822b"/><text x="437" y="166">7 MT</text>
+        <rect x="472" y="142" width="58" height="40" rx="5" fill="#d9822b"/><text x="501" y="166">8 HT</text>
+        <rect x="24"  y="188" width="58" height="40" rx="5" fill="#d9822b"/><text x="53"  y="212">9 RS</text>
+        <rect x="88"  y="188" width="58" height="40" rx="5" fill="#d9822b"/><text x="117" y="212">10 CR/CY</text>
+        <rect x="152" y="188" width="58" height="40" rx="5" fill="#d9822b"/><text x="181" y="212">11 RD/CB</text>
+        <rect x="216" y="188" width="58" height="40" rx="5" fill="#e0533f"/><text x="245" y="212">12 909</text>
+        <rect x="280" y="188" width="58" height="40" rx="5" fill="#c23b3b"/><text x="309" y="212">13 808</text>
+        <rect x="344" y="188" width="58" height="40" rx="5" fill="#2fa35a"/><text x="373" y="212">14 303A</text>
+        <rect x="408" y="188" width="58" height="40" rx="5" fill="#3f6fd6"/><text x="437" y="212">15 303B</text>
+        <rect x="472" y="188" width="58" height="40" rx="5" fill="#8a4fd6"/><text x="501" y="212">16 BREAK</text>
+        <text x="280" y="242" fill="#8d91a0">(labels shown: MUTE mode, KNOB BANK lit; red = muted)</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="card" style="margin-top:8px">
+    <h2>Play a set</h2>
+    <table>
+      <tr><td>1. Pick a pattern</td><td><span class="k sh">PATCH +</span> pad 1-16, or <span class="k sh">PATCH +</span> <span class="k">&lt;</span> <span class="k">&gt;</span>. It changes at the end of the bar.</td></tr>
+      <tr><td>2. Pick an instrument</td><td><span class="k">OCT-</span> <span class="k">OCT+</span> flick through BD, SD, CP, CH, OH ... 303A, 303B, BREAK. The screen names it.</td></tr>
+      <tr><td>3. Shape it</td><td><span class="k">K2</span> filter (turn left: low-pass, right: high-pass, it stops at OFF in the middle), <span class="k">K3</span> resonance, <span class="k">K4</span> tone.</td></tr>
+      <tr><td>4. Drop and bring back</td><td>Tap <span class="k sh">KNOB BANK</span>, hit pads to mute, tap again to go back to steps. Or hold it and hit pads.</td></tr>
+      <tr><td>5. Build up</td><td>Push the mod wheel up: a high-pass riser on the instrument. Let go to drop.</td></tr>
+    </table>
+  </div>
+  <div class="card" style="margin-top:8px">
+    <h2>The three firmwares</h2>
+    <div class="fw">
+      <div class="g"><b>MD442</b>Techno and house, 142 BPM. Your 7 MD|442 beats on patterns 1-7. Keeps your saved patterns.</div>
+      <div class="a"><b>MD187</b>90s hip-hop, 96 BPM, swung. Boom-bap break, dusty sampled kit, Rhodes / horn / string stabs, vocal hits and a scratch.</div>
+      <div class="r"><b>MD888</b>Hard techno, 155 BPM. Driven kick, rumble, gabba kicks, supersaw trance stabs, industrial hits, acid.</div>
+    </div>
+    <div class="note">Switch firmware with <b>Install MD Hardware (Mac).command</b>: pick 1-3 for the firmware, then 1 for the Elite.
+      All MD187 / MD888 samples are synthesised from scratch. GPL-3.0, built on X0X.</div>
+  </div>
+
+<div>
+  <div class="card">
+    <h2>Every control</h2>
+    <table>
+      <tr><td><span class="k">OCT-</span> / <span class="k">OCT+</span></td><td>Previous / next instrument: the 909's 11 tracks, the 808's 11, 303A, 303B, BREAK</td></tr>
+      <tr><td><span class="k sh">PATCH +</span> <span class="k">OCT-</span>/<span class="k">OCT+</span></td><td>Previous / next part (909, 808, 303A, 303B, BREAK)</td></tr>
+      <tr><td><span class="k">&lt;</span> / <span class="k">&gt;</span></td><td>The bars: steps 1-16, 17-32, 33-48, 49-64. On a 303 keyboard (REC on): its octave. On TB-3PO: mutate / new line</td></tr>
+      <tr><td><span class="k sh">PATCH +</span> <span class="k">&lt;</span>/<span class="k">&gt;</span></td><td>Previous / next pattern, all parts, at the end of the bar</td></tr>
+      <tr><td><span class="k">K2</span> <span class="k">K3</span> <span class="k">K4</span></td><td>The selected instrument's FILTER, RESONANCE and TONE. Drums: tone = decay. 303: cutoff, reso, env mod. BREAK: filter, reso, pitch</td></tr>
+      <tr><td><span class="k sh">PATCH +</span> <span class="k">K2</span>/<span class="k">K3</span>/<span class="k">K4</span></td><td>Tempo / part / pattern</td></tr>
+      <tr><td><span class="k sh">KNOB BANK</span></td><td>Tap: MUTE pads on (lit) or off. Hold: mute while held</td></tr>
+      <tr><td><span class="k sh">PATCH +</span> <span class="k sh">KNOB BANK</span></td><td>Unmute everything</td></tr>
+      <tr><td>Pads</td><td>The selected instrument's steps (1-8 top row). <span class="k sh">PATCH +</span> pad: pattern</td></tr>
+      <tr><td>Black keys (keybed)</td><td>Pick a drum track. With the BREAK selected: play its 8 slices live (stabs, vocal hits)</td></tr>
+      <tr><td>Mod wheel / pitch wheel</td><td>Drum or BREAK: high-pass riser. 303: opens its cutoff / bends its tune</td></tr>
+      <tr><td><span class="k">K1</span>, <span class="k">K5</span>-<span class="k">K8</span></td><td>Volume; the four knobs on screen (page values)</td></tr>
+      <tr><td>Faders</td><td>Bank A: 909, 808, 303A, 303B levels. <span class="k">FADER BANK</span>: break, reverb, delay, master filter</td></tr>
+      <tr><td><span class="k">SEQ PLAY</span> <span class="k">SEQ REC</span></td><td>Play / stop; record (knob moves too). <span class="k sh">PATCH +</span> REC: undo</td></tr>
+      <tr><td>FX, SCALE, CHORD, NOTE RPT, PARA, GLOBE, BT, ARP, SEQ</td><td>As before: FX, list, accent, mixer, sound, settings, save, TB-3PO, steps</td></tr>
+    </table>
+    <div class="note">In a list, a question or GLOBE's settings, K2-K4 go back to SELECT, ALGORITHM and PRESETS. The filters start
+      at OFF each time the keyboard starts. Update mode: hold &lt; and &gt; together for 5 seconds.</div>
+  </div>
+
+</div>
+</div>
+</div>
+</body>
+</html>

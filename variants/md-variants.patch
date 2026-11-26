@@ -1,0 +1,1746 @@
+diff --git a/firmware/src/app/editor.c b/firmware/src/app/editor.c
+index 4ecc946..5512e4f 100644
+--- a/firmware/src/app/editor.c
++++ b/firmware/src/app/editor.c
+@@ -20,6 +20,13 @@ enum { ED_INFO = 1, ED_SMP_BEGIN = 11, ED_SMP_WRITE, ED_SMP_END, ED_SMP_ERASE, E
+  * MUTE (51): F0 7D 46 4C 51 lo7 hi4 F7, the 909's tracks muted on their own (bit = drum909.h order). Reply 51 rc. */
+ #define ED_MD442_PUT 50
+ #define ED_MD442_MUTE 51
++/* MD PUT BREAK (52, MD Hardware 1.3): F0 7D 46 4C 52 slot brk_slot complex steps_lo7 steps_mid7 steps_hi2
++ * slices[16] flags F7, sent right after cmd 50 for the same slot (slot | 0x20: live, no message). brk_slot 0..3:
++ * loop A = B; complex 0..100; steps: bit i = step i + 1; slices 0..8 (0: the generator / plays on); flags bit 0:
++ * the kick is the 808's (the 909's BD row moves to the 808's). Reply 52 slot rc. PING replies 0 and the
++ * firmware (442, 187, 888) as two 7-bit bytes. */
++#define ED_MD_PUT_BRK 52
++#define MD_PUT_BRK_LEN (6u + 16u + 1u)
+ #define MD442_PUT_LEN (6u + 13u * 3u + 16u)
+ #define ED_READ_MAX 224u                     /* X0X: SMP_READ's bytes a frame (the break page draws the slots) */
+ 
+@@ -185,7 +192,43 @@ static void ed_handle(const uint8_t *f, uint32_t n)
+         break;
+     case ED_PING:
+         ed_b(0);
++        ed_b((MD_VARIANT >> 7) & 0x7Fu);              /* MD Hardware: which firmware runs */
++        ed_b(MD_VARIANT & 0x7Fu);
+         break;
++    case ED_MD_PUT_BRK: {
++        pattern_t *pt;
++        uint32_t slot = a[0] & 0x1Fu, live = a[0] & 0x20u, i, steps;
++        if (na < MD_PUT_BRK_LEN || slot >= NPAT || a[1] > 3u || a[2] > 100u) {
++            ed_b(na ? a[0] : 0);
++            ed_b(1);
++            break;
++        }
++        pt = &proj.pat[slot];
++        steps = (uint32_t)a[3] | (uint32_t)a[4] << 7 | (uint32_t)(a[5] & 3u) << 14;
++        pt->brk.steps = steps;
++        pt->brk.slot_a = pt->brk.slot_b = a[1];
++        pt->brk.set[BRK_COMPLEX] = a[2];
++#if MD_VARIANT == 888
++        if (a[1] == 2u)
++            pt->brk.set[BRK_ALEN] = 3;                /* TRANCE is two bars: a slice a beat */
++#endif
++        for (i = 0; i < 16u; i++)
++            pt->brk.slice[i] = (uint8_t)(a[6u + i] > 8u ? 0u : a[6u + i]);
++        if (a[22] & 1u) {                             /* the kick on the 808 */
++            uint32_t w;
++            for (w = 0; w < NSW; w++) {
++                pt->drum[1].hit[0][w] = pt->drum[0].hit[0][w];
++                pt->drum[0].hit[0][w] = 0;
++            }
++            pt->drum[1].len = 16;
++        }
++        mark_dirty();
++        if (live && seq.ppat[PART_BRK] == (uint8_t)slot)
++            engine_brk_loops();                       /* the loops of the pattern playing may have changed */
++        ed_b(a[0]);
++        ed_b(0);
++        break;
++    }
+     case ED_MD442_PUT: {
+         pattern_t *pt;
+         uint32_t r, bpm, st;
+diff --git a/firmware/src/app/engine.c b/firmware/src/app/engine.c
+index baf5e5d..b70cc1f 100644
+--- a/firmware/src/app/engine.c
++++ b/firmware/src/app/engine.c
+@@ -26,7 +26,13 @@ volatile uint8_t eng_hit[NKIT][NDRUM];
+ int16_t eng_scope[SCOPE_N];
+ volatile uint32_t eng_scope_w;
+ 
++#if MD_FILTER
++#include "../dsp/md_filter.h"
++#endif
+ static drum909_t d909 POOL;
++#if MD_FILTER
++md_flt_t md_flt[MDF_N] POOL;           /* MD|442: the performance filters (md_filter.h), in the pool (RAM is full) */
++#endif
+ static drum808_t d808 POOL;
+ static bass303_t b303[NBASS] POOL;
+ static breaks_t brk POOL;
+@@ -285,6 +291,38 @@ void engine_sound_defaults(sound_t *s)
+     s->v[T_MST][0][MST_RELEASE] = 58;                /* 100 ms: it breathes with the beat */
+     s->v[T_MST][0][MST_PUMP] = 21;                   /* 4 dB of 909-keyed pump */
+     s->v[T_MST][0][MST_COMP1] = 95;                  /* the one-knob COMP's nearest to the squash above */
++#if defined(MD_VARIANT) && MD_VARIANT == 187
++    /* MD|187: 90s boom-bap. The 808's long, round kick; a crunchy 909 snare; short dusty hats; the 303 as a
++     * round square-wave sub bass (no acid); worn tape; no pumping */
++    s->v[T_909][DR_SD][0] = 48;  s->v[T_909][DR_SD][1] = 45;  s->v[T_909][DR_SD][2] = 85;
++    s->v[T_909][DR_SD][3] = 52;  s->v[T_909][DR_SD][4] = 66;  s->v[T_909][DR_SD][5] = 72;
++    s->v[T_909][DR_CH][0] = 55;  s->v[T_909][DR_CH][1] = 72;  s->v[T_909][DR_OH][0] = 80;
++    s->v[T_909][DR_RS][0] = 92;
++    s->v[T_808][D8_BD][0] = 104; s->v[T_808][D8_BD][1] = 30;  s->v[T_808][D8_BD][2] = 108;
++    s->v[T_808][D8_BD][3] = 52;  s->v[T_808][D8_BD][5] = 28;
++    s->v[T_303][0][BASS303_CUTOFF] = 22; s->v[T_303][0][BASS303_RESO] = 15; s->v[T_303][0][BASS303_ENVMOD] = 25;
++    s->v[T_303][0][BASS303_DECAY] = 70;  s->v[T_303][0][BASS303_ACCENT] = 40; s->v[T_303][0][BASS303_WAVE] = 1;
++    s->v[T_303][0][BASS303_DRIVE] = 18;  s->v[T_303][0][BASS303_DRVTYPE] = 1;
++    s->v[T_MIX][PART_303A][MX_LEVEL] = 92; s->v[T_MIX][PART_303A][MX_DLY] = 0; s->v[T_MIX][PART_303A][MX_REV] = 0;
++    s->v[T_MIX][PART_BRK][MX_LEVEL] = 112; s->v[T_MIX][PART_BRK][MX_REV] = 18;
++    s->v[T_FX][0][FX_DL_WEAR] = 100;
++    s->v[T_MST][0][MST_PUMP] = 0;
++    s->v[T_MST][0][MST_RATIO] = 3;
++#elif defined(MD_VARIANT) && MD_VARIANT == 888
++    /* MD|888: hard Berlin / gabba at 155. A long, driven, distorted 909 kick; the clap in a big room; the 303
++     * screaming through its RAT; the master squeezed and pumping harder */
++    s->v[T_909][DR_BD][0] = 28;  s->v[T_909][DR_BD][1] = 30;  s->v[T_909][DR_BD][2] = 104;
++    s->v[T_909][DR_BD][3] = 58;  s->v[T_909][DR_BD][6] = 95;  s->v[T_909][DR_BD][7] = 2;
++    s->v[T_909][DR_CP][5] = 75;
++    s->v[T_909][DR_CH][0] = 70;  s->v[T_909][DR_OH][0] = 92;
++    for (v = 0; v < NBASS; v++) {
++        s->v[T_303][v][BASS303_CUTOFF] = 55; s->v[T_303][v][BASS303_RESO] = 112;
++        s->v[T_303][v][BASS303_ENVMOD] = 96; s->v[T_303][v][BASS303_DRIVE] = 92;
++    }
++    s->v[T_MIX][PART_BRK][MX_LEVEL] = 116; s->v[T_MIX][PART_BRK][MX_REV] = 10;
++    s->v[T_MST][0][MST_PUMP] = 34;
++    s->v[T_MST][0][MST_MAKEUP] = 90;
++#endif
+     s->v[T_FX][1][0] = (uint8_t)(16 + s->v[T_FX][0][FX_DL_WEAR] * 111 / 127);   /* TAPE (ui.c R_TAPE): on, its wear */
+ }
+ 
+@@ -614,6 +652,10 @@ static void core2_job(uint32_t arg)
+     if (!brk_hold) {
+         brk_silent_now = breaks_silent(&brk);             /* the render writes zeros: nothing to mix */
+         breaks_render(&brk, kbuf, (int)n);
++#if MD_FILTER
++        if (!brk_silent_now)
++            md_flt_run(&md_flt[MDF_BRK], kbuf, (int)n);
++#endif
+     }
+     if (timed)
+         PROF_ADD(PR_BRK, pt);
+diff --git a/firmware/src/app/main_fm1.c b/firmware/src/app/main_fm1.c
+index 0e44bf0..eacc1ea 100644
+--- a/firmware/src/app/main_fm1.c
++++ b/firmware/src/app/main_fm1.c
+@@ -249,6 +249,7 @@ static void smk_faders(void)
+  * has reached. On a 303 (the part on screen) they play its sound without changing what is saved: pitch = its
+  * TUNE (about +-1.5 semitones), mod = its CUTOFF opened from the saved value up to the top. Released (or
+  * another part chosen), the saved values sound again. Other parts: the wheels do nothing. */
++static void md_wheel_set(int mw);
+ static void smk_wheels(void)
+ {
+     enum { DEAD = 12, SPAN0 = 80, MOD_LO = 485, MOD_HI = 615 };
+@@ -288,6 +289,7 @@ static void smk_wheels(void)
+     }
+     mw = mhi - m <= DEAD ? 0 : (mhi - m - DEAD) * 127 / (mhi - mlo - DEAD > 1 ? mhi - mlo - DEAD : 1);
+     mw = clamp(mw, 0, 127);
++    md_wheel_set(is_303() ? 0 : mw);                 /* MD|442: on a drum or the BREAK, the filter's riser */
+     if (part != (is_303() ? bidx() : -1)) {          /* another part: the last 303 sounds as saved again */
+         if (part >= 0 && tune_now >= 0)
+             engine_set(T_303, part, BASS303_TUNE, proj.sound.v[T_303][part][BASS303_TUNE]);
+@@ -339,12 +341,15 @@ static void smk_arrows(void)
+ /* every frame, after ui_frame; the wheels also between frames. The 10 outer keys (C3..E3, G#5..C6) have no
+  * X0X role: their events are dropped. */
+ /* pads as a step grid (steps, patterns: 1-8 top row) unless they play notes (a 303's REC keyboard) */
++static uint8_t md_pads_muting_now(void) { return md_pads_muting; }
+ static void smk_grid(void)
+ {
+-    smk_pad_grid = (uint8_t)(ui.view == V_HOME || ui.view == V_SONG || (ui.btn & (1u << B_HOME | 1u << B_SAVE)) ||
++    smk_pad_grid = (uint8_t)(md_pads_muting_now() || ui.view == V_HOME || ui.view == V_SONG || (ui.btn & (1u << B_HOME | 1u << B_SAVE)) ||
+                              !(is_303() && ui.rec));
+ }
+ 
++#include "md_perform.c"                          /* MD|442 PERFORM: the performance layout */
++
+ static void smk_frame(void)
+ {
+     while (smk_extkey_take() >= 0)
+@@ -352,8 +357,12 @@ static void smk_frame(void)
+     smk_arrows();
+     smk_faders();
+     smk_wheels();
++    md_frame();
+     smk_grid();
+-    smk_pads();
++    if (md_pads_muting)
++        md_mute_leds();
++    else
++        smk_pads();
+ }
+ #endif
+ 
+@@ -442,7 +451,7 @@ static void safe_main(void)
+         if ((fm1_in.buttons & play) && fm1_ms - t0 > 500u) {
+             bootguard.failed = 0;                   /* try X0X again, from scratch */
+             bootguard.pending = 0;
+-            draw_text_box(0, 172, 240, &FONT_S, "STARTING MD|442...", C_HI, 1);
++            draw_text_box(0, 172, 240, &FONT_S, "STARTING " MD_NAME "...", C_HI, 1);
+             usb_detach();
+             fm1_delay_ms(30);
+             fm1_reboot();
+@@ -478,9 +487,9 @@ static void fm1_main(void)
+         }
+     }
+     lcd_init();
+-    palette_set(0);
+-    draw_text_box(0, 96, 240, &FONT_B, "MD|442", C_HI, 1);
+-    draw_text_box(0, 134, 240, &FONT_S, "BY MATHEW  NEST GROUP", C_GRAY, 1);
++    palette_set(MD_PALETTE);
++    draw_text_box(0, 96, 240, &FONT_B, MD_NAME, C_HI, 1);
++    draw_text_box(0, 134, 240, &FONT_S, MD_TAG, C_GRAY, 1);
+ #if BOARD_SMK37
+     draw_text_box(0, 154, 240, &FONT_XS, "ON X0X (GPL-3.0)", C_DIM, 1);
+ #endif
+diff --git a/firmware/src/app/md442_presets.h b/firmware/src/app/md442_presets.h
+index 9bbe9f6..6ac144b 100644
+--- a/firmware/src/app/md442_presets.h
++++ b/firmware/src/app/md442_presets.h
+@@ -54,3 +54,51 @@ static void md442_load_preset(pattern_t *p, const md442_preset_t *m)
+     }
+     p->swing = (uint8_t)(m->swing * 132 / 100 > 100 ? 100 : m->swing * 132 / 100);   /* MD|442 shuffle 50 + swing * .33 % */
+ }
++
++/* MD|187 (hip-hop) and MD|888 (hard techno): their own factory patterns 1-8 (md_variant_presets.h) */
++#if defined(MD_VARIANT) && MD_VARIANT != 442
++#include "md_variant_presets.h"
++#if MD_VARIANT == 187
++#define MDV_PRESETS MDV_PRESETS_187
++#else
++#define MDV_PRESETS MDV_PRESETS_888
++#endif
++#define MDV_NPRESETS ((int)(sizeof MDV_PRESETS / sizeof MDV_PRESETS[0]))
++
++static void mdv_load_preset(pattern_t *p, const mdv_preset_t *m)
++{
++    int r, i;
++    for (r = 0; r < 11; r++)
++        for (i = 0; i < 16; i++) {
++            if ((m->d909[r] >> i) & 1u)
++                sm_set(p->drum[0].hit[r], i);
++            if ((m->d808[r] >> i) & 1u)
++                sm_set(p->drum[1].hit[r], i);
++        }
++    for (i = 0; i < 16; i++) {
++        if ((m->acc909 >> i) & 1u)
++            sm_set(p->drum[0].accent, i);
++        if ((m->acc808 >> i) & 1u)
++            sm_set(p->drum[1].accent, i);
++    }
++    p->drum[0].len = p->drum[1].len = 16;
++    p->brk.steps = m->brk_steps;
++    p->brk.slot_a = p->brk.slot_b = m->brk_slot;
++    p->brk.set[BRK_COMPLEX] = m->brk_complex;
++#if MD_VARIANT == 888
++    if (m->brk_slot == 2)
++        p->brk.set[BRK_ALEN] = 3;                        /* TRANCE is two bars: a slice a beat */
++#endif
++    for (i = 0; i < 16; i++)
++        p->brk.slice[i] = m->brk_slice[i];
++    if (m->root) {
++        bpart_t *b = &p->bass[0];
++        b->len = 16;
++        for (i = 0; i < 16; i++) {
++            b->step[i].note = (uint8_t)(m->root + m->notes[i]);
++            b->step[i].flags = m->flags[i] ? (uint8_t)(G_NOTE | (m->flags[i] & (BS_ACCENT | BS_SLIDE))) : G_REST;
++        }
++    }
++    p->swing = m->swing;
++}
++#endif
+diff --git a/firmware/src/app/md_perform.c b/firmware/src/app/md_perform.c
+new file mode 100644
+index 0000000..a280016
+--- /dev/null
++++ b/firmware/src/app/md_perform.c
+@@ -0,0 +1,333 @@
++/* SPDX-License-Identifier: GPL-3.0-only */
++/* MD|442 PERFORM: the SMK-37's controls laid out for playing a live set from the keyboard alone
++ * (MD442, MD187 and MD888 share it). Included by main_fm1.c after the UI (ui.c) in this unity build.
++ *
++ *   OCTAVE- / OCTAVE+        the previous / next instrument: the 909's tracks, the 808's, 303A, 303B, BREAK
++ *   PATCH + OCTAVE- / +      the previous / next part (its first instrument)
++ *   < / >                    what OCT- / OCT+ were: the bars (16 steps at a time), a 303 keyboard's octave,
++ *                            TB-3PO's mutate / new line, HOME's pattern bank
++ *   PATCH + < / >            the previous / next pattern (all parts, at the end of the bar)
++ *   K2 K3 K4 (top right)     the selected instrument's FILTER (middle off, left low-pass, right high-pass),
++ *                            RESONANCE and TONE (a drum: its DECAY; a 303: CUTOFF, RESO, ENV MOD; BREAK: PITCH)
++ *   PATCH + K2 / K3 / K4     tempo / part / pattern (X0X's SELECT, ALGORITHM, PRESETS while PATCH is held)
++ *   KNOB BANK                tap: the pads mute (lit while on); hold: mute while held
++ *   MUTE pads                1-11 the tracks of the kit on screen, 12-16 the parts 909 808 303A 303B BREAK
++ *   PATCH + KNOB BANK        unmute everything
++ *   mod wheel                on a drum or the BREAK: a high-pass riser on that instrument; on a 303 as before
++ * In a list, a question or GLO, K2..K4 are SELECT, ALGORITHM and PRESETS again. */
++
++#include "../dsp/drum808.h"
++#include "../dsp/md_filter.h"
++
++enum { MDI_N = 25, MDI_303A = 22, MDI_303B = 23, MDI_BRK = 24 };
++static const uint8_t MD_ORD909[11] = {DR_BD, DR_SD, DR_CP, DR_CH, DR_OH, DR_LT, DR_MT, DR_HT, DR_RS, DR_CR, DR_RD};
++static const uint8_t MD_ORD808[11] = {D8_BD, D8_SD, D8_CP, D8_CH, D8_OH, D8_LT, D8_MT, D8_HT, D8_RS, D8_CY, D8_CB};   /* the 909's pad places */
++static int8_t md_pos[MDF_N];          /* each instrument's filter: -63..63, 0 off (not saved: a set starts clean) */
++static uint8_t md_res[MDF_N];
++static uint8_t md_wheel;              /* the mod wheel, 0..127 (smk_wheels) */
++
++static int md_inst(void)                               /* the selected instrument, 0..24 */
++{
++    int k;
++    if (ui.part == PART_303A)
++        return MDI_303A;
++    if (ui.part == PART_303B)
++        return MDI_303B;
++    if (ui.part == PART_BRK)
++        return MDI_BRK;
++    for (k = 0; k < 11; k++)
++        if ((ui.part == PART_909 ? MD_ORD909[k] : MD_ORD808[k]) == ui.sel[ui.part])
++            return ui.part * 11 + k;
++    return ui.part * 11;
++}
++
++static int md_inst_flt(int i)                          /* its filter (md_flt), -1: a 303 (its own filter) */
++{
++    if (i < 11)
++        return MDF_909 + MD_ORD909[i];
++    if (i < 22)
++        return MDF_808 + MD_ORD808[i - 11];
++    return i == MDI_BRK ? MDF_BRK : -1;
++}
++
++static void md_name(char *t, int i)
++{
++    char *q;
++    if (i < 22) {
++        q = put_s(t, i < 11 ? "909 " : "808 ");
++        put_s(q, engine_voice_name(i < 11 ? T_909 : T_808, i < 11 ? MD_ORD909[i] : MD_ORD808[i - 11]));
++    } else
++        put_s(t, PART_N[i - 20]);
++}
++
++static void md_select(int i)
++{
++    char t[28];
++    i = (i % MDI_N + MDI_N) % MDI_N;
++    if (i < 22) {
++        int km = i < 11 ? PART_909 : PART_808;
++        ui.part = (uint8_t)km;
++        ui.sel[km] = i < 11 ? MD_ORD909[i] : MD_ORD808[i - 11];
++        if (!seq.playing || proj.set.keysound)
++            engine_drum(km, ui.sel[km], 0.75f);
++    } else
++        ui.part = (uint8_t)(i - 20);
++    if (ui.view == V_GEN && !is_303())
++        set_view(V_PART);
++    else if (ui.view == V_HOME || ui.view == V_SONG || ui.view == V_FX || ui.view == V_PERF)
++        set_view(V_PART);
++    ui.outline_ok = 0;
++    if (ui.view == V_MIX)
++        ui.mixsel = ui.part;
++    build_pages();
++    md_name(t, i);
++    say(t, 0);
++}
++
++static void md_flt_apply(int f)
++{
++    int p = md_pos[f];
++    if (md_wheel && f >= 0) {                             /* the riser: high-pass up from where it is */
++        int w = md_wheel * 63 / 127;
++        p = p > w ? p : w;
++    }
++    md_flt_set(&md_flt[f], p, md_res[f]);
++}
++
++static int md_decay_param(int target, int voice)       /* a track's "tone" knob: its decay (or tail, or tune) */
++{
++    static const char *const PREF[3] = {"Decay", "Tail", "Tune"};
++    int k, i, n = engine_nparams(target, voice);
++    for (k = 0; k < 3; k++)
++        for (i = 0; i < n; i++) {
++            const x0x_param_t *d = engine_param(target, voice, i);
++            if (d && strcmp_s(d->name, PREF[k]) == 0)
++                return i;
++        }
++    return 0;
++}
++
++static void md_say_val(const char *who, const char *what, int v, int lohi)
++{
++    char t[28], *q = put_s(put_s(put_s(t, who), " "), what);
++    q = put_s(q, " ");
++    if (lohi) {
++        if (v == 0)
++            put_s(q, "OFF");
++        else
++            put_i(put_s(q, v < 0 ? "LP " : "HP "), (v < 0 ? -v : v) * 100 / 63);
++    } else
++        put_i(q, v);
++    say(t, 0);
++}
++
++static uint32_t md_len(const char *s)
++{
++    uint32_t n = 0;
++    while (s[n])
++        n++;
++    return n;
++}
++
++static void md_pref_turn(pref_t r, int e, int role, const char *who)
++{
++    const x0x_param_t *d = pref_desc(r);
++    char num[16], unit[8], t[28], *q;
++    int v;
++    if (!d)
++        return;
++    v = pref_get(r) + accel(role, e, d->max);
++    v = v < 0 ? 0 : v > d->max ? d->max : v;
++    pref_set(r, v);
++    motion_touch(r);
++    ui.act_t = plat_ms();
++    pref_value(r, num, unit);
++    q = put_s(put_s(put_s(put_s(t, who), " "), d->name), " ");
++    if (md_len(num) + md_len(unit) + (uint32_t)(q - t) < 27u)
++        put_s(put_s(q, num), unit);
++    say(t, 0);
++}
++
++/* K2..K4: the selected instrument's filter, resonance, tone */
++static void md_knob(int which, int e)
++{
++    int i = md_inst(), f = md_inst_flt(i);
++    char who[16];
++    md_name(who, i);
++    if (i == MDI_303A || i == MDI_303B) {
++        static const uint8_t P3[3] = {BASS303_CUTOFF, BASS303_RESO, BASS303_ENVMOD};
++        md_pref_turn(PR(R_ENG, T_303, i - MDI_303A, P3[which]), e, EN_SELECT + which, who);
++        return;
++    }
++    if (which == 0) {                                     /* FILTER: one detent each, it rests at the middle */
++        int p = md_pos[f], s = accel(EN_SELECT, e, 126), n = p + s;
++        if ((p < 0 && n > 0) || (p > 0 && n < 0))
++            n = 0;
++        n = n < -63 ? -63 : n > 63 ? 63 : n;
++        md_pos[f] = (int8_t)n;
++        md_flt_apply(f);
++        md_say_val(who, "FILTER", n, 1);
++    } else if (which == 1) {
++        int r = md_res[f] + accel(EN_ALGO, e, 127);
++        md_res[f] = (uint8_t)(r < 0 ? 0 : r > 127 ? 127 : r);
++        md_flt_apply(f);
++        md_say_val(who, "RESO", md_res[f] * 100 / 127, 0);
++    } else if (i == MDI_BRK) {
++        md_pref_turn(PR(R_ENG, T_BRK, 0, BRK_PITCH), e, EN_PRESET, who);
++    } else {
++        int t = i < 11 ? T_909 : T_808, v = i < 11 ? MD_ORD909[i] : MD_ORD808[i - 11];
++        md_pref_turn(PR(R_ENG, t, v, md_decay_param(t, v)), e, EN_PRESET, who);
++    }
++}
++
++/* ------------------------------------------------------------------ mutes --- */
++static uint8_t md_mute_on, md_mute_used, md_kb_held;
++static uint32_t md_kb_t0;
++static int md_mute_kit(void) { return ui.part == PART_808 ? 1 : 0; }
++
++static void md_mute_pad(int w)                         /* pad w (0 = pad 1, top left) */
++{
++    ui.act_t = plat_ms();
++    if (w < 11) {
++        int km = md_mute_kit();
++        mute_track(km, km ? MD_ORD808[w] : MD_ORD909[w]);
++    } else if (w < 16)
++        mute_part(w - 11);
++}
++
++static void md_mute_leds(void)
++{
++    uint32_t w;
++    int km = md_mute_kit();
++    uint16_t kc = PART_COL[km];
++    for (w = 0; w < SMK_NPAD; w++) {
++        uint16_t c;
++        int muted, sh;
++        if (w < 11) {
++            muted = track_muted(km, km ? MD_ORD808[w] : MD_ORD909[w]) || part_muted(km);
++            c = kc;
++        } else if (w < 16) {
++            muted = part_muted((int)w - 11);
++            c = PART_COL[w - 11];
++        } else
++            continue;
++        sh = muted ? 4 : 1;
++        if (muted)
++            c = RGB(255, 40, 30);                        /* muted: a dim red, so the playing ones stand out */
++        padled_set(w, (uint8_t)(((uint32_t)(c >> 11) * 255u / 31u) >> sh), (uint8_t)(((uint32_t)((c >> 5) & 63u) * 255u / 63u) >> sh),
++                   (uint8_t)(((uint32_t)(c & 31u) * 255u / 31u) >> sh));
++    }
++    padled_flush();
++}
++
++/* ----------------------------------------------------------- every frame --- */
++static uint32_t md_prev_raw;
++static uint32_t md_prev_pads;
++
++static void md_frame(void)
++{
++    uint32_t raw = fm1_in.buttons, pressed = raw & ~md_prev_raw, released = ~raw & md_prev_raw;
++    int home = (plat_buttons() >> B_HOME) & 1;
++    uint32_t r;
++    md_prev_raw = raw;
++    /* the knobs: X0X's own while a list, a question, GLO or PATCH wants them */
++    md_nav = (uint8_t)(ui.overlay != O_NONE || ui.view == V_GLO || ui.view == V_PERF || home);
++    if (!md_nav) {
++        int k;
++        for (k = 0; k < 3; k++) {
++            int32_t e = fm1_enc_take(panel.enc[EN_SELECT + k]) * panel.dir[EN_SELECT + k];
++            if (e)
++                md_knob(k, (int)e);
++        }
++    }
++    /* OCTAVE- / +: the instrument; with PATCH the part */
++    for (r = FM1_BTN_OCT_DOWN; r <= FM1_BTN_OCT_UP; r++) {
++        int up = r == FM1_BTN_OCT_UP, i;
++        uint32_t lb;
++        if (!((pressed >> r) & 1u))
++            continue;
++        for (lb = 0; lb < NB && panel.btn[lb] != r; lb++)
++            ;
++        if (lb < NB)                                      /* calibrated as an X0X button: leave it */
++            continue;
++        ui.act_t = plat_ms();
++        if (home) {
++            int p = ui.part + (up ? 1 : -1);
++            ui.btn_used |= 1u << B_HOME;
++            p = (p + NPARTS) % NPARTS;
++            md_select(p < 2 ? p * 11 : p + 20);
++        } else {
++            i = md_inst() + (up ? 1 : -1);
++            md_select(i);
++        }
++    }
++    /* PATCH + < / >: the pattern before / after (all parts, cued to the bar) */
++    for (r = SMK_BTN_LEFT; r <= SMK_BTN_RIGHT; r++) {
++        if ((pressed >> r) & 1u && home) {
++            int c = seq_cue_of(&seq, PART_909), p = (c >= 0 ? c : seq.ppat[PART_909]) + (r == SMK_BTN_RIGHT ? 1 : -1);
++            char t[16];
++            p = (p + NPAT) % NPAT;
++            ui.btn_used |= 1u << B_HOME;
++            seq_chain(&seq, 0, 0);
++            seq_cue(&seq, p);
++            ui.pbank = (uint8_t)(p / 16);
++            put_i(put_s(t, seq.playing ? "NEXT: P" : "PATTERN P"), p + 1);
++            say(t, 0);
++        }
++    }
++    /* KNOB BANK: the mute pads (tap: on / off; hold: while held); PATCH + it: unmute all */
++    if ((pressed >> SMK_BTN_KNOB_BANK) & 1u) {
++        if (home) {
++            ui.btn_used |= 1u << B_HOME;
++            seq.mute = 0;
++            seq.vmute = 0;
++            say("ALL UNMUTED", 0);
++        } else {
++            md_kb_held = 1;
++            md_kb_t0 = plat_ms();
++            md_mute_used = 0;
++            if (!md_mute_on) {
++                md_mute_on = 2;                           /* 2: on since this press (a hold, or a tap that keeps it) */
++                say("MUTE PADS: TRACKS + PARTS", 0);   /* (say: 27 chars) */
++            }
++        }
++    }
++    if ((released >> SMK_BTN_KNOB_BANK) & 1u && md_kb_held) {
++        md_kb_held = 0;
++        if (md_mute_on == 2)                              /* just switched on: a tap keeps it, a played hold not */
++            md_mute_on = md_mute_used ? 0 : 1;
++        else if (!md_mute_used)
++            md_mute_on = 0;                               /* on before: a tap switches it off */
++        if (!md_mute_on)
++            say("MUTE OFF", 0);
++    }
++    md_pads_muting = md_mute_on != 0;
++    if (md_mute_on) {
++        uint32_t pads = fm1_in.pnotes, pp = pads & ~md_prev_pads, w;
++        for (w = 0; w < SMK_NPAD; w++)
++            if ((pp >> SMK_WHITE_NOTE[w]) & 1u) {
++                md_mute_pad((int)w);
++                md_mute_used = 1;
++            }
++        md_prev_pads = pads;
++    } else
++        md_prev_pads = fm1_in.pnotes;
++    /* the mod wheel's riser follows the instrument on screen */
++    {
++        static int last_f = -1;
++        static uint8_t last_w;
++        int f = md_inst_flt(md_inst());
++        if (f != last_f && last_f >= 0 && last_w) {       /* another instrument: the last one as set */
++            uint8_t keep = md_wheel;
++            md_wheel = 0;
++            md_flt_apply(last_f);
++            md_wheel = keep;
++        }
++        if (f >= 0 && (md_wheel != last_w || f != last_f))
++            md_flt_apply(f);
++        last_f = f;
++        last_w = md_wheel;
++    }
++}
++
++static void md_wheel_set(int mw) { md_wheel = (uint8_t)mw; }
+diff --git a/firmware/src/app/md_variant.h b/firmware/src/app/md_variant.h
+new file mode 100644
+index 0000000..524545a
+--- /dev/null
++++ b/firmware/src/app/md_variant.h
+@@ -0,0 +1,20 @@
++/* SPDX-License-Identifier: GPL-3.0-only */
++/* MD|442's three firmwares (MD_VARIANT, tools/build.py): one engine, one PERFORM layout, their own
++ * patterns, sound and samples. */
++#pragma once
++#ifndef MD_VARIANT
++#define MD_VARIANT 442
++#endif
++#if MD_VARIANT == 187
++#define MD_NAME "MD|187"
++#define MD_TAG "HIP-HOP  BY MATHEW"
++#define MD_PALETTE 1                     /* amber */
++#elif MD_VARIANT == 888
++#define MD_NAME "MD|888"
++#define MD_TAG "HARD TECHNO  BY MATHEW"
++#define MD_PALETTE 3                     /* red */
++#else
++#define MD_NAME "MD|442"
++#define MD_TAG "BY MATHEW  NEST GROUP"
++#define MD_PALETTE 0                     /* MD|442 green */
++#endif
+diff --git a/firmware/src/app/md_variant_presets.h b/firmware/src/app/md_variant_presets.h
+new file mode 100644
+index 0000000..600c744
+--- /dev/null
++++ b/firmware/src/app/md_variant_presets.h
+@@ -0,0 +1,86 @@
++/* SPDX-License-Identifier: GPL-3.0-only */
++/* Generated by tools/md_gen_presets.py -- edit the grids there. MD|187 and MD|888's factory patterns. */
++#pragma once
++#include <stdint.h>
++
++typedef struct {
++    uint8_t swing;
++    uint16_t d909[11], acc909;
++    uint16_t d808[11], acc808;
++    uint8_t brk_slot, brk_complex, brk_level;
++    uint16_t brk_steps;
++    uint8_t brk_slice[16];
++    uint8_t root;                          /* 0: no 303 line */
++    int8_t notes[16];
++    uint8_t flags[16];                     /* 1 note, 4 accent, 8 slide */
++} mdv_preset_t;
++
++static const mdv_preset_t MDV_PRESETS_187[] = {
++    { /* BOOM BAP */ 32, {0, 4112, 0, 0, 0, 0, 0, 21845, 16384, 0, 0}, 4112,
++      {1153, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      0, 0, 70, 65535, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
++      38, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 9, 1, 0, 0, 0, 0}},
++    { /* DUSTY */ 36, {0, 0, 0, 0, 0, 0, 0, 17476, 0, 0, 0}, 0,
++      {1025, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      1, 0, 100, 40627, {1, 0, 0, 0, 3, 0, 0, 2, 0, 1, 0, 3, 0, 0, 0, 5},
++      38, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -2, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0}},
++    { /* STAB CITY */ 30, {0, 4112, 0, 0, 0, 16512, 0, 21845, 0, 0, 0}, 4112,
++      {641, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      2, 0, 95, 17155, {1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 3, 0},
++      38, {0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0}},
++    { /* VOX HITS */ 32, {0, 4112, 0, 0, 0, 0, 4096, 23901, 0, 0, 0}, 0,
++      {1089, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      3, 0, 90, 52236, {0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 8, 0},
++      38, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0}},
++    { /* LAID BACK */ 48, {0, 0, 0, 0, 0, 4112, 0, 21845, 64, 0, 0}, 0,
++      {1281, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      1, 0, 80, 49344, {0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 7, 0},
++      36, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 5, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 9, 1, 0, 0, 0, 0}},
++    { /* CHOP SHOP */ 28, {0, 0, 0, 0, 0, 0, 0, 21845, 0, 0, 0}, 0,
++      {1025, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      0, 65, 100, 65535, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
++      38, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0}},
++    { /* HORNS */ 30, {0, 4112, 0, 0, 0, 0, 0, 21845, 0, 1, 0}, 4112,
++      {1153, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      2, 0, 95, 61467, {3, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 4, 0},
++      38, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0}, {1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0}},
++    { /* SCRATCH */ 34, {0, 4112, 0, 0, 0, 0, 0, 21845, 0, 0, 0}, 0,
++      {9345, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      3, 0, 90, 28416, {0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 8, 0, 0, 8, 0, 0},
++      38, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0}},
++};
++
++static const mdv_preset_t MDV_PRESETS_888[] = {
++    { /* WAREHOUSE */ 0, {4369, 0, 0, 0, 0, 0, 4112, 65535, 17476, 0, 0}, 4369,
++      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      0, 0, 90, 65535, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
++      0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
++    { /* GABBA */ 0, {0, 0, 0, 0, 0, 0, 4112, 17476, 0, 0, 0}, 0,
++      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      1, 0, 110, 65535, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
++      45, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12}, {5, 0, 1, 0, 5, 0, 1, 0, 5, 0, 1, 0, 5, 0, 9, 1}},
++    { /* TRANCE STAB */ 0, {4369, 0, 0, 0, 0, 0, 0, 21845, 17476, 0, 21845}, 0,
++      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      2, 0, 95, 52428, {0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0},
++      0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
++    { /* INDUSTRY */ 0, {4369, 0, 0, 0, 0, 18504, 0, 65535, 0, 0, 0}, 4369,
++      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      3, 0, 90, 52236, {0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 5, 0},
++      0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
++    { /* ACID 155 */ 0, {4369, 0, 0, 0, 0, 0, 4112, 17476, 0, 0, 0}, 0,
++      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      0, 0, 70, 65535, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
++      45, {0, 0, 12, 0, 3, 0, 0, 10, 0, 12, 0, 7, 0, 0, 3, 15}, {5, 1, 9, 1, 1, 5, 9, 1, 1, 5, 1, 9, 5, 1, 1, 9}},
++    { /* SCHRANZ */ 0, {4369, 0, 17476, 8738, 34952, 0, 0, 65535, 0, 0, 0}, 4369,
++      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      0, 0, 75, 65535, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
++      0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
++    { /* ROLLING */ 0, {4369, 0, 0, 0, 0, 0, 0, 56797, 17476, 0, 0}, 0,
++      {0, 0, 0, 0, 0, 37522, 0, 0, 0, 0, 0}, 0,
++      0, 0, 95, 65535, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
++      0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
++    { /* PEAK TIME */ 0, {4369, 0, 0, 0, 0, 0, 4112, 0, 17476, 1, 21845}, 4369,
++      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0,
++      2, 0, 100, 45875, {1, 0, 0, 0, 1, 0, 0, 0, 6, 0, 0, 0, 7, 0, 0, 4},
++      0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
++};
+diff --git a/firmware/src/app/panel.c b/firmware/src/app/panel.c
+index cc5e72f..b0eff0c 100644
+--- a/firmware/src/app/panel.c
++++ b/firmware/src/app/panel.c
+@@ -8,7 +8,7 @@ static const char *const B_NAME[NB] = {"FX", "SEL", "ENV", "LFO", "EDIT", "GLO",
+ static const char *const E_NAME[NE] = {"SELECT", "ALGORITHM", "PRESETS", "KNOB 1", "KNOB 2",
+                                         "KNOB 3", "KNOB 4"};
+ #if BOARD_SMK37
+-#define PANEL_MAGIC 0x50584E53u          /* "SNXP" (SMK-37 Pro): an FM-1 table never loads here */
++#define PANEL_MAGIC 0x3234444Du          /* "MD42" (MD|442 PERFORM: < > are OCT- / OCT+); an older table is not used */
+ #define PANEL_NBTN FM1_NBTN              /* matrix buttons (smk_input.h ids 0..17) */
+ #define PANEL_NENC FM1_NENC              /* encoders K1..K8 (0..7) */
+ #else
+@@ -34,7 +34,7 @@ panel_t panel __attribute__((section(".noinit")));
+  * held at power-on) re-teaches all of it but K1. */
+ static const panel_t PANEL_DEFAULT = {
+     PANEL_MAGIC,
+-    {14, 8, 9, 7, 13, 10, 12, 11, 6, 15, 16, 17, 4, 5},
++    {14, 8, 9, 7, 13, 10, 12, 11, 6, 15, 16, 17, 2, 3},   /* MD|442: OCT- / OCT+ on < / >; OCTAVE- / + pick the instrument */
+     {1, 2, 3, 4, 5, 6, 7},
+     {1, 1, 1, 1, 1, 1, 1},
+ };
+diff --git a/firmware/src/app/plat_fm1.c b/firmware/src/app/plat_fm1.c
+index 9f5432e..303c2c1 100644
+--- a/firmware/src/app/plat_fm1.c
++++ b/firmware/src/app/plat_fm1.c
+@@ -4,21 +4,49 @@
+ 
+ uint32_t plat_ms(void) { return fm1_ms; }
+ 
++#if BOARD_SMK37
++/* MD|442 PERFORM (md_perform.c): what the UI does not see. md_nav: K2..K4 are X0X's SELECT, ALGORITHM,
++ * PRESETS (else md_perform.c takes them); md_hide: < / > pressed while PATCH is held (the pattern, not the bars);
++ * md_pads_muting: the pads mute (the UI does not get them) */
++static volatile uint8_t md_nav = 1, md_pads_muting;
++static uint32_t md_hide, md_seen;
++#endif
+ uint32_t plat_buttons(void)
+ {
+     uint32_t raw = fm1_in.buttons, out = 0, i;
++#if BOARD_SMK37
++    {
++        uint32_t ar = raw & (1u << SMK_BTN_LEFT | 1u << SMK_BTN_RIGHT), home = (raw >> panel.btn[B_HOME]) & 1u;
++        if (home)
++            md_hide |= ar & ~md_seen;
++        md_hide &= ar;
++        md_seen = ar;
++        raw &= ~md_hide;
++    }
++#endif
+     for (i = 0; i < NB; i++)
+         if (raw & (1u << panel.btn[i]))
+             out |= 1u << i;
+     return out;
+ }
+ 
+-uint32_t plat_keys(void) { return fm1_in.notes & ((1u << NKEYS) - 1u); }
++uint32_t plat_keys(void)
++{
++#if BOARD_SMK37
++    if (md_pads_muting)                       /* MD|442: the pads mute; the keybed still plays */
++        return fm1_in.knotes & ((1u << NKEYS) - 1u);
++#endif
++    return fm1_in.notes & ((1u << NKEYS) - 1u);
++}
+ 
+ int32_t plat_enc(int role)
+ {
+     if (role < 0 || role >= NE)
+         return 0;
++#if BOARD_SMK37
++    if (!md_nav && (role == EN_SELECT || role == EN_ALGO || role == EN_PRESET))
++        return 0;                             /* MD|442: K2..K4 are the instrument's (md_perform.c) */
++#endif
+     return fm1_enc_take(panel.enc[role]) * panel.dir[role];
+ }
+ 
+@@ -56,6 +84,7 @@ void plat_leds(uint32_t buttons, uint32_t keys)
+         if ((buttons >> i) & 1u)
+             nl[panel.btn[i]] = 1;
+     nl[SMK_BTN_FADER_BANK] = smk_fbank != 0;
++    nl[SMK_BTN_KNOB_BANK] = md_pads_muting;   /* MD|442: lit while the pads mute */
+     for (i = 0; i < SMK_NLED; i++)
+         fm1_led[i] = nl[i];
+     smk_keys_lit = keys;
+diff --git a/firmware/src/app/project.c b/firmware/src/app/project.c
+index 4914d7c..22a96f0 100644
+--- a/firmware/src/app/project.c
++++ b/firmware/src/app/project.c
+@@ -16,6 +16,7 @@
+ #include "../dsp/drum909.h"            /* DR_SD (the sound's revisions) */
+ #include "../dsp/master.h"             /* MST_* (the sound's revisions) */
+ #include "lz.c"
++#include "md_variant.h"
+ #include "md442_presets.h"        /* MD|442: the factory patterns */
+ 
+ project_t proj;
+@@ -34,8 +35,13 @@ static void arrange_defaults(void);
+ static void md442_patterns(void)
+ {
+     int i;
++#if defined(MD_VARIANT) && MD_VARIANT != 442
++    for (i = 0; i < MDV_NPRESETS && i < NPAT; i++)
++        mdv_load_preset(&proj.pat[i], &MDV_PRESETS[i]);
++#else
+     for (i = 0; i < MD442_NPRESETS && i < NPAT; i++)
+         md442_load_preset(&proj.pat[i], &MD442_PRESETS[i]);
++#endif
+ }
+ static uint32_t packed_len;             /* the last save's (or load's) packed stream, bytes */
+ 
+@@ -44,13 +50,19 @@ void project_defaults(void)
+     int i;
+     proj.set.magic = PROJ_MAGIC;
+     proj.set.format = PROJ_FORMAT;
+-    proj.set.palette = 0;                /* MD|442: green */
++    proj.set.palette = MD_PALETTE;       /* MD|442 green, MD|187 amber, MD|888 red */
+     proj.set.keyled = 1;
+     proj.set.keysound = 0;
+     proj.set.autosave_off = 0;
+     proj.set.clk_out = 1;
+     proj.set.notes_out = 0;
++#if defined(MD_VARIANT) && MD_VARIANT == 187
++    proj.set.bpm_x10 = 960;             /* MD|187: boom-bap (its sample bank is cut at 96) */
++#elif defined(MD_VARIANT) && MD_VARIANT == 888
++    proj.set.bpm_x10 = 1550;            /* MD|888: hard techno */
++#else
+     proj.set.bpm_x10 = 1420;            /* MD|442: Peak Warehouse */
++#endif
+     proj.set.accent_q7 = 88;
+     proj.set.stereo = PROJ_STEREO;
+     proj.set.snd_rev = PROJ_SND_REV;
+diff --git a/firmware/src/app/ui.c b/firmware/src/app/ui.c
+index 1687dec..1c4bc1f 100644
+--- a/firmware/src/app/ui.c
++++ b/firmware/src/app/ui.c
+@@ -208,7 +208,7 @@ static const x0x_param_t SEQ_P[NSQ] = {
+ };
+ static const x0x_param_t ACT_P[] = {
+     {"", 0, 0, 0}, {"SAVE PROJECT", 0, 0, 0}, {"CLEAR THIS PART", 0, 0, 0}, {"CLEAR PATTERN", 0, 0, 0},
+-    {"COPY PATTERN", 0, 0, 0}, {"FACTORY RESET", 0, 0, 0}, {"ABOUT MD|442", 0, 0, 0}, {"INSERT BAR", 0, 0, 0},
++    {"COPY PATTERN", 0, 0, 0}, {"FACTORY RESET", 0, 0, 0}, {"ABOUT " MD_NAME, 0, 0, 0}, {"INSERT BAR", 0, 0, 0},
+     {"DELETE BAR", 0, 0, 0}, {"CLEAR SONG", 0, 0, 0}, {"PERFORMANCE", 0, 0, 0}, {"RUN PERF TEST", 0, 0, 0},
+ };
+ static const x0x_param_t STALLS_P = {"STALLS", 1, 0, ONOFF_N};
+@@ -1614,7 +1614,7 @@ static void run_action(int act, int arg)
+         say("PERF TEST: 15 SECONDS", 0);
+         break;
+     case ACT_ABOUT:
+-        q = put_s(t, "MD|442 " X0X_VERSION "  MEM ");
++        q = put_s(t, MD_NAME " " X0X_VERSION "  MEM ");
+         q = put_s(put_i(q, project_mem_pct()), "%  CPU ");
+         put_s(put_i(q, (int)plat_cpu_pct()), "%");
+         say(t, 0);
+diff --git a/firmware/src/app/undo.c b/firmware/src/app/undo.c
+index e151e42..a8d779c 100644
+--- a/firmware/src/app/undo.c
++++ b/firmware/src/app/undo.c
+@@ -17,8 +17,12 @@
+ #include <stdint.h>
+ 
+ #ifndef UNDO_POOL
++#if MD_FILTER
++#define UNDO_POOL 19456u                 /* MD|442 PERFORM: 1 KB less, for the performance filters (pool headroom) */
++#else
+ #define UNDO_POOL 20480u                 /* X0X 0.11: 4 KB less, for the 64-step project's shadow (pool headroom) */
+ #endif
++#endif
+ #define UNDO_MAX 32
+ #define UNDO_GAP 8u                    /* unchanged bytes between changes cheaper to keep than a new run */
+ 
+diff --git a/firmware/src/dsp/drum808.c b/firmware/src/dsp/drum808.c
+index 5ff572d..f2f967f 100644
+--- a/firmware/src/dsp/drum808.c
++++ b/firmware/src/dsp/drum808.c
+@@ -22,6 +22,7 @@
+  *    the cymbal's envelope error goes from 0.002 dB to 0.019 dB).
+  * tests/host/run_drum808.sh renders every sound against 8W8 itself. */
+ #include "drum808.h"
++#include "md_filter.h"
+ #include "fastmath.h"
+ 
+ #define SR 44100.0f
+@@ -1649,9 +1650,12 @@ static const uint8_t k_lane_track[L_NUM] = {D8_BD, D8_SD, D8_LT, D8_MT, D8_HT, D
+                                             D8_CB, D8_CH, D8_OH, D8_CY};
+ static float *d8_dry_r;         /* the render in progress: its right side (0: mono) */
+ 
+-static void lane_mix(drum808_t *d, d8_lane_t *l, const float *buf, int m, float *dry, float *rev, float *dly)
++static void lane_mix(drum808_t *d, d8_lane_t *l, float *buf, int m, float *dry, float *rev, float *dly)
+ {
+     const int tr = k_lane_track[l - d->lane];
++#if MD_FILTER
++    md_flt_run(&md_flt[MDF_808 + tr], buf, m);       /* MD|442: the track's performance filter */
++#endif
+     float *dry_r = d8_dry_r;
+     const float pl = d->pan_lc[tr], pr = d->pan_rc[tr], dpl = d->pan_dl[tr], dpr = d->pan_dr[tr];
+     int s = l->snd, i, type = d->pot[s][D8P_DIST];
+diff --git a/firmware/src/dsp/drum909.c b/firmware/src/dsp/drum909.c
+index 8927ec4..8289790 100644
+--- a/firmware/src/dsp/drum909.c
++++ b/firmware/src/dsp/drum909.c
+@@ -6,6 +6,7 @@
+  * that explain WHY a constant is what it is live in 9W9 and are not repeated. */
+ #define X0X_DRUM_TABLES_DEFINE              /* the shared lookup tables live here (x0x_drum_tables.h) */
+ #include "drum909.h"
++#include "md_filter.h"
+ #include "x0x_drum_samples.h"
+ 
+ #define D9_VCA_VT 0.0002f
+@@ -508,10 +509,17 @@ typedef struct {
+     float srev, sdly;
+     float *dry_r, pl, pr;     /* X0X stereo: dry_r 0 = mono (dry gets y as 9W9's) */
+     float dpl, dpr;           /* the pans' glide per sample this block (0 settled) */
++#if MD_FILTER
++    md_flt_t *flt;            /* MD|442: the track's performance filter, 0 off */
++#endif
+ } d9_bus_t;
+ 
+ static inline void d9_emit(const d9_bus_t *b, int i, float y)
+ {
++#if MD_FILTER
++    if (b->flt)
++        y = md_flt_tick(b->flt, y);
++#endif
+     if (b->dry_r) {
+         b->dry[i] += y * (b->pl + b->dpl * (float)i);
+         b->dry_r[i] += y * (b->pr + b->dpr * (float)i);
+@@ -761,6 +769,16 @@ static inline void d9_bus(d9_bus_t *b, drum909_t *d, int voice, float *dry, floa
+     b->sdly = d->send_dly[voice];
+     b->rev = b->srev != 0.0f ? rev : 0;
+     b->dly = b->sdly != 0.0f ? dly : 0;
++#if MD_FILTER
++    {
++        md_flt_t *f = &md_flt[MDF_909 + voice];
++        b->flt = f->on ? f : 0;
++        if (b->flt && f->reset) {
++            f->ic1 = f->ic2 = 0.0f;
++            f->reset = 0;
++        }
++    }
++#endif
+ }
+ 
+ static void d9_render(drum909_t *d, float *dry, float *rev, float *dly, int n)
+diff --git a/firmware/src/dsp/md_filter.h b/firmware/src/dsp/md_filter.h
+new file mode 100644
+index 0000000..bebb2f4
+--- /dev/null
++++ b/firmware/src/dsp/md_filter.h
+@@ -0,0 +1,108 @@
++/* SPDX-License-Identifier: GPL-3.0-only */
++/* MD|442 performance filters: one state-variable filter (TPT / Zavalishin) per instrument, each
++ * 909 and 808 track, the BREAK; the 303s use their own filter. Bipolar, as a DJ filter: the
++ * knob's middle is off (nothing runs), left a low-pass closing down, right a high-pass opening up.
++ *
++ * The main loop computes the coefficients (md_flt_set) into the half the ISR is not reading and then
++ * flips `cur` (one byte); the ISR (and the second core, for the 808 and the break) runs md_flt_run on
++ * a voice's output before its pan and sends. Off costs one byte test a voice and block. */
++#pragma once
++#include <stdint.h>
++#include "fastmath.h"
++
++#ifndef MD_FILTER
++#define MD_FILTER 0
++#endif
++
++typedef struct {
++    float a1, a2, a3, k;
++} md_flt_coef_t;
++typedef struct {
++    volatile uint8_t on;        /* 0 off, 1 low-pass, 2 high-pass */
++    volatile uint8_t cur;       /* the coefficient half in use */
++    volatile uint8_t reset;     /* the main loop asks for a clean start (the ISR clears) */
++    uint8_t rsv;
++    md_flt_coef_t c[2];
++    float ic1, ic2;
++} md_flt_t;
++
++/* instruments: 0..10 the 909's tracks, 11..21 the 808's, 22 the BREAK */
++enum { MDF_909 = 0, MDF_808 = 11, MDF_BRK = 22, MDF_N = 23 };
++extern md_flt_t md_flt[MDF_N];
++
++static inline void md_flt_run(md_flt_t *f, float *x, int n)
++{
++    const md_flt_coef_t *c;
++    float ic1, ic2;
++    int i;
++    if (!f->on)
++        return;
++    if (f->reset) {
++        f->ic1 = f->ic2 = 0.0f;
++        f->reset = 0;
++    }
++    c = &f->c[f->cur & 1u];
++    ic1 = f->ic1;
++    ic2 = f->ic2;
++    if (f->on == 1) {
++        for (i = 0; i < n; i++) {
++            float v3 = x[i] - ic2, v1 = c->a1 * ic1 + c->a2 * v3, v2 = ic2 + c->a2 * ic1 + c->a3 * v3;
++            ic1 = 2.0f * v1 - ic1;
++            ic2 = 2.0f * v2 - ic2;
++            x[i] = v2;
++        }
++    } else {
++        for (i = 0; i < n; i++) {
++            float v3 = x[i] - ic2, v1 = c->a1 * ic1 + c->a2 * v3, v2 = ic2 + c->a2 * ic1 + c->a3 * v3;
++            ic1 = 2.0f * v1 - ic1;
++            ic2 = 2.0f * v2 - ic2;
++            x[i] = x[i] - c->k * v1 - v2;
++        }
++    }
++    /* a denormal / runaway guard: the states stay finite */
++    if (!(ic1 > -1e6f && ic1 < 1e6f) || !(ic2 > -1e6f && ic2 < 1e6f))
++        ic1 = ic2 = 0.0f;
++    f->ic1 = ic1;
++    f->ic2 = ic2;
++}
++
++/* one sample (the 909's voices emit sample by sample) */
++static inline float md_flt_tick(md_flt_t *f, float x)
++{
++    const md_flt_coef_t *c = &f->c[f->cur & 1u];
++    float v3 = x - f->ic2, v1 = c->a1 * f->ic1 + c->a2 * v3, v2 = f->ic2 + c->a2 * f->ic1 + c->a3 * v3;
++    f->ic1 = 2.0f * v1 - f->ic1;
++    f->ic2 = 2.0f * v2 - f->ic2;
++    return f->on == 1 ? v2 : x - c->k * v1 - v2;
++}
++
++/* main loop: pos -63..63 (0 off; < 0 low-pass, > 0 high-pass), res 0..127 */
++static inline void md_flt_set(md_flt_t *f, int pos, int res)
++{
++    md_flt_coef_t *c;
++    float t, fc, g, k;
++    uint8_t nxt;
++    if (pos == 0) {
++        f->on = 0;
++        return;
++    }
++    if (pos < 0) {                       /* low-pass: 18 kHz at -1 down to 70 Hz at -63 */
++        t = (float)(-pos - 1) / 62.0f;
++        fc = 18000.0f * fm_exp2f(-8.0f * t);
++    } else {                             /* high-pass: 25 Hz at +1 up to 7 kHz at +63 */
++        t = (float)(pos - 1) / 62.0f;
++        fc = 25.0f * fm_exp2f(8.13f * t);
++    }
++    g = fm_tanf(3.14159265f * fc / 44100.0f);
++    k = 2.0f - 1.7f * (float)(res < 0 ? 0 : res > 127 ? 127 : res) / 127.0f;   /* Q 0.5 .. ~3.3 */
++    nxt = (uint8_t)((f->cur & 1u) ^ 1u);
++    c = &f->c[nxt];
++    c->k = k;
++    c->a1 = 1.0f / (1.0f + g * (g + k));
++    c->a2 = g * c->a1;
++    c->a3 = g * c->a2;
++    if (!f->on)
++        f->reset = 1;
++    f->cur = nxt;
++    f->on = (uint8_t)(pos < 0 ? 1 : 2);
++}
+diff --git a/tools/build.py b/tools/build.py
+index f469297..250fdff 100755
+--- a/tools/build.py
++++ b/tools/build.py
+@@ -63,7 +63,7 @@ SDK_SHA256 = {
+ PRODUCT = "FM-1_900"                # package identity; release builds are FM-1_9XXYYZZ (see main)
+ BOARD = "fm1"                       # fm1 (default) or smk37: BOARD env or --board
+ BOARD_PREFIX = {"fm1": "FM-1_9", "smk37": "SMK-37 Pro_9"}   # identity of a release build: prefix + XXYYZZ
+-BOARD_DEFS = {"fm1": [], "smk37": ["-DBOARD_SMK37=1"]}       # the FM-1 build gets no new flag (byte-identical)
++BOARD_DEFS = {"fm1": [], "smk37": ["-DBOARD_SMK37=1", "-DMD_FILTER=1"]}   # MD|442: the SMK gets the performance filters       # the FM-1 build gets no new flag (byte-identical)
+ # smk37: the keyboard's model name (MODEL env or --model); one hardware, three names. pro adds no flag
+ MODELS = {"pro": "SMK-37 Pro", "elite": "SMK-37 Elite", "mke": "MKE-P37"}
+ VERSION = None                      # FELUCCA_VERSION for release builds (default: firmware/src/ui.c)
+@@ -236,6 +236,10 @@ def build_app():
+         if v in ("0", "1"):
+             flags.append(f"-D{flag}={v}")
+     flags.append(f'-DFELUCCA_ID="{PRODUCT}"')
++    mdv = os.environ.get("MD_VARIANT", "442")      # MD|442: which firmware (442, 187 hip-hop, 888 hard techno)
++    if mdv not in ("442", "187", "888"):
++        raise SystemExit("MD_VARIANT: 442, 187 or 888")
++    flags.append(f"-DMD_VARIANT={mdv}")
+     if BOARD == "smk37":            # SMK store owner (storage.c st_owner_check): X0X's own family, untagged data cleared
+         fam = os.environ.get("FELUCCA_DATA_FAMILY", "X0X")
+         if not re.fullmatch(r"[A-Z0-9]{1,7}", fam):
+diff --git a/tools/md_gen_presets.py b/tools/md_gen_presets.py
+new file mode 100644
+index 0000000..32e4885
+--- /dev/null
++++ b/tools/md_gen_presets.py
+@@ -0,0 +1,172 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-3.0-only
++"""MD|187 and MD|888's factory patterns, written as step grids here and compiled into
++firmware/src/app/md_variant_presets.h (the firmware loads them as patterns 1-8).
++
++  tools/md_gen_presets.py firmware/src/app/md_variant_presets.h
++
++A row is 16 steps: x = a hit, . = none. BREAK rows: 1-8 = that slice of loop A on this step,
++- = the step plays on (the slice before rings), g = the generator picks, . = off.
++303 rows: a note per step as a semitone offset from the root, written n:off (n = note, a = note +
++accent, s = note + slide into the next, A = accent + slide), . = a rest."""
++import sys
++
++T909 = ["BD", "SD", "LT", "MT", "HT", "RS", "CP", "CH", "OH", "CR", "RD"]
++T808 = ["BD", "SD", "LT", "MT", "HT", "RS", "CP", "CB", "CY", "OH", "CH"]
++
++# --------------------------------------------------------------------------- MD|187: 90s hip-hop, 96 BPM
++# slots: 0 BOOMBP (the dusty break), 1 DRUMS (one-shots: kick, kick 2, snare, rim, hat, open hat, shaker,
++# clap), 2 STABS (Dm9, Gm9, horns, horns 2, strings, strings A7b9, organ, Rhodes low), 3 VOX (HEY, YO, UH,
++# HO, AHH, YEAH, HUH, scratch)
++MD187 = [
++    dict(name="BOOM BAP", swing=32,
++         d808={"BD": "x......x..x....."},
++         d909={"SD": "....x.......x...", "CH": "x.x.x.x.x.x.x.x.", "OH": "..............x."},
++         acc909="....x.......x...",
++         brk=dict(slot=0, steps="gggggggggggggggg", complex=0, level=70),
++         bass=dict(root=38, row=["0", ".", ".", ".", ".", ".", ".", "0", ".", ".", "s3", "5", ".", ".", ".", "."])),
++    dict(name="DUSTY", swing=36,
++         d808={"BD": "x.........x....."},
++         d909={"CH": "..x...x...x...x."},
++         brk=dict(slot=1, steps="1-..3-.2.1-3-..5", complex=0, level=100),
++         bass=dict(root=38, row=["0", ".", ".", ".", ".", ".", ".", ".", ".", ".", "0", ".", ".", "-2", ".", "."])),
++    dict(name="STAB CITY", swing=30,
++         d808={"BD": "x......x.x......"},
++         d909={"SD": "....x.......x...", "CH": "x.x.x.x.x.x.x.x.", "RS": ".......x......x."},
++         acc909="....x.......x...",
++         brk=dict(slot=2, steps="1-......2-....3.", complex=0, level=95),
++         bass=dict(root=38, row=["0", ".", ".", ".", ".", ".", ".", "0", ".", "5", ".", ".", ".", ".", ".", "."])),
++    dict(name="VOX HITS", swing=32,
++         d808={"BD": "x.....x...x....."},
++         d909={"SD": "....x.......x...", "CP": "............x...", "CH": "x.xxx.x.x.xxx.x."},
++         brk=dict(slot=3, steps="..1-......2-..8-", complex=0, level=90),
++         bass=dict(root=38, row=["0", ".", ".", ".", ".", ".", "0", ".", ".", ".", "3", ".", ".", ".", ".", "."])),
++    dict(name="LAID BACK", swing=48,
++         d808={"BD": "x.......x.x....."},
++         d909={"RS": "....x.......x...", "CH": "x.x.x.x.x.x.x.x.", "OH": "......x........."},
++         brk=dict(slot=1, steps="......7-......7-", complex=0, level=80),
++         bass=dict(root=36, row=["0", ".", ".", ".", ".", ".", ".", ".", "0", ".", "s7", "5", ".", ".", ".", "."])),
++    dict(name="CHOP SHOP", swing=28,
++         d808={"BD": "x.........x....."},
++         d909={"CH": "x.x.x.x.x.x.x.x."},
++         brk=dict(slot=0, steps="gggggggggggggggg", complex=65, level=100),
++         bass=dict(root=38, row=["0", ".", ".", ".", ".", ".", ".", ".", ".", ".", "0", ".", ".", ".", ".", "."])),
++    dict(name="HORNS", swing=30,
++         d808={"BD": "x......x..x....."},
++         d909={"SD": "....x.......x...", "CH": "x.x.x.x.x.x.x.x.", "CR": "x..............."},
++         acc909="....x.......x...",
++         brk=dict(slot=2, steps="3-.4-.......3-4-", complex=0, level=95),
++         bass=dict(root=38, row=["0", ".", ".", "0", ".", ".", ".", ".", ".", ".", "a5", ".", ".", ".", ".", "."])),
++    dict(name="SCRATCH", swing=34,
++         d808={"BD": "x......x..x..x.."},
++         d909={"SD": "....x.......x...", "CH": "x.x.x.x.x.x.x.x."},
++         brk=dict(slot=3, steps="........8-8-.8-.", complex=0, level=90),
++         bass=dict(root=38, row=["0", ".", ".", ".", ".", ".", ".", "0", ".", ".", "0", ".", ".", ".", ".", "."])),
++]
++
++# ------------------------------------------------------------------------ MD|888: hard techno, 155 BPM
++# slots: 0 RUMBLE (offbeat rumble), 1 GABBA (four distorted kicks), 2 TRANCE (8 supersaw stabs, 2 bars:
++# a slice a beat: Am F C G Em Dm Am-hi E), 3 HITS (clang, crash, laser, riser, HEY, horn, industrial, siren)
++MD888 = [
++    dict(name="WAREHOUSE", swing=0,
++         d909={"BD": "x...x...x...x...", "CH": "xxxxxxxxxxxxxxxx", "OH": "..x...x...x...x.", "CP": "....x.......x..."},
++         acc909="x...x...x...x...",
++         brk=dict(slot=0, steps="gggggggggggggggg", complex=0, level=90),
++         bass=None),
++    dict(name="GABBA", swing=0,
++         d909={"CH": "..x...x...x...x.", "CP": "....x.......x..."},
++         brk=dict(slot=1, steps="gggggggggggggggg", complex=0, level=110),
++         bass=dict(root=45, row=["a0", ".", "0", ".", "a0", ".", "0", ".", "a0", ".", "0", ".", "a0", ".", "s0", "12"])),
++    dict(name="TRANCE STAB", swing=0,
++         d909={"BD": "x...x...x...x...", "CH": "x.x.x.x.x.x.x.x.", "OH": "..x...x...x...x.", "RD": "x.x.x.x.x.x.x.x."},
++         brk=dict(slot=2, steps="..1-..1-..2-..3-", complex=0, level=95),
++         bass=None),
++    dict(name="INDUSTRY", swing=0,
++         d909={"BD": "x...x...x...x...", "CH": "xxxxxxxxxxxxxxxx", "RS": "...x..x....x..x."},
++         acc909="x...x...x...x...",
++         brk=dict(slot=3, steps="..1-......7-..5-", complex=0, level=90),
++         bass=None),
++    dict(name="ACID 155", swing=0,
++         d909={"BD": "x...x...x...x...", "CH": "..x...x...x...x.", "CP": "....x.......x..."},
++         brk=dict(slot=0, steps="gggggggggggggggg", complex=0, level=70),
++         bass=dict(root=45, row=["a0", "0", "s12", "0", "3", "a0", "s0", "10", "0", "a12", "0", "s7", "a0", "0", "3", "s15"])),
++    dict(name="SCHRANZ", swing=0,
++         d909={"BD": "x...x...x...x...", "CH": "xxxxxxxxxxxxxxxx", "LT": "..x...x...x...x.", "MT": ".x...x...x...x..",
++               "HT": "...x...x...x...x"},
++         acc909="x...x...x...x...",
++         brk=dict(slot=0, steps="gggggggggggggggg", complex=0, level=75),
++         bass=None),
++    dict(name="ROLLING", swing=0,
++         d909={"BD": "x...x...x...x...", "OH": "..x...x...x...x.", "CH": "x.xxx.xxx.xxx.xx"},
++         d808={"RS": ".x..x..x.x..x..x"},
++         brk=dict(slot=0, steps="gggggggggggggggg", complex=0, level=95),
++         bass=None),
++    dict(name="PEAK TIME", swing=0,
++         d909={"BD": "x...x...x...x...", "CP": "....x.......x...", "OH": "..x...x...x...x.", "RD": "x.x.x.x.x.x.x.x.",
++               "CR": "x..............."},
++         acc909="x...x...x...x...",
++         brk=dict(slot=2, steps="1-..1-..6-..7-.4", complex=0, level=100),
++         bass=None),
++]
++
++
++def bits(row):
++    assert len(row) == 16, row
++    return sum(1 << i for i, c in enumerate(row) if c not in ".")
++
++
++def emit(var, pats):
++    out = [f"static const mdv_preset_t MDV_PRESETS_{var}[] = {{"]
++    for p in pats:
++        d9 = [bits(p.get("d909", {}).get(t, "." * 16)) for t in T909]
++        d8 = [bits(p.get("d808", {}).get(t, "." * 16)) for t in T808]
++        a9, a8 = bits(p.get("acc909", "." * 16)), bits(p.get("acc808", "." * 16))
++        b = p["brk"]
++        steps = b["steps"]
++        bsteps = sum(1 << i for i, c in enumerate(steps) if c != ".")
++        slices = [int(c) if c.isdigit() else 0 for c in steps]
++        bass = p.get("bass")
++        if bass:
++            notes, flags = [], []
++            for c in bass["row"]:
++                if c == ".":
++                    notes.append(0)
++                    flags.append(0)
++                    continue
++                kind = c[0] if c[0] in "asA" else "n"
++                off = int(c[1:] if kind != "n" else c)
++                notes.append(off)
++                flags.append(1 | (4 if kind in "aA" else 0) | (8 if kind in "sA" else 0))
++            root = bass["root"]
++        else:
++            notes, flags, root = [0] * 16, [0] * 16, 0
++        out.append(f"    {{ /* {p['name']} */ {p['swing']}, {{{', '.join(map(str, d9))}}}, {a9},")
++        out.append(f"      {{{', '.join(map(str, d8))}}}, {a8},")
++        out.append(f"      {b['slot']}, {b.get('complex', 0)}, {b.get('level', 100)}, {bsteps}, {{{', '.join(map(str, slices))}}},")
++        out.append(f"      {root}, {{{', '.join(map(str, notes))}}}, {{{', '.join(map(str, flags))}}}}},")
++    out.append("};")
++    return out
++
++
++def main():
++    h = ["/* SPDX-License-Identifier: GPL-3.0-only */",
++         "/* Generated by tools/md_gen_presets.py -- edit the grids there. MD|187 and MD|888's factory patterns. */",
++         "#pragma once", "#include <stdint.h>", "",
++         "typedef struct {",
++         "    uint8_t swing;",
++         "    uint16_t d909[11], acc909;",
++         "    uint16_t d808[11], acc808;",
++         "    uint8_t brk_slot, brk_complex, brk_level;",
++         "    uint16_t brk_steps;",
++         "    uint8_t brk_slice[16];",
++         "    uint8_t root;                          /* 0: no 303 line */",
++         "    int8_t notes[16];",
++         "    uint8_t flags[16];                     /* 1 note, 4 accent, 8 slide */",
++         "} mdv_preset_t;", ""]
++    h += emit(187, MD187) + [""] + emit(888, MD888) + [""]
++    open(sys.argv[1], "w").write("\n".join(h))
++    print(f"{len(MD187)} + {len(MD888)} patterns")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tools/md_gen_samples.py b/tools/md_gen_samples.py
+new file mode 100644
+index 0000000..65f65eb
+--- /dev/null
++++ b/tools/md_gen_samples.py
+@@ -0,0 +1,464 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-3.0-only
++"""MD|187 and MD|888's sample banks: every sound synthesised here from scratch (no recordings, nothing
++taken from a record), written as the one-bar / two-bar WAVs tools/gen_break_bank.py compiles in
++(X0X_BREAK_BANK=DIR ./build.sh). Deterministic (fixed seeds).
++
++  tools/md_gen_samples.py 187 OUTDIR     MD|187 (96 BPM): BOOMBP (a dusty break), DRUMS, STABS, VOX (8 one-shots each)
++  tools/md_gen_samples.py 888 OUTDIR     MD|888: RUMBLE, GABBA, TRANCE (2 bars), HITS
++
++A one-shot bank is a loop of 8 equal slices: the BREAK part's slice 1..8, so a pattern step plays one
++(the slice set on that step) and the keyboard's black keys 1-8 play them live."""
++import struct
++import sys
++from pathlib import Path
++
++import numpy as np
++
++SR = 22050          # the bank's rate (gen_break_bank.py)
++OS = 2              # synthesise at 44.1 kHz, then decimate
++FS = SR * OS
++
++
++# ------------------------------------------------------------------ tools ---
++def t_(n):
++    return np.arange(n) / FS
++
++
++def env_exp(n, tau):
++    return np.exp(-t_(n) / max(tau, 1e-4))
++
++
++def env_ad(n, a, tau):
++    t = t_(n)
++    e = np.exp(-np.maximum(t - a, 0) / max(tau, 1e-4))
++    if a > 0:
++        e = np.where(t < a, t / a, e)
++    return e
++
++
++def onepole_lp(x, fc):
++    a = np.exp(-2 * np.pi * fc / FS)
++    y = np.empty_like(x)
++    s = 0.0
++    for i in range(len(x)):
++        s = (1 - a) * x[i] + a * s
++        y[i] = s
++    return y
++
++
++def svf(x, fc, q=0.7, mode="lp"):
++    """TPT state-variable filter; fc may be an array (a sweep)"""
++    fc = np.broadcast_to(np.asarray(fc, dtype=float), x.shape)
++    k = 1.0 / q
++    ic1 = ic2 = 0.0
++    y = np.empty_like(x)
++    for i in range(len(x)):
++        g = np.tan(np.pi * min(fc[i], FS * 0.45) / FS)
++        a1 = 1 / (1 + g * (g + k))
++        a2 = g * a1
++        a3 = g * a2
++        v3 = x[i] - ic2
++        v1 = a1 * ic1 + a2 * v3
++        v2 = ic2 + a2 * ic1 + a3 * v3
++        ic1 = 2 * v1 - ic1
++        ic2 = 2 * v2 - ic2
++        y[i] = v2 if mode == "lp" else v1 if mode == "bp" else x[i] - k * v1 - v2
++    return y
++
++
++def fft_filter(x, lo=None, hi=None):
++    """zero-phase brick-ish band limit (fast; for noise colour)"""
++    X = np.fft.rfft(x)
++    f = np.fft.rfftfreq(len(x), 1 / FS)
++    m = np.ones_like(f)
++    if lo:
++        m *= 1 / (1 + (lo / np.maximum(f, 1)) ** 4)
++    if hi:
++        m *= 1 / (1 + (f / hi) ** 4)
++    return np.fft.irfft(X * m, len(x))
++
++
++def bandpass(x, fc, q):
++    return svf(x, fc, q, "bp")
++
++
++def sat(x, drive=1.0):
++    return np.tanh(x * drive) / np.tanh(drive)
++
++
++def crush(x, bits):
++    q = 2 ** (bits - 1)
++    return np.round(x * q) / q
++
++
++def norm(x, peak=0.95):
++    m = np.max(np.abs(x)) + 1e-12
++    return x * (peak / m)
++
++
++def place(buf, x, at, gain=1.0):
++    at = int(at)
++    n = min(len(x), len(buf) - at)
++    if n > 0:
++        buf[at:at + n] += x[:n] * gain
++
++
++def fade_tail(x, ms=8):
++    n = min(len(x), int(FS * ms / 1000))
++    x = x.copy()
++    x[-n:] *= np.linspace(1, 0, n)
++    return x
++
++
++def fit(x, n):
++    """exactly n samples, faded out at the end (a one-shot inside its slice)"""
++    y = np.zeros(n)
++    m = min(n, len(x))
++    y[:m] = x[:m]
++    return fade_tail(y, 6)
++
++
++def room(x, size=0.25, mix=0.2, seed=1, tone=4000):
++    """a small noise-tail room (convolution with decaying filtered noise)"""
++    r = np.random.default_rng(seed)
++    n = int(FS * size)
++    ir = r.standard_normal(n) * np.exp(-t_(n) / (size / 5))
++    ir = fft_filter(ir, 200, tone)
++    ir /= np.sqrt(np.sum(ir ** 2)) + 1e-9
++    wet = np.convolve(x, ir)[: len(x)]
++    return x * (1 - mix) + wet * mix * 2.0
++
++
++def decimate(x):
++    y = fft_filter(x, None, SR * 0.45)
++    return y[::OS]
++
++
++def write_wav(path, x):
++    x = np.clip(x, -1, 1)
++    pcm = b"".join(struct.pack("<h", int(round(v * 32767))) for v in x)
++    path.write_bytes(b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVEfmt " +
++                     struct.pack("<IHHIIHH", 16, 1, 1, SR, SR * 2, 2, 16) + b"data" + struct.pack("<I", len(pcm)) + pcm)
++
++
++def mtof(m):
++    return 440.0 * 2 ** ((m - 69) / 12)
++
++
++# ------------------------------------------------------------- the drums ---
++def kick(dur=0.5, f0=150, f1=48, sweep=0.045, decay=0.32, click=0.6, drive=2.0, seed=3):
++    n = int(FS * dur)
++    t = t_(n)
++    f = f1 + (f0 - f1) * np.exp(-t / sweep)
++    ph = 2 * np.pi * np.cumsum(f) / FS
++    body = np.sin(ph) * env_ad(n, 0.002, decay)
++    r = np.random.default_rng(seed)
++    clk = fft_filter(r.standard_normal(n), 1500, 7000) * env_exp(n, 0.004) * click
++    return sat(body + clk, drive)
++
++
++def snare(dur=0.35, tone=185, decay=0.12, noise_decay=0.16, snap=0.8, lo=1200, hi=9000, drive=1.6, seed=5):
++    n = int(FS * dur)
++    t = t_(n)
++    r = np.random.default_rng(seed)
++    body = (np.sin(2 * np.pi * tone * t) + 0.5 * np.sin(2 * np.pi * tone * 1.62 * t)) * env_ad(n, 0.001, decay)
++    nz = fft_filter(r.standard_normal(n), lo, hi) * env_ad(n, 0.001, noise_decay) * snap
++    return sat(body * 0.8 + nz, drive)
++
++
++def hat(dur=0.08, decay=0.03, lo=7000, seed=7, open_=False):
++    n = int(FS * dur)
++    r = np.random.default_rng(seed)
++    t = t_(n)
++    metal = sum(np.sign(np.sin(2 * np.pi * f * t)) for f in (317, 421, 538, 691, 853, 1027)) / 6
++    x = fft_filter(r.standard_normal(n) * 0.7 + metal * 0.5, lo, 14000)
++    return x * env_ad(n, 0.0005, decay if not open_ else decay * 6)
++
++
++def shaker(dur=0.12, seed=9):
++    n = int(FS * dur)
++    r = np.random.default_rng(seed)
++    return fft_filter(r.standard_normal(n), 5000, 12000) * env_ad(n, 0.02, 0.035)
++
++
++def clap(dur=0.3, seed=11):
++    n = int(FS * dur)
++    r = np.random.default_rng(seed)
++    nz = fft_filter(r.standard_normal(n), 900, 5000)
++    e = np.zeros(n)
++    for k, d in enumerate((0, 0.009, 0.019, 0.029)):
++        e += np.exp(-np.maximum(t_(n) - d, 0) / (0.006 if k < 3 else 0.09)) * (t_(n) >= d)
++    return sat(nz * e, 1.5)
++
++
++def vinyl(n, seed=13, crackle=0.06, hiss=0.012):
++    r = np.random.default_rng(seed)
++    x = fft_filter(r.standard_normal(n), 2000, 9000) * hiss
++    pops = r.random(n) < (18.0 / FS)
++    x += np.convolve(pops * r.choice([-1, 1], n) * r.uniform(0.3, 1, n), np.exp(-np.arange(60) / 8))[:n] * crackle
++    x += np.sin(2 * np.pi * 0.555 * t_(n)) * 0.004       # the turntable's rumble, a hair
++    return x
++
++
++def dusty(x, bits=12, lp=11000, drive=1.4):
++    """SP-1200 / MPC60 flavour: band-limited, driven, fewer bits"""
++    y = fft_filter(x, 30, lp)
++    y = sat(y, drive)
++    return crush(y, bits)
++
++
++# -------------------------------------------------------- the tonal kit ---
++def rhodes(notes, dur, seed=0):
++    n = int(FS * dur)
++    t = t_(n)
++    x = np.zeros(n)
++    for k, m in enumerate(notes):
++        f = mtof(m) * (1 + 0.0015 * (k - 1))
++        idx = 2.2 * env_exp(n, 0.25)
++        mod = np.sin(2 * np.pi * f * 14 * t) * env_exp(n, 0.02) * 0.4 + np.sin(2 * np.pi * f * t) * idx
++        x += np.sin(2 * np.pi * f * t + mod) * env_ad(n, 0.003, 0.9)
++    x *= 1 + 0.15 * np.sin(2 * np.pi * 5.2 * t)          # a little tremolo
++    return x / len(notes)
++
++
++def brass(notes, dur, bright=3500, seed=0):
++    n = int(FS * dur)
++    t = t_(n)
++    x = np.zeros(n)
++    for k, m in enumerate(notes):
++        for d in (-0.004, 0.0, 0.005):
++            f = mtof(m) * (1 + d)
++            x += 2 * ((f * t + 0.13 * k) % 1.0) - 1
++    fc = 300 + bright * env_ad(n, 0.025, 0.12)
++    x = svf(x / (3 * len(notes)), fc, 0.9)
++    return sat(x * env_ad(n, 0.012, 0.22) * 2.0, 1.5)
++
++
++def strings(notes, dur, seed=0):
++    n = int(FS * dur)
++    t = t_(n)
++    x = np.zeros(n)
++    for m in notes:
++        for d in (-0.006, -0.002, 0.003, 0.007):
++            x += 2 * ((mtof(m) * (1 + d) * t + d * 40) % 1.0) - 1
++    x = svf(x / (4 * len(notes)), 2600, 0.6)
++    return x * env_ad(n, 0.03, 0.25)
++
++
++def organ(notes, dur):
++    n = int(FS * dur)
++    t = t_(n)
++    x = np.zeros(n)
++    for m in notes:
++        f = mtof(m)
++        x += np.sin(2 * np.pi * f * t) + 0.6 * np.sin(4 * np.pi * f * t) + 0.35 * np.sin(6 * np.pi * f * t)
++    x = sat(x / len(notes) * 0.8, 2.0)
++    return x * env_ad(n, 0.004, 0.3) * (1 + 0.2 * np.sin(2 * np.pi * 6.5 * t))
++
++
++def supersaw(notes, dur, cut=6000, decay=0.22, seed=0):
++    n = int(FS * dur)
++    t = t_(n)
++    r = np.random.default_rng(seed)
++    x = np.zeros(n)
++    for m in notes:
++        for d in np.linspace(-0.018, 0.018, 7):
++            ph = r.random()
++            x += 2 * ((mtof(m) * (1 + d) * t + ph) % 1.0) - 1
++    x /= 7 * len(notes)
++    fc = 500 + cut * env_ad(n, 0.002, 0.09)
++    x = svf(x, fc, 1.1)
++    return x * env_ad(n, 0.002, decay)
++
++
++# ------------------------------------------------------------- the voice ---
++VOWELS = {"a": (800, 1150, 2900), "o": (450, 800, 2830), "e": (400, 2000, 2550), "u": (325, 700, 2530),
++          "i": (300, 2300, 3000), "ae": (660, 1700, 2400), "uh": (600, 1040, 2250)}
++
++
++def voice(segments, f0=170, dur=0.3, seed=21, breath=0.0, gruff=0.0):
++    """segments: [(vowel, seconds)], gliding between them; a glottal saw through 3 formants"""
++    n = int(FS * dur)
++    t = t_(n)
++    r = np.random.default_rng(seed)
++    tot = sum(s for _, s in segments)
++    # the formant tracks
++    F = np.zeros((3, n))
++    pos = 0
++    for k, (v, s) in enumerate(segments):
++        m = int(n * s / tot)
++        a = np.array(VOWELS[v], dtype=float)
++        b = np.array(VOWELS[segments[min(k + 1, len(segments) - 1)][0]], dtype=float)
++        for j in range(3):
++            F[j, pos:pos + m] = np.linspace(a[j], b[j], m) if k + 1 < len(segments) else a[j]
++        pos += m
++    F[:, pos:] = F[:, pos - 1:pos]
++    pitch = f0 * (1 + 0.08 * np.exp(-t / 0.05)) * (1 - 0.06 * t / dur) * (1 + 0.012 * r.standard_normal(n).cumsum() / np.sqrt(n))
++    ph = np.cumsum(pitch) / FS
++    src = (2 * (ph % 1.0) - 1) ** 3 * 1.5 + r.standard_normal(n) * (0.08 + breath)
++    if gruff:
++        src *= 1 + gruff * np.sin(2 * np.pi * pitch * 0.5 * t)
++    y = sum(bandpass(src, F[j], (6, 9, 11)[j]) * (1.0, 0.6, 0.3)[j] for j in range(3))
++    return sat(y * env_ad(n, 0.015, dur * 0.35) * 1.6, 1.3)
++
++
++def consonant(kind, dur=0.06, seed=31):
++    n = int(FS * dur)
++    r = np.random.default_rng(seed)
++    if kind == "h":
++        return fft_filter(r.standard_normal(n), 900, 5000) * env_ad(n, 0.01, 0.025) * 0.5
++    if kind == "ch":
++        return fft_filter(r.standard_normal(n), 2500, 8000) * env_ad(n, 0.002, 0.03) * 0.7
++    if kind == "s":
++        return fft_filter(r.standard_normal(n), 4500, 10000) * env_ad(n, 0.01, 0.05) * 0.5
++    return np.zeros(n)
++
++
++def word(cons, segs, f0, dur, seed, **kw):
++    c = consonant(cons, 0.05, seed + 1) if cons else np.zeros(0)
++    v = voice(segs, f0, dur - len(c) / FS, seed, **kw)
++    return np.concatenate([c, v])
++
++
++def scratch(dur, seed=41):
++    """a baby scratch on a vocal 'ahh': the record pushed forth and back"""
++    n = int(FS * dur)
++    src = voice([("a", 1.0)], 150, 1.2, seed)
++    t = t_(n)
++    speed = np.sin(2 * np.pi * t / dur * 2) * 2.2
++    pos = np.clip(np.cumsum(speed) / FS * FS + FS * 0.25, 0, len(src) - 2)
++    i = pos.astype(int)
++    fr = pos - i
++    x = src[i] * (1 - fr) + src[i + 1] * fr
++    x *= np.minimum(1, np.abs(speed) * 1.5)
++    return sat(x * 1.5, 1.5)
++
++
++# ------------------------------------------------------------- the banks ---
++def bar_len(bpm, bars=1):
++    return int(round(FS * 240.0 / bpm * bars))
++
++
++def one_shots(shots, bpm, bars=1, gains=None):
++    """8 one-shots, each in its slice, each brought to the same peak (times gains[k])"""
++    n = bar_len(bpm, bars)
++    s = n // 8
++    y = np.zeros(n)
++    for k, x in enumerate(shots):
++        place(y, norm(fit(x, s), 0.9 * (gains[k] if gains else 1.0)), k * s)
++    return y
++
++
++def bank_187():
++    bpm = 96
++    out = {}
++    # BOOMBAP: one dusty bar, swung 16ths (MPC 58 %)
++    n = bar_len(bpm)
++    s16 = n / 16
++    sw = 0.16 * s16
++    y = np.zeros(n)
++    k1 = kick(0.45, 140, 50, 0.04, 0.28, 0.7, 2.6, 3)
++    k2 = kick(0.35, 120, 52, 0.035, 0.2, 0.4, 2.2, 4)
++    sn = room(snare(0.32, 190, 0.09, 0.17, 1.0, 1300, 8000, 2.0, 5), 0.3, 0.25, 6)
++    gh = snare(0.12, 210, 0.04, 0.05, 0.6, 1800, 7000, 1.4, 8) * 0.28
++    for st, x, g in ((0, k1, 1.0), (7, k2, 0.8), (10, k1, 0.9), (13, k2, 0.5), (4, sn, 1.0), (12, sn, 1.0),
++                     (6, gh, 1.0), (15, gh, 1.0), (9, gh, 0.6)):
++        place(y, x, st * s16 + (sw if st % 2 else 0), g)
++    for st in range(0, 16, 2):
++        place(y, hat(0.08, 0.025 if st % 4 else 0.035, 6500, 7 + st), st * s16, 0.32 if st % 4 else 0.42)
++    for st in (3, 11):
++        place(y, hat(0.05, 0.015, 8000, 30 + st), st * s16 + sw, 0.14)
++    place(y, hat(0.5, 0.03, 6000, 77, open_=True), 14 * s16, 0.22)
++    y = dusty(y + vinyl(n, 13, 0.05, 0.01), 12, 10500, 1.6)
++    out["BOOMBP"] = (y, 1)
++    # DRUMS: 8 one-shots: kick, kick 2, snare, rim snare, hat, open hat, shaker, clap
++    shots = [kick(0.33, 150, 50, 0.04, 0.24, 0.8, 2.8, 51), kick(0.33, 110, 44, 0.05, 0.3, 0.3, 2.0, 52),
++             room(snare(0.33, 195, 0.08, 0.15, 1.1, 1200, 8000, 2.2, 53), 0.25, 0.25, 54),
++             snare(0.25, 330, 0.03, 0.07, 0.7, 2500, 9000, 2.0, 55), hat(0.1, 0.022, 6500, 56),
++             hat(0.33, 0.03, 6000, 57, open_=True), shaker(0.2, 58), room(clap(0.33, 59), 0.25, 0.3, 60)]
++    out["DRUMS"] = (dusty(one_shots(shots, bpm, 1, [1, 1, 1, 0.8, 0.5, 0.55, 0.45, 0.85]) + vinyl(bar_len(bpm), 61, 0.02, 0.006), 12, 11000, 1.3), 1)
++    # STABS: D minor, 8 chords (Rhodes, horns, strings, organ)
++    dm9, gm9, bbmaj7, a7b9 = [50, 53, 57, 60, 64], [55, 58, 62, 65, 69], [58, 62, 65, 69], [57, 61, 64, 67, 70]
++    shots = [rhodes(dm9, 0.33), rhodes(gm9, 0.33), brass([62, 65, 69], 0.33), brass([60, 64, 67, 70], 0.33),
++             strings(bbmaj7, 0.33), strings(a7b9, 0.33), organ([50, 57, 62, 65], 0.33), rhodes([45, 52, 55, 60], 0.33)]
++    shots = [room(sat(x * 1.6, 1.2), 0.3, 0.2, 70 + k) for k, x in enumerate(shots)]
++    out["STABS"] = (dusty(one_shots(shots, bpm), 12, 10000, 1.2), 1)
++    # VOX: HEY, YO, UH, HO, AHH, YEAH, HUH, a scratch
++    shots = [word("h", [("e", 0.6), ("i", 0.4)], 190, 0.3, 81), word(None, [("i", 0.25), ("o", 0.75)], 160, 0.3, 82, gruff=0.3),
++             word(None, [("uh", 1.0)], 140, 0.22, 83, gruff=0.5), word("h", [("o", 1.0)], 175, 0.28, 84),
++             word(None, [("a", 1.0)], 210, 0.33, 85, breath=0.05), word(None, [("i", 0.2), ("ae", 0.8)], 180, 0.33, 86),
++             word("h", [("uh", 1.0)], 150, 0.2, 87, gruff=0.4), scratch(0.3, 88)]
++    shots = [room(x, 0.25, 0.2, 90 + k) for k, x in enumerate(shots)]
++    out["VOX"] = (dusty(one_shots(shots, bpm), 12, 11000, 1.3), 1)
++    return out
++
++
++def bank_888():
++    bpm = 155
++    out = {}
++    n = bar_len(bpm)
++    s16 = n / 16
++    # RUMBLE: the offbeat rumble (a kick's tail through a dark, driven room), ducked on the beat
++    y = np.zeros(n)
++    kk = kick(0.3, 180, 46, 0.03, 0.16, 0.2, 3.5, 101)
++    for b in range(4):
++        place(y, kk, b * 4 * s16, 0.5)
++    wet = room(y, 0.9, 1.0, 102, 600)
++    wet = fft_filter(sat(wet * 3, 2.5), 30, 220)
++    duck = np.ones(n)
++    for b in range(4):
++        a = int(b * 4 * s16)
++        m = int(s16 * 1.6)
++        duck[a:a + m] = np.linspace(0, 1, m) ** 2
++    out["RUMBLE"] = (sat(wet * duck * 2, 1.5), 1)
++    # GABBA: four distorted kicks, the "boing" left in
++    y = np.zeros(n)
++    gk = kick(0.36, 260, 56, 0.025, 0.25, 0.9, 9.0, 103)
++    gk = svf(gk, 900, 3.0) * 0.5 + gk
++    for b in range(4):
++        place(y, sat(gk, 2.0), b * 4 * s16)
++    out["GABBA"] = (crush(sat(y, 1.5), 10), 1)
++    # TRANCE: 8 supersaw stabs, A minor, two bars (a slice = a beat)
++    ch = [[57, 60, 64, 69], [53, 57, 60, 65], [60, 64, 67, 72], [55, 59, 62, 67],
++          [52, 55, 59, 64], [50, 53, 57, 62], [69, 72, 76, 81], [52, 56, 59, 64]]
++    shots = [room(supersaw(c, 0.38, 7000, 0.2, 110 + k), 0.4, 0.3, 120 + k) for k, c in enumerate(ch)]
++    out["TRANCE"] = (one_shots(shots, bpm, 2), 2)
++    # HITS: metal clang, noise crash, laser, riser, HEY (shout), horn, industrial hit, siren chirp
++    d = 0.19
++    nn = int(FS * d)
++    t = t_(nn)
++    r = np.random.default_rng(130)
++    clang = sum(np.sin(2 * np.pi * f * t + 3 * np.sin(2 * np.pi * f * 1.41 * t) * env_exp(nn, 0.04))
++                for f in (233, 377, 611)) * env_ad(nn, 0.001, 0.07) / 3
++    crash = sat(fft_filter(r.standard_normal(nn), 400, 9000) * env_ad(nn, 0.001, 0.08) * 2, 2)
++    laser = np.sin(2 * np.pi * np.cumsum(3000 * np.exp(-t / 0.03) + 80) / FS) * env_ad(nn, 0.001, 0.08)
++    rise = fft_filter(r.standard_normal(nn), 800, 7000) * (t / d) ** 2
++    rise = svf(rise, 300 + 8000 * (t / d) ** 2, 2.0, "bp") * 3
++    hey = sat(word("h", [("e", 0.6), ("i", 0.4)], 230, d, 131, gruff=0.6) * 1.5, 2.5)
++    horn = brass([57, 61, 64], d, 5000)
++    ind = sat(kick(d, 400, 70, 0.01, 0.06, 1.0, 6, 132) + crash * 0.6, 3)
++    siren = np.sign(np.sin(2 * np.pi * np.cumsum(900 + 500 * np.sin(2 * np.pi * 14 * t)) / FS)) * env_ad(nn, 0.005, 0.1) * 0.5
++    shots = [room(x, 0.3, 0.25, 140 + k) for k, x in enumerate([clang, crash, laser, rise, hey, horn, ind, siren])]
++    out["HITS"] = (sat(one_shots(shots, bpm) * 1.3, 1.4), 1)
++    return out
++
++
++def main():
++    if len(sys.argv) < 3 or sys.argv[1] not in ("187", "888"):
++        sys.exit(__doc__)
++    out = Path(sys.argv[2])
++    out.mkdir(parents=True, exist_ok=True)
++    bank = bank_187() if sys.argv[1] == "187" else bank_888()
++    bpm = 96 if sys.argv[1] == "187" else 155
++    lines = [f"# name bars bpm (synthesised by tools/md_gen_samples.py {sys.argv[1]}: no recordings)"]
++    for name, (x, bars) in bank.items():
++        y = norm(decimate(x), 0.92)
++        write_wav(out / f"{name}.wav", y)
++        lines.append(f"{name} {bars} {bpm}")
++        print(f"{name:7s} {bars} bar(s) {len(y)} samples")
++    (out / "bank.txt").write_text("\n".join(lines) + "\n")
++
++
++if __name__ == "__main__":
++    main()
