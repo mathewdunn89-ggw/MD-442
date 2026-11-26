@@ -6,7 +6,7 @@ on:
 permissions:
   contents: write
 env:
-  MD442_VERSION: '1.0.${{ github.run_number }}'
+  MD442_VERSION: '1.1.${{ github.run_number }}'  # 1.1.x on the new repo (run numbers restarted; the old repo ended at 1.0.4)
 jobs:
   mac:
     runs-on: macos-latest
