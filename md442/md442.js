@@ -1351,7 +1351,27 @@ function guide() {
 // Scene 1..8 → keyboard patterns 9..16 (patterns 1-7 keep Mathew's factory beats). Firmware cmd 50 (see firmware/src/app/editor.c).
 // Saving a beat (saveBeat) sends it automatically when an MD|442 keyboard has answered once this session.
 const KB_ROWS = ['BD', 'SD', 'LT', 'MT', 'HT', 'RS', 'CP', 'CH', 'OH', 'CR', 'RD', 'AC', 'BS'];   // firmware drum909.h order, then accent, bass
-const kbx = { sx: null, outs: [], ok: false, wait: null };
+const kbx = { sx: null, outs: [], ok: false, wait: null, out: null, live: true, lastF: '', lastM: '' };
+try { kbx.live = localStorage.getItem('md442-kblive') !== '0'; } catch (_) {}
+// LIVE: once a keyboard has answered, every change to the scene on screen (steps, accents, bass, tempo, swing, scene switch)
+// is written into its pattern 9+ and cued there, and drum mutes follow. Checked every 150 ms, sent only when something changed.
+const KB_DRUMS = KB_ROWS.slice(0, 11);
+function kbMuteMask() { let m = 0; KB_DRUMS.forEach((k, i) => { if (S.mute[k] || (S.solo && S.solo !== k)) m |= 1 << i; }); return m; }
+setInterval(() => {
+  if (!kbx.live || !kbx.out || !S.scenes || !S.scenes[S.sc] || S.sc > 7) return;
+  try {
+    const f = kbFrame(0x20 | (8 + S.sc), S.scenes[S.sc]), fs = f.join(',');
+    if (fs !== kbx.lastF) { kbx.lastF = fs; kbx.out.send(f); }
+    const m = kbMuteMask(), ms = String(m);
+    if (ms !== kbx.lastM) { kbx.lastM = ms; kbx.out.send([0xF0, 0x7D, 0x46, 0x4C, 51, m & 0x7F, (m >> 7) & 0x0F, 0xF7]); }
+  } catch (_) { kbx.out = null; }
+}, 150);
+function kbLive() {
+  kbx.live = !kbx.live; try { localStorage.setItem('md442-kblive', kbx.live ? '1' : '0'); } catch (_) {}
+  kbx.lastF = kbx.lastM = ''; drawAll();
+  if (kbx.live && !kbx.out) sendToKeyboard(false).then(() => { if (kbx.out) toast('LIVE: the keyboard now follows this scene and its mutes.'); });
+  else toast(kbx.live ? 'LIVE: the keyboard follows this scene and its mutes.' : 'LIVE off: the keyboard keeps its own patterns.');
+}
 const kbBits = row => { let m = 0; row.forEach((on, i) => { if (on) m |= 1 << i; }); return [m & 127, (m >> 7) & 127, (m >> 14) & 3]; };
 function kbFrame(slot, sc) {
   const bpm = Math.round(P.bpm), sw = clamp(Math.round((P.shuffle - 50) / 25 * 100), 0, 100), root = 40 + Math.round(P.key), acid = Math.round(P['bs.acid'] || 0);
@@ -1374,21 +1394,23 @@ async function kbAccess() {
 const kbAsk = (out, f) => new Promise(res => { kbx.wait = res; try { out.send(f); } catch (_) { kbx.wait = null; res(false); } setTimeout(() => { if (kbx.wait === res) { kbx.wait = null; res(false); } }, 1500); });
 async function sendToKeyboard(quiet) {
   if (!(await kbAccess())) return;
+  kbx.out = null;                                   // LIVE pauses while the scenes go over, so its replies don't mix in
   const scenes = S.scenes.slice(0, 8);
   for (const out of kbx.outs) {                     // the first output that answers is the keyboard
     if (!(await kbAsk(out, kbFrame(8, scenes[0])))) continue;
     for (let i = 1; i < scenes.length; i++) await kbAsk(out, kbFrame(8 + i, scenes[i]));
-    kbx.ok = true;
+    kbx.ok = true; kbx.out = out; kbx.lastF = kbx.lastM = ''; drawAll();
     toast('Sent to ' + (out.name || 'the keyboard') + ': ' + scenes.length + (scenes.length > 1 ? ' scenes on patterns 9–' + (8 + scenes.length) : ' scene on pattern 9') + '. The dub stab stays on the computer.');
     return;
   }
   if (!quiet) toast('No MD|442 keyboard answered. Connect it by USB and check it runs MD|442 firmware 1.1 or newer.');
 }
 function buildMidi(box) {
-  const stat = h('p', 'mstat'), row = h('div', 'kctl'), list = h('div', 'mlist'), lk = key('LEARN', midiLearn, 'led'), ck = key('CLEAR MAPPINGS', () => { midi.cc = {}; midi.note = {}; midiKeep(); drawAll(); toast('MIDI mappings cleared'); }), con = key('CONNECT', midiConnect), sk = key('SEND TO KEYBOARD', () => sendToKeyboard(false)), cko = key('CLOCK OUT', () => { midi.cko = !midi.cko; midiKeep(); if (midi.cko && !midi.access) midiConnect(); if (!midi.cko) clockStop(); drawAll(); toast(midi.cko ? 'Clock out on: MIDI devices follow MD|442\'s tempo, start and stop' : 'Clock out off'); }, 'led');
+  const stat = h('p', 'mstat'), row = h('div', 'kctl'), list = h('div', 'mlist'), lk = key('LEARN', midiLearn, 'led'), ck = key('CLEAR MAPPINGS', () => { midi.cc = {}; midi.note = {}; midiKeep(); drawAll(); toast('MIDI mappings cleared'); }), con = key('CONNECT', midiConnect), sk = key('SEND TO KEYBOARD', () => sendToKeyboard(false)), lv = key('LIVE', kbLive, 'led'), cko = key('CLOCK OUT', () => { midi.cko = !midi.cko; midiKeep(); if (midi.cko && !midi.access) midiConnect(); if (!midi.cko) clockStop(); drawAll(); toast(midi.cko ? 'Clock out on: MIDI devices follow MD|442\'s tempo, start and stop' : 'Clock out off'); }, 'led');
   live(cko, () => { cko.classList.toggle('on', !!midi.cko); cko.setAttribute('aria-pressed', !!midi.cko); });
   const dp = key('◀ DRUM', () => { if (!learnAct('prev')) stepDrum(-1); }), dn = key('DRUM ▶', () => { if (!learnAct('next')) stepDrum(1); });
-  row.append(con, lk, ck, cko, sk, dp, dn); box.append(stat, row, list, guide(), h('p', 'note', 'Pads on MIDI channel 10 play the drums with the standard drum notes (36 kick, 38 snare, 39 clap, 42 and 46 hats…). Keys play the bass or the stab, whichever the keyboard panel is set to. LEARN ties any hardware knob, fader, pad or button to anything on screen: a drum, a knob, ▶ PLAY, ◀ DRUM / DRUM ▶, MUTE or a scene. Press LEARN, click it on screen, then press the control. Start, stop, continue and the tempo (MIDI clock) from a controller or a DAW are followed. CLOCK OUT does the opposite: an FM-1, an SMK-37 with MD|442 firmware, Maschine or Ableton follow MD|442\'s tempo, start and stop.'));
+  live(lv, () => { lv.classList.toggle('on', !!(kbx.live && kbx.out)); lv.setAttribute('aria-pressed', !!(kbx.live && kbx.out)); });
+  row.append(con, lk, ck, cko, sk, lv, dp, dn); box.append(stat, row, list, guide(), h('p', 'note', 'Pads on MIDI channel 10 play the drums with the standard drum notes (36 kick, 38 snare, 39 clap, 42 and 46 hats…). Keys play the bass or the stab, whichever the keyboard panel is set to. LEARN ties any hardware knob, fader, pad or button to anything on screen: a drum, a knob, ▶ PLAY, ◀ DRUM / DRUM ▶, MUTE or a scene. Press LEARN, click it on screen, then press the control. Start, stop, continue and the tempo (MIDI clock) from a controller or a DAW are followed. LIVE (on once a keyboard with MD|442 firmware 1.2 has answered SEND TO KEYBOARD) keeps the keyboard on the scene you are editing, with the same mutes. CLOCK OUT does the opposite: an FM-1, an SMK-37 with MD|442 firmware, Maschine or Ableton follow MD|442\'s tempo, start and stop.'));
   live(lk, () => { lk.classList.toggle('on', midi.learn); lk.setAttribute('aria-pressed', midi.learn); });
   live(stat, () => {
     stat.textContent = !navigator.requestMIDIAccess ? NOMIDI : !midi.access ? 'Press CONNECT and allow MIDI.' : (midi.names.length ? 'Connected: ' + midi.names.join(', ') : 'MIDI is on. No controller found yet.') + (midi.learn ? (midi.armP ? ' · LEARN: now move a hardware control for ' + DEF[midi.armP].lb : midi.armD ? ' · LEARN: now hit a pad for ' + NAME[midi.armD] : midi.armA ? ' · LEARN: now press a pad for ' + actName(midi.armA) : ' · LEARN: touch a knob, drum, scene or MUTE on screen') + (midi.synced ? ' · following MIDI clock' : '') : '') + (midi.last ? ' · last: ' + midi.last : '');
