@@ -1506,6 +1506,7 @@ function kbBreak(slot, sc) {
 function kbIn(e) {
   const d = e.data; if (!d || d[0] !== 0xF0 || d[1] !== 0x7D || d[2] !== 0x46 || d[3] !== 0x4C) return;
   if (d[4] === 50 && kbx.wait) { const w = kbx.wait; kbx.wait = null; w(d[6] === 0); }
+  if (d[4] === 25 && d.length >= 8) { const v = String((d[6] << 7) | d[7]); if (STYLES[v]) { kbx.variant = v; if (v !== S.style) toast('This keyboard runs ' + STYLES[v].name + ' firmware: the beat plays there with the ' + STYLES[v].name + ' sounds and sample bank.'); } }   // PING: which firmware the keyboard runs (MD|187 / MD|888 builds 1.3+)
 }
 async function kbAccess() {
   if (kbx.sx) return true;
@@ -1524,6 +1525,7 @@ async function sendToKeyboard(quiet) {
     try { out.send(kbBreak(8, scenes[0])); } catch (_) {}
     for (let i = 1; i < scenes.length; i++) { await kbAsk(out, kbFrame(8 + i, scenes[i])); try { out.send(kbBreak(8 + i, scenes[i])); } catch (_) {} }
     kbx.ok = true; kbx.out = out; kbx.lastF = kbx.lastM = ''; drawAll();
+    setTimeout(() => { try { out.send([0xF0, 0x7D, 0x46, 0x4C, 25, 0xF7]); } catch (_) {} }, 2400);   // ask which machine it is, after the toast below has been read
     toast('Sent to ' + (out.name || 'the keyboard') + ': ' + scenes.length + (scenes.length > 1 ? ' scenes on patterns 9–' + (8 + scenes.length) : ' scene on pattern 9') + '. The dub stab stays on the computer' + (S.style === '442' ? '.' : '; the SAMPLE row plays the keyboard\'s own ' + STYLES[S.style].name + ' bank.'));
     return;
   }
