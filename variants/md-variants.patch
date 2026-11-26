@@ -129,9 +129,18 @@ index baf5e5d..b70cc1f 100644
      if (timed)
          PROF_ADD(PR_BRK, pt);
 diff --git a/firmware/src/app/main_fm1.c b/firmware/src/app/main_fm1.c
-index 0e44bf0..eacc1ea 100644
+index 0e44bf0..7ec128e 100644
 --- a/firmware/src/app/main_fm1.c
 +++ b/firmware/src/app/main_fm1.c
+@@ -198,7 +198,7 @@ static void smk_faders(void)
+                                            {"BREAK LEVEL", "REV RETURN", "DLY RETURN", "FILTER"}};
+     static uint8_t last[4] = {0xFF, 0xFF, 0xFF, 0xFF}, held;
+     uint32_t i, down = (fm1_in.buttons >> SMK_BTN_FADER_BANK) & 1u;
+-    if (down && !held) {                                /* FADER BANK: the other bank, each fader waits to move */
++    if (down && !held && !(plat_buttons() & (1u << B_HOME))) {   /* FADER BANK: the other bank (PATCH + it: md_perform.c) */
+         smk_fbank ^= 1u;
+         for (i = 0; i < 4u; i++)
+             last[i] = 0xFF;
 @@ -249,6 +249,7 @@ static void smk_faders(void)
   * has reached. On a 303 (the part on screen) they play its sound without changing what is saved: pitch = its
   * TUNE (about +-1.5 semitones), mod = its CUTOFF opened from the saved value up to the top. Released (or
@@ -148,7 +157,7 @@ index 0e44bf0..eacc1ea 100644
      if (part != (is_303() ? bidx() : -1)) {          /* another part: the last 303 sounds as saved again */
          if (part >= 0 && tune_now >= 0)
              engine_set(T_303, part, BASS303_TUNE, proj.sound.v[T_303][part][BASS303_TUNE]);
-@@ -339,12 +341,15 @@ static void smk_arrows(void)
+@@ -339,21 +341,33 @@ static void smk_arrows(void)
  /* every frame, after ui_frame; the wheels also between frames. The 10 outer keys (C3..E3, G#5..C6) have no
   * X0X role: their events are dropped. */
  /* pads as a step grid (steps, patterns: 1-8 top row) unless they play notes (a 303's REC keyboard) */
@@ -164,22 +173,29 @@ index 0e44bf0..eacc1ea 100644
 +
  static void smk_frame(void)
  {
-     while (smk_extkey_take() >= 0)
-@@ -352,8 +357,12 @@ static void smk_frame(void)
+-    while (smk_extkey_take() >= 0)
+-        ;
++    {
++        int32_t ev;
++        while ((ev = smk_extkey_take()) >= 0)
++            md_extkey(ev);                           /* MD PERFORM: the end keys are the performance keys */
++    }
      smk_arrows();
      smk_faders();
      smk_wheels();
 +    md_frame();
      smk_grid();
 -    smk_pads();
-+    if (md_pads_muting)
++    if (md_mute_on)
 +        md_mute_leds();
++    else if (md_drums)
++        md_drum_leds();
 +    else
 +        smk_pads();
  }
  #endif
  
-@@ -442,7 +451,7 @@ static void safe_main(void)
+@@ -442,7 +456,7 @@ static void safe_main(void)
          if ((fm1_in.buttons & play) && fm1_ms - t0 > 500u) {
              bootguard.failed = 0;                   /* try X0X again, from scratch */
              bootguard.pending = 0;
@@ -188,7 +204,7 @@ index 0e44bf0..eacc1ea 100644
              usb_detach();
              fm1_delay_ms(30);
              fm1_reboot();
-@@ -478,9 +487,9 @@ static void fm1_main(void)
+@@ -478,9 +492,9 @@ static void fm1_main(void)
          }
      }
      lcd_init();
@@ -259,26 +275,34 @@ index 9bbe9f6..6ac144b 100644
 +#endif
 diff --git a/firmware/src/app/md_perform.c b/firmware/src/app/md_perform.c
 new file mode 100644
-index 0000000..a280016
+index 0000000..48edfdb
 --- /dev/null
 +++ b/firmware/src/app/md_perform.c
-@@ -0,0 +1,333 @@
+@@ -0,0 +1,719 @@
 +/* SPDX-License-Identifier: GPL-3.0-only */
-+/* MD|442 PERFORM: the SMK-37's controls laid out for playing a live set from the keyboard alone
++/* MD PERFORM: the SMK-37's controls laid out for building beats and mixing them live from the keyboard alone
 + * (MD442, MD187 and MD888 share it). Included by main_fm1.c after the UI (ui.c) in this unity build.
 + *
-+ *   OCTAVE- / OCTAVE+        the previous / next instrument: the 909's tracks, the 808's, 303A, 303B, BREAK
-+ *   PATCH + OCTAVE- / +      the previous / next part (its first instrument)
-+ *   < / >                    what OCT- / OCT+ were: the bars (16 steps at a time), a 303 keyboard's octave,
-+ *                            TB-3PO's mutate / new line, HOME's pattern bank
-+ *   PATCH + < / >            the previous / next pattern (all parts, at the end of the bar)
-+ *   K2 K3 K4 (top right)     the selected instrument's FILTER (middle off, left low-pass, right high-pass),
-+ *                            RESONANCE and TONE (a drum: its DECAY; a 303: CUTOFF, RESO, ENV MOD; BREAK: PITCH)
-+ *   PATCH + K2 / K3 / K4     tempo / part / pattern (X0X's SELECT, ALGORITHM, PRESETS while PATCH is held)
-+ *   KNOB BANK                tap: the pads mute (lit while on); hold: mute while held
-+ *   MUTE pads                1-11 the tracks of the kit on screen, 12-16 the parts 909 808 303A 303B BREAK
-+ *   PATCH + KNOB BANK        unmute everything
-+ *   mod wheel                on a drum or the BREAK: a high-pass riser on that instrument; on a 303 as before
++ * Built like the live boxes it learns from: one thing selected and every hand control on it (TR-8S, Push),
++ * mutes and solos one touch away (Elektron's mute mode, Maschine's SHIFT solo), performance moves that are
++ * held and let go (TR scatter, Maschine Perform FX, a DJ mixer's filter and echo), and a return that waits
++ * for the one so a drop always lands on time.
++ *
++ *   SELECT    black keys or OCTAVE- / +: the instrument (909's 11 tracks, 808's, 303A, 303B, BREAK);
++ *             PATCH + OCTAVE- / +: the part
++ *   SOUND     K2 FILTER (left low-pass, right high-pass, rests at the middle), K3 RESONANCE, K4 DECAY
++ *             (a 303: CUTOFF, RESO, ENV MOD; the BREAK: PITCH); K5..K8 the page on screen; K1 MASTER
++ *   BUILD     pads: the selected instrument's 16 steps; REC + keys or pads: record live
++ *   SCENES    PATCH + < / >: the pattern before / after, at the bar; PATCH + a pad: that pattern
++ *   MUTE      KNOB BANK tap: mute pads (1-11 tracks, 12-16 parts), hold: while held; PATCH + a pad: solo;
++ *             PATCH + KNOB BANK: unmute all
++ *   DRUMS     PATCH + FADER BANK: the pads play the kit (velocity; REC records to the nearest step)
++ *   LEFT END  C3 REPEAT 1/2, C#3 1/4, D3 1/8, D#3 1/16 (hold; the fastest held wins), E3 FILL (a roll on the
++ *             instrument, 8ths, then 16ths, then 32nds, getting louder)
++ *   RIGHT END G#5 ECHO THROW, A5 KILL LOW (kicks + bass out), A#5 WASH (reverb), B5 RISER (high-pass sweep up),
++ *             C6 DROP (all out); the throws ring out; KILL LOW, RISER and DROP come back on the next one.
++ *             PATCH + ECHO / WASH: every part, not only the one on screen
++ *   mod wheel on a drum or the BREAK: a high-pass riser on that instrument; on a 303 its cutoff
 + * In a list, a question or GLO, K2..K4 are SELECT, ALGORITHM and PRESETS again. */
 +
 +#include "../dsp/drum808.h"
@@ -485,6 +509,352 @@ index 0000000..a280016
 +    padled_flush();
 +}
 +
++/* ------------------------------------------------------------------- solo --- */
++static uint8_t md_solo = 0xFF;                         /* the soloed pad, 0xFF = none */
++static uint32_t md_solo_m, md_solo_v;                  /* the mutes before it */
++static void md_solo_pad(int w)
++{
++    uint32_t all = 0, i;
++    for (i = 0; i < NPARTS; i++)
++        all |= MUTE_MASK[i];
++    if (md_solo == w) {                                 /* again: as it was */
++        seq.mute = md_solo_m;
++        seq.vmute = md_solo_v;
++        md_solo = 0xFF;
++        say("SOLO OFF", 0);
++        return;
++    }
++    if (md_solo == 0xFF) {
++        md_solo_m = seq.mute;
++        md_solo_v = seq.vmute;
++    }
++    md_solo = (uint8_t)w;
++    if (w < 11) {
++        int km = md_mute_kit(), v = km ? MD_ORD808[w] : MD_ORD909[w];
++        seq.mute = all & ~MUTE_MASK[km];
++        seq.vmute = (md_solo_v & ~MUTE_MASK[km]) | (MUTE_MASK[km] & ~(1u << (km * NDRUM + v)));
++        say("SOLO ", engine_voice_name(km ? T_808 : T_909, v));
++    } else {
++        seq.mute = all & ~MUTE_MASK[w - 11];
++        say("SOLO ", PART_N[w - 11]);
++    }
++}
++
++/* --------------------------------------------------------------- drum pads --- */
++static uint8_t md_drums;                               /* PATCH + FADER BANK: the pads play the kit */
++static uint16_t md_drum_lit;                           /* pads held */
++static void md_drum_pad(int w, int vel)                /* pads 1-11: the kit on screen, 12-16: the other's BD SD CP CH OH */
++{
++    int km = md_mute_kit(), v;
++    float f = (float)(vel < 1 ? 1 : vel) / 127.0f;
++    if (w >= 11)
++        km ^= 1;
++    v = km ? MD_ORD808[w < 11 ? w : w - 11] : MD_ORD909[w < 11 ? w : w - 11];
++    engine_drum(km, v, f);
++    ui.act_t = plat_ms();
++    if (km == ui.part && ui.sel[km] != v) {             /* the pad played is the one the knobs shape */
++        ui.sel[km] = (uint8_t)v;
++        build_pages();
++    }
++    if (ui.rec && seq.playing) {                       /* to the nearest step: a late half goes to the next */
++        int t = TRK_DRUM + km, s = eng_step[t];
++        uint32_t L = seq_step_q8(&seq, pat_of(km)->drum[km].rate & 3);
++        dpart_t *d = &pat_of(km)->drum[km];
++        if (seq.t[t].to_next != 0xFFFFFFFFu && seq.t[t].to_next < L / 2u) {
++            uint32_t l = fm1__lock();
++            s = seq_next_step(&seq, t, s);
++            seq.skip1 |= 1u << (km * NDRUM + v);       /* heard now: the step does not play it again */
++            fm1__unlock(l);
++        }
++        sm_set(d->hit[v], s);
++        if (f >= 0.9f)
++            sm_set(d->accent, s);
++        mark_dirty();
++    }
++}
++
++static void md_drum_leds(void)
++{
++    uint32_t w;
++    int km = md_mute_kit();
++    for (w = 0; w < SMK_NPAD; w++) {
++        int k = w < 11 ? km : km ^ 1, v = k ? MD_ORD808[w < 11 ? w : w - 11] : MD_ORD909[w < 11 ? w : w - 11];
++        uint16_t c = PART_COL[k];
++        int sh = (md_drum_lit >> w) & 1u ? 0 : (k == ui.part && ui.sel[k] == v) ? 1 : w < 11 ? 3 : 4;
++        padled_set(w, (uint8_t)(((uint32_t)(c >> 11) * 255u / 31u) >> sh), (uint8_t)(((uint32_t)((c >> 5) & 63u) * 255u / 63u) >> sh),
++                   (uint8_t)(((uint32_t)(c & 31u) * 255u / 31u) >> sh));
++    }
++    padled_flush();
++}
++
++/* ------------------------------------------------------ performance keys --- */
++/* the 10 end keys the X0X has no use for: C3..E3 (keybed keys 0..4), G#5..C6 (32..36); held, they play */
++enum { PK_R2, PK_R4, PK_R8, PK_R16, PK_FILL, PK_ECHO, PK_KILL, PK_WASH, PK_RISE, PK_DROP, PK_N };
++static uint16_t md_pk;                                 /* held */
++static uint32_t md_pk_t0[PK_N];
++static uint16_t md_pk_bar0[PK_N];
++static uint8_t md_pk_all[PK_N];                        /* PATCH held when pressed: every part */
++static uint32_t md_kill_m, md_kill_v, md_drop_m;       /* the mute bits each one added */
++static int16_t md_save_mix[NPARTS][2];                 /* REV / DLY sends before a throw, a wash or a riser */
++static uint8_t md_send_hold[NPARTS][2];                /* who holds them: bit 0 throw/wash, bit 1 riser */
++static int16_t md_save_fx[4] = {-1, -1, -1, -1};       /* RV level, DL level, DL feedback, master FILTER */
++static uint32_t md_tail_t[2];                          /* a throw's / a wash's return: back at this time (0 = none) */
++static uint8_t md_rise_pend;                           /* the riser lets go at the next one */
++static uint16_t md_rise_bar;
++
++static uint32_t md_bar_ms(void)
++{
++    float b = seq_tempo(&seq);
++    return (uint32_t)(240000.0f / (b > 20.0f ? b : 120.0f));
++}
++static int md_sound(int t, int v, int i) { return proj.sound.v[t][v][i]; }
++
++static void md_send(int p, int which, int v, int who)  /* which 0 REV, 1 DLY */
++{
++    if (!md_send_hold[p][which])
++        md_save_mix[p][which] = (int16_t)md_sound(T_MIX, p, MX_REV + which);
++    md_send_hold[p][which] |= (uint8_t)who;
++    engine_set(T_MIX, p, MX_REV + which, v > md_save_mix[p][which] ? v : md_save_mix[p][which]);
++}
++static void md_send_let(int p, int which, int who)
++{
++    if (!(md_send_hold[p][which] & who))
++        return;
++    md_send_hold[p][which] &= (uint8_t)~who;
++    if (!md_send_hold[p][which])
++        engine_set(T_MIX, p, MX_REV + which, md_sound(T_MIX, p, MX_REV + which));
++}
++static void md_fx_up(int k, int t, int i, int v)       /* the returns: up, kept until md_fx_back */
++{
++    int base = md_sound(t, 0, i);
++    if (md_save_fx[k] < 0)
++        md_save_fx[k] = (int16_t)base;
++    engine_set(t, 0, i, v > base ? v : base);
++}
++static void md_fx_back(int k, int t, int i)
++{
++    if (md_save_fx[k] < 0)
++        return;
++    md_save_fx[k] = -1;
++    engine_set(t, 0, i, md_sound(t, 0, i));
++}
++
++static uint32_t md_all_mask(void)
++{
++    uint32_t all = 0;
++    int i;
++    for (i = 0; i < NPARTS; i++)
++        all |= MUTE_MASK[i];
++    return all;
++}
++
++/* mutes added now, taken off at the next one (now, when stopped) */
++static void md_mute_add(uint32_t m, uint32_t v, uint32_t *am, uint32_t *av)
++{
++    uint32_t l = fm1__lock();
++    uint32_t pm = seq.one_clr_m & m, pv = seq.one_clr_v & v;   /* still waiting for the one: keep them */
++    seq.one_clr_m &= ~m;
++    seq.one_clr_v &= ~v;
++    *am = (m & ~seq.mute) | pm;
++    if (av)
++        *av = (v & ~seq.vmute) | pv;
++    seq.mute |= m;
++    seq.vmute |= v;
++    fm1__unlock(l);
++}
++static void md_mute_back(uint32_t m, uint32_t v)
++{
++    uint32_t l = fm1__lock();
++    if (seq.playing) {
++        seq.one_clr_m |= m;
++        seq.one_clr_v |= v;
++    } else {
++        seq.mute &= ~m;
++        seq.vmute &= ~v;
++    }
++    fm1__unlock(l);
++}
++
++static void md_rate_say(void)
++{
++    static const char *const R[4] = {"REPEAT 1/2", "REPEAT 1/4", "REPEAT 1/8", "REPEAT 1/16"};
++    int k;
++    for (k = PK_R16; k >= PK_R2; k--)
++        if ((md_pk >> k) & 1u) {
++            seq.rpt = (uint8_t)(8 >> k);
++            say(R[k], 0);
++            return;
++        }
++    seq.rpt = 0;
++}
++
++static void md_fill_target(int *kit, int *v)
++{
++    if (ui.part <= PART_808) {
++        *kit = ui.part;
++        *v = ui.sel[ui.part];
++    } else {
++        *kit = 0;
++        *v = DR_SD;
++    }
++}
++
++static void md_perf_key(int k, int down)
++{
++    int p;
++    uint32_t bit = 1u << k;
++    ui.act_t = plat_ms();
++    if (down) {
++        md_pk |= (uint16_t)bit;
++        md_pk_t0[k] = plat_ms();
++        md_pk_bar0[k] = seq.bars_played;
++        md_pk_all[k] = (uint8_t)((plat_buttons() >> B_HOME) & 1u);
++        if (md_pk_all[k])
++            ui.btn_used |= 1u << B_HOME;
++    } else
++        md_pk &= (uint16_t)~bit;
++    switch (k) {
++    case PK_R2: case PK_R4: case PK_R8: case PK_R16:
++        md_rate_say();
++        if (!down && !seq.rpt)
++            say("REPEAT OFF", 0);
++        break;
++    case PK_FILL:
++        if (down) {
++            int kit, v;
++            char t[28];
++            md_fill_target(&kit, &v);
++            seq.roll_kit = (uint8_t)kit;
++            seq.roll_v = (uint8_t)v;
++            seq.roll_vel = 50;
++            seq.roll_div = 1;
++            put_s(put_s(t, "FILL "), engine_voice_name(kit ? T_808 : T_909, v));
++            say(t, 0);
++        } else
++            seq.roll_div = 0;
++        break;
++    case PK_ECHO: case PK_WASH: {
++        int which = k == PK_ECHO, tk = which;        /* tail 0: the wash's, 1: the throw's */
++        if (down) {
++            for (p = 0; p < NPARTS; p++)
++                if (md_pk_all[k] || p == ui.part)
++                    md_send(p, which, 112, 1);
++            if (which) {
++                md_fx_up(1, T_FX, FX_DL_LEVEL, 112);
++                md_fx_up(2, T_FX, FX_DL_FDBK, 100);
++            } else
++                md_fx_up(0, T_FX, FX_RV_LEVEL, 118);
++            md_tail_t[tk] = 0;
++            say(which ? (md_pk_all[k] ? "ECHO THROW: ALL" : "ECHO THROW") : (md_pk_all[k] ? "WASH: ALL" : "WASH"), 0);
++        } else {
++            for (p = 0; p < NPARTS; p++)
++                md_send_let(p, which, 1);
++            md_tail_t[tk] = plat_ms() + md_bar_ms();   /* the tail rings for a bar */
++            if (!md_tail_t[tk])
++                md_tail_t[tk] = 1;
++        }
++        break;
++    }
++    case PK_KILL:
++        if (down) {
++            md_mute_add(MUTE_MASK[PART_303A] | MUTE_MASK[PART_303B], 1u << DR_BD | 1u << (NDRUM + D8_BD), &md_kill_m, &md_kill_v);
++            say("KILL LOW: KICKS + BASS", 0);
++        } else {
++            md_mute_back(md_kill_m, md_kill_v);
++            md_kill_m = md_kill_v = 0;
++            say(seq.playing ? "LOW BACK ON THE ONE" : "LOW BACK", 0);
++        }
++        break;
++    case PK_DROP:
++        if (down) {
++            md_mute_add(md_all_mask(), 0, &md_drop_m, 0);
++            say("DROP", 0);
++        } else {
++            md_mute_back(md_drop_m, 0);
++            md_drop_m = 0;
++            say(seq.playing ? "BACK ON THE ONE" : "BACK", 0);
++        }
++        break;
++    case PK_RISE:
++        if (down) {
++            md_rise_pend = 0;
++            say("RISER", 0);
++        } else if (seq.playing) {
++            md_rise_pend = 1;
++            md_rise_bar = seq.bars_played;
++        } else
++            md_rise_pend = 2;
++        break;
++    }
++}
++
++static void md_riser_end(void)
++{
++    int p;
++    for (p = 0; p < NPARTS; p++)
++        md_send_let(p, 0, 2);
++    md_fx_back(3, T_MST, MST_DJF);
++    if (!((md_pk >> PK_WASH) & 1u) && !md_tail_t[0])
++        md_fx_back(0, T_FX, FX_RV_LEVEL);
++    md_rise_pend = 0;
++}
++
++static void md_perf_frame(void)                        /* what a held key does over time */
++{
++    uint32_t now = plat_ms();
++    if ((md_pk >> PK_FILL) & 1u) {                     /* FILL: faster at each bar line, louder as it goes */
++        uint32_t t = now - md_pk_t0[PK_FILL], b2 = 2u * md_bar_ms();
++        uint16_t bars = (uint16_t)(seq.bars_played - md_pk_bar0[PK_FILL]);
++        seq.roll_div = (uint8_t)(bars == 0 ? 1 : bars == 1 ? 2 : 4);
++        seq.roll_vel = (uint8_t)(50u + (t >= b2 ? 77u : 77u * t / b2));
++    }
++    if ((md_pk >> PK_RISE) & 1u) {                     /* RISER: the master high-pass and the reverb up over 4 bars */
++        uint32_t t = now - md_pk_t0[PK_RISE], b4 = 4u * md_bar_ms();
++        static int lastq = -1;
++        int q = (int)(t >= b4 ? 1000u : 1000u * t / b4), base = md_sound(T_MST, 0, MST_DJF), p;
++        int e = q * q / 1000;                          /* slow, then fast */
++        if (t < 40u)
++            lastq = -1;
++        if (q / 8 == lastq)                            /* (only when a value moves) */
++            goto risen;
++        lastq = q / 8;
++        if (base < 64)
++            base = 64;
++        if (md_save_fx[3] < 0)
++            md_save_fx[3] = (int16_t)md_sound(T_MST, 0, MST_DJF);
++        engine_set(T_MST, 0, MST_DJF, base + (124 - base) * e / 1000);
++        if (md_save_fx[0] < 0)
++            md_save_fx[0] = (int16_t)md_sound(T_FX, 0, FX_RV_LEVEL);
++        engine_set(T_FX, 0, FX_RV_LEVEL, md_save_fx[0] + (127 - md_save_fx[0]) * q / 1000);
++        for (p = 0; p < NPARTS; p++)
++            md_send(p, 0, md_sound(T_MIX, p, MX_REV) + 60 * q / 1000, 2);
++    }
++risen:
++    if (md_rise_pend == 2 || (md_rise_pend == 1 && (seq.bars_played != md_rise_bar || !seq.playing)))
++        md_riser_end();
++    if (md_tail_t[0] && (int32_t)(now - md_tail_t[0]) >= 0) {   /* a wash's return */
++        md_tail_t[0] = 0;
++        if (!((md_pk >> PK_RISE) & 1u) && !md_rise_pend)
++            md_fx_back(0, T_FX, FX_RV_LEVEL);
++    }
++    if (md_tail_t[1] && (int32_t)(now - md_tail_t[1]) >= 0) {   /* a throw's echoes */
++        md_tail_t[1] = 0;
++        md_fx_back(1, T_FX, FX_DL_LEVEL);
++        md_fx_back(2, T_FX, FX_DL_FDBK);
++    }
++}
++
++static void md_extkey(int32_t ev)                      /* keybed key << 8 | velocity (0: released) */
++{
++    int key = (int)(ev >> 8), k = key <= 4 ? key : key >= 32 ? key - 27 : -1;
++    int down = (ev & 0xFF) != 0;
++    if (k < 0 || k >= PK_N || (down && ui.overlay == O_ASK))   /* (a release always lets go) */
++        return;
++    if (down == (int)((md_pk >> k) & 1u))
++        return;
++    md_perf_key(k, down);
++}
++
 +/* ----------------------------------------------------------- every frame --- */
 +static uint32_t md_prev_raw;
 +static uint32_t md_prev_pads;
@@ -540,12 +910,24 @@ index 0000000..a280016
 +            say(t, 0);
 +        }
 +    }
++    /* PATCH + FADER BANK: the pads play the kit (again: the steps) */
++    if ((pressed >> SMK_BTN_FADER_BANK) & 1u && home) {
++        ui.btn_used |= 1u << B_HOME;
++        md_drums ^= 1u;
++        md_mute_on = 0;
++        md_drum_lit = 0;
++        say(md_drums ? "PADS PLAY THE KIT" : "PADS: STEPS", 0);
++    }
 +    /* KNOB BANK: the mute pads (tap: on / off; hold: while held); PATCH + it: unmute all */
 +    if ((pressed >> SMK_BTN_KNOB_BANK) & 1u) {
 +        if (home) {
++            uint32_t l = fm1__lock();
 +            ui.btn_used |= 1u << B_HOME;
 +            seq.mute = 0;
 +            seq.vmute = 0;
++            seq.one_clr_m = seq.one_clr_v = 0;
++            fm1__unlock(l);
++            md_solo = 0xFF;
 +            say("ALL UNMUTED", 0);
 +        } else {
 +            md_kb_held = 1;
@@ -566,17 +948,37 @@ index 0000000..a280016
 +        if (!md_mute_on)
 +            say("MUTE OFF", 0);
 +    }
-+    md_pads_muting = md_mute_on != 0;
-+    if (md_mute_on) {
++    md_pads_muting = md_mute_on != 0 || md_drums;
++    md_mute_lit = md_mute_on != 0;
++    md_pads_home = md_drums && !md_mute_on;            /* drum pads: PATCH + a pad is still that pattern */
++    if (md_mute_on) {                                     /* mute pads; PATCH + a pad: solo */
 +        uint32_t pads = fm1_in.pnotes, pp = pads & ~md_prev_pads, w;
 +        for (w = 0; w < SMK_NPAD; w++)
 +            if ((pp >> SMK_WHITE_NOTE[w]) & 1u) {
-+                md_mute_pad((int)w);
++                if (home) {
++                    ui.btn_used |= 1u << B_HOME;
++                    md_solo_pad((int)w);
++                } else {
++                    md_solo = 0xFF;                       /* a mute of its own: the solo is the new start */
++                    md_mute_pad((int)w);
++                }
 +                md_mute_used = 1;
 +            }
 +        md_prev_pads = pads;
++    } else if (md_drums) {                                /* drum pads: hit, velocity, recorded with REC */
++        uint32_t pads = fm1_in.pnotes, pp = home ? 0 : pads & ~md_prev_pads, w;
++        md_drum_lit = 0;
++        for (w = 0; w < SMK_NPAD; w++) {
++            uint32_t n = SMK_WHITE_NOTE[w];
++            if ((pads >> n) & 1u)
++                md_drum_lit |= (uint16_t)(1u << w);
++            if ((pp >> n) & 1u)
++                md_drum_pad((int)w, fm1_in.key_vel[SMK_KEY_F3 + n]);
++        }
++        md_prev_pads = pads;
 +    } else
 +        md_prev_pads = fm1_in.pnotes;
++    md_perf_frame();
 +    /* the mod wheel's riser follows the instrument on screen */
 +    {
 +        static int last_f = -1;
@@ -737,7 +1139,7 @@ index cc5e72f..b0eff0c 100644
      {1, 1, 1, 1, 1, 1, 1},
  };
 diff --git a/firmware/src/app/plat_fm1.c b/firmware/src/app/plat_fm1.c
-index 9f5432e..303c2c1 100644
+index 9f5432e..d977e97 100644
 --- a/firmware/src/app/plat_fm1.c
 +++ b/firmware/src/app/plat_fm1.c
 @@ -4,21 +4,49 @@
@@ -748,7 +1150,7 @@ index 9f5432e..303c2c1 100644
 +/* MD|442 PERFORM (md_perform.c): what the UI does not see. md_nav: K2..K4 are X0X's SELECT, ALGORITHM,
 + * PRESETS (else md_perform.c takes them); md_hide: < / > pressed while PATCH is held (the pattern, not the bars);
 + * md_pads_muting: the pads mute (the UI does not get them) */
-+static volatile uint8_t md_nav = 1, md_pads_muting;
++static volatile uint8_t md_nav = 1, md_pads_muting, md_mute_lit, md_pads_home;
 +static uint32_t md_hide, md_seen;
 +#endif
  uint32_t plat_buttons(void)
@@ -774,7 +1176,7 @@ index 9f5432e..303c2c1 100644
 +uint32_t plat_keys(void)
 +{
 +#if BOARD_SMK37
-+    if (md_pads_muting)                       /* MD|442: the pads mute; the keybed still plays */
++    if (md_pads_muting && !(md_pads_home && ((fm1_in.buttons >> panel.btn[B_HOME]) & 1u)))   /* MD PERFORM: the pads are its */
 +        return fm1_in.knotes & ((1u << NKEYS) - 1u);
 +#endif
 +    return fm1_in.notes & ((1u << NKEYS) - 1u);
@@ -795,7 +1197,7 @@ index 9f5432e..303c2c1 100644
          if ((buttons >> i) & 1u)
              nl[panel.btn[i]] = 1;
      nl[SMK_BTN_FADER_BANK] = smk_fbank != 0;
-+    nl[SMK_BTN_KNOB_BANK] = md_pads_muting;   /* MD|442: lit while the pads mute */
++    nl[SMK_BTN_KNOB_BANK] = md_mute_lit;   /* MD PERFORM: lit while the pads mute */
      for (i = 0; i < SMK_NLED; i++)
          fm1_led[i] = nl[i];
      smk_keys_lit = keys;
@@ -1072,6 +1474,125 @@ index 0000000..bebb2f4
 +    f->cur = nxt;
 +    f->on = (uint8_t)(pos < 0 ? 1 : 2);
 +}
+diff --git a/firmware/src/seq/sequencer.c b/firmware/src/seq/sequencer.c
+index 6671921..49cdb53 100644
+--- a/firmware/src/seq/sequencer.c
++++ b/firmware/src/seq/sequencer.c
+@@ -141,8 +141,10 @@ static void fire_drum(seq_t *s, int k, int p, const seq_sink_t *o)
+     int w = p >> 5;
+     float vel = (d->accent[w] & bit) ? 1.0f : (float)s->accent_q7 / 127.0f;
+     int v;
++    uint32_t skip = s->skip1;
++    s->skip1 = skip & ~(((1u << NDRUM) - 1u) << (k * NDRUM));   /* (once: this step only) */
+     for (v = 0; v < NDRUM; v++) {
+-        if (!(d->hit[v][w] & bit) || ((s->mute | s->vmute) & (1u << (k * NDRUM + v))))
++        if (!(d->hit[v][w] & bit) || ((s->mute | s->vmute | skip) & (1u << (k * NDRUM + v))))
+             continue;
+         if (!o->drum(o->ctx, k, v, vel))
+             continue;                                /* its chance said no: no MIDI either */
+@@ -319,7 +321,31 @@ static uint32_t fire_step(seq_t *s, int t, const seq_sink_t *o)
+         tr->bars++;
+     if (changed & 1u)                                /* the 909's new pattern: its passes from 1 again, as */
+         tr->bars = 0;                                /* restart() does for the others (probability cycles) */
+-    tr->pos = (uint8_t)p;
++    if (wrapped && t == TRK_DRUM) {                  /* the one: what the performance tools left for it */
++        s->bars_played++;
++        if (s->one_clr_m | s->one_clr_v) {
++            s->mute &= ~s->one_clr_m;
++            s->vmute &= ~s->one_clr_v;
++            s->one_clr_m = s->one_clr_v = 0;
++        }
++    }
++    tr->pos = (uint8_t)p;                            /* time runs on; a beat repeat only plays another step */
++    if (s->rpt) {
++        int n = seq_part_len(s, t), len = s->rpt, d;
++        if (s->rpt_len[t] != len) {                  /* engaged (or another length): the loop holds what plays */
++            int from = s->rpt_len[t] ? s->rpt_last[t] : p;
++            s->rpt_len[t] = (uint8_t)len;
++            s->rpt_at[t] = (uint8_t)(from - from % len);
++        }
++        d = p - s->rpt_at[t];
++        if (d < 0)
++            d += n;
++        p = s->rpt_at[t] + d % len;
++        if (n > 0 && p >= n)
++            p %= n;
++    } else
++        s->rpt_len[t] = 0;
++    s->rpt_last[t] = (uint8_t)p;
+     if (o->step)                                     /* first: the step's motion and p-locks, which the hit */
+         o->step(o->ctx, t, p);                       /* below must hear (a drum takes its tune as it fires) */
+     if (is_drum(t))
+@@ -334,10 +360,10 @@ static uint32_t fire_step(seq_t *s, int t, const seq_sink_t *o)
+         tr->to_next = NEVER;                         /* the clock arms the next one */
+     } else {
+         /* the step that follows p: swung if it is an odd one */
+-        int np = next_pos(s, t, p, 0);
++        int np = next_pos(s, t, tr->pos, 0);
+         uint32_t sw = swing_q8(s, rate, L);
+         tr->to_next = carry + ((np & 1) ? L + sw : L - sw);
+-        if (!(np & 1) && (p & 1) == 0)               /* even -> even (odd lengths, wraps): no swing */
++        if (!(np & 1) && (tr->pos & 1) == 0)             /* even -> even (odd lengths, wraps): no swing */
+             tr->to_next = carry + L;
+     }
+     return changed;
+@@ -362,6 +388,9 @@ static void do_start(seq_t *s, int from_top, const seq_sink_t *o)
+     int t;
+     if (from_top)
+         bar_end(s, 1);                                /* cues, or the song's start bar */
++    s->mute &= ~s->one_clr_m;                         /* a return left waiting when it stopped: now */
++    s->vmute &= ~s->one_clr_v;
++    s->one_clr_m = s->one_clr_v = 0;
+     for (t = 0; t < NTRACKS; t++) {
+         seq_track_t *tr = &s->t[t];
+         if (from_top) {
+@@ -437,6 +466,8 @@ uint32_t seq_until_event(seq_t *s, uint32_t n)
+     }
+     if (!s->ext && s->send_clock && (e = s->clk_to_next >> 8) < m)
+         m = e;
++    if (s->roll_live && (e = s->roll_to >> 8) < m)
++        m = e;
+     return m ? m : 1;
+ }
+ 
+@@ -488,6 +519,17 @@ void seq_advance(seq_t *s, uint32_t k, const seq_sink_t *o)
+     }
+     if (!s->ext && s->send_clock)
+         s->clk_to_next = s->clk_to_next > dq ? s->clk_to_next - dq : 0;
++    if (!s->roll_div)
++        s->roll_live = 0;
++    else if (!s->roll_live) {                        /* a roll starts on the next 16th */
++        s->roll_live = 1;
++        s->roll_to = s->t[TRK_DRUM].to_next != NEVER ? s->t[TRK_DRUM].to_next : 0;
++    } else
++        s->roll_to = s->roll_to > dq ? s->roll_to - dq : 0;
++    if (s->roll_live && s->roll_to < 256u) {
++        o->drum(o->ctx, s->roll_kit % NKIT, s->roll_v % NDRUM, (float)s->roll_vel / 127.0f);
++        s->roll_to += seq_step_q8(s, RATE_16) * 2u / s->roll_div;
++    }
+     /* fire what is due; the drum part first, since its wrap may switch the pattern */
+     for (guard = 0; guard < 8; guard++) {
+         int fired = 0;
+diff --git a/firmware/src/seq/sequencer.h b/firmware/src/seq/sequencer.h
+index dbe598f..d6772b8 100644
+--- a/firmware/src/seq/sequencer.h
++++ b/firmware/src/seq/sequencer.h
+@@ -130,6 +130,15 @@ typedef struct {
+     volatile uint8_t req_start, req_stop, req_cont; /* transport requests from the UI / MIDI */
+     uint32_t mut_rng[NBASS];          /* auto-mutate random streams */
+     uint8_t bass_notes_out[NBASS];    /* note echoed on MIDI, for the note off */
++    /* MD PERFORM (the SMK-37's md_perform.c): live tools the audio side keeps in time */
++    volatile uint8_t rpt;             /* beat repeat: each part loops its current rpt steps (0 = off) */
++    uint8_t rpt_len[NTRACKS], rpt_at[NTRACKS], rpt_last[NTRACKS];   /* engaged length, loop start, last step */
++    volatile uint8_t roll_kit, roll_v, roll_div, roll_vel;   /* a roll: roll_div hits per 8th (0 = off), vel of 127 */
++    uint8_t roll_live;
++    uint32_t roll_to;                 /* samples to the roll's next hit, Q8 */
++    volatile uint32_t one_clr_m, one_clr_v;   /* mute / vmute bits cleared at the next bar's one */
++    volatile uint16_t bars_played;    /* the 909's wraps (the UI's "the one") */
++    volatile uint32_t skip1;          /* drum tracks whose next step does not fire (a live take just played it) */
+ } seq_t;
+ 
+ void seq_init(seq_t *s, pattern_t *patterns);
 diff --git a/tools/build.py b/tools/build.py
 index f469297..250fdff 100755
 --- a/tools/build.py
