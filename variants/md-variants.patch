@@ -1,19 +1,22 @@
 diff --git a/firmware/src/app/engine.c b/firmware/src/app/engine.c
-index baf5e5d..0d06a9f 100644
+index baf5e5d..b70cc1f 100644
 --- a/firmware/src/app/engine.c
 +++ b/firmware/src/app/engine.c
-@@ -26,6 +26,10 @@ volatile uint8_t eng_hit[NKIT][NDRUM];
+@@ -26,7 +26,13 @@ volatile uint8_t eng_hit[NKIT][NDRUM];
  int16_t eng_scope[SCOPE_N];
  volatile uint32_t eng_scope_w;
  
 +#if MD_FILTER
 +#include "../dsp/md_filter.h"
-+md_flt_t md_flt[MDF_N];                /* MD|442: the performance filters (md_filter.h) */
 +#endif
  static drum909_t d909 POOL;
++#if MD_FILTER
++md_flt_t md_flt[MDF_N] POOL;           /* MD|442: the performance filters (md_filter.h), in the pool (RAM is full) */
++#endif
  static drum808_t d808 POOL;
  static bass303_t b303[NBASS] POOL;
-@@ -285,6 +289,38 @@ void engine_sound_defaults(sound_t *s)
+ static breaks_t brk POOL;
+@@ -285,6 +291,38 @@ void engine_sound_defaults(sound_t *s)
      s->v[T_MST][0][MST_RELEASE] = 58;                /* 100 ms: it breathes with the beat */
      s->v[T_MST][0][MST_PUMP] = 21;                   /* 4 dB of 909-keyed pump */
      s->v[T_MST][0][MST_COMP1] = 95;                  /* the one-knob COMP's nearest to the squash above */
@@ -52,7 +55,7 @@ index baf5e5d..0d06a9f 100644
      s->v[T_FX][1][0] = (uint8_t)(16 + s->v[T_FX][0][FX_DL_WEAR] * 111 / 127);   /* TAPE (ui.c R_TAPE): on, its wear */
  }
  
-@@ -614,6 +650,10 @@ static void core2_job(uint32_t arg)
+@@ -614,6 +652,10 @@ static void core2_job(uint32_t arg)
      if (!brk_hold) {
          brk_silent_now = breaks_silent(&brk);             /* the render writes zeros: nothing to mix */
          breaks_render(&brk, kbuf, (int)n);
