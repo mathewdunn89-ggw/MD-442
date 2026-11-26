@@ -54,5 +54,7 @@ jobs:
       - name: Release
         env: { GH_TOKEN: '${{ github.token }}' }
         run: |
-          TAG=md442-smk37-${GITHUB_RUN_NUMBER}
-          gh release create "$TAG" out/* --title "MD|442 for SMK-37 (build ${GITHUB_RUN_NUMBER})" --notes-file firmware/INSTALL.md
+          # Run numbers restarted when the repo moved; tags 4-11 already exist from the old repo, so continue that series at 12.
+          N=$((GITHUB_RUN_NUMBER + 7))
+          TAG=md442-smk37-${N}
+          gh release create "$TAG" out/* --target "$GITHUB_SHA" --title "MD|442 for SMK-37 (build ${N})" --notes-file firmware/INSTALL.md
