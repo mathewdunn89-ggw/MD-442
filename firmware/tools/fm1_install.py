@@ -468,6 +468,16 @@ class Updater:
         if not same_keyboard(dev.id.text, product):
             dev.link.close()
             raise InstallError("model", f"the device is {dev.id.text}, the package is for {product}")
+        if dev.id.loader and dev.id.version < 900:
+            dev.link.close()
+            raise InstallError("model", f"the keyboard is in M-VAVE's own update mode ({dev.id.text}), which only takes "
+                                        "M-VAVE's firmware. Nothing was written. Install M-VAVE's latest firmware for "
+                                        "your keyboard with M-UPGRADE first, then run this again.")
+        if not dev.id.loader and dev.id.model.upper().startswith("SMK-37") and dev.id.version < 16:
+            dev.link.close()
+            raise InstallError("model", f"the keyboard runs M-VAVE firmware {dev.id.version:03d}. MD|442 needs M-VAVE "
+                                        "016 or later underneath: update it with M-UPGRADE first, then run this again. "
+                                        "Nothing was sent.")
         ota = dev if dev.id.loader else self.check(dev, image, step)
         self.write(ota, image, step)
         return self.verify(product, step)
