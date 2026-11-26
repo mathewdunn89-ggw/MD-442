@@ -29,9 +29,9 @@ jobs:
         run: |
           mkdir -p out
           cd x0x
-          BOARD=smk37 MODEL=elite ./build.sh --release 1.1
+          BOARD=smk37 MODEL=elite ./build.sh --release 1.2
           cp "$(ls -t build/*.fwsc | head -1)" ../out/md442-smk37-elite.fwsc
-          BOARD=smk37 ./build.sh --release 1.1
+          BOARD=smk37 ./build.sh --release 1.2
           cp "$(ls -t build/*.fwsc | head -1)" ../out/md442-smk37-pro.fwsc
           git diff > ../out/md442-smk37.patch
           cd .. && cp firmware/INSTALL.md out/ && tar czf out/md442-smk37-source.tar.gz --exclude=.git x0x/firmware x0x/tools x0x/build.sh x0x/LICENSE x0x/SMK37.md x0x/BUILDING.md
@@ -39,7 +39,7 @@ jobs:
         continue-on-error: true
         run: |
           cd x0x
-          ./build.sh --release 1.1               # the M-VAVE FM-1 (same chip; X0X's original target)
+          ./build.sh --release 1.2               # the M-VAVE FM-1 (same chip; X0X's original target)
           cp "$(ls -t build/x0x-[0-9]*.fwsc | head -1)" ../out/md442-fm1.fwsc
       - name: Download bundle (md442-firmware.zip) and guide
         run: |
@@ -55,6 +55,8 @@ jobs:
         env: { GH_TOKEN: '${{ github.token }}' }
         run: |
           # Run numbers restarted when the repo moved; tags 4-11 already exist from the old repo, so continue that series at 12.
+          # The site links latest/download/md442-fm1.fwsc: never publish a release without all three builds.
+          for f in md442-smk37-elite.fwsc md442-smk37-pro.fwsc md442-fm1.fwsc; do test -f "out/$f" || { echo "::error::$f was not built, not publishing"; exit 1; }; done
           N=$((GITHUB_RUN_NUMBER + 7))
           TAG=md442-smk37-${N}
           gh release create "$TAG" out/* --target "$GITHUB_SHA" --title "MD|442 for SMK-37 (build ${N})" --notes-file firmware/INSTALL.md

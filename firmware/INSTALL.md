@@ -45,6 +45,7 @@ The app and the keyboard work together over USB. In the app:
 3. Your scenes 1-8 land on keyboard patterns 9-16; the screen says FROM MD|442. Patterns 1-7 keep the factory beats.
 4. From then on, every Save beat sends automatically while the keyboard is connected.
 Drums, accents, the bass line, tempo and swing go across; the dub stab, knob settings, scene mixes and mute groups stay in the app.
+Firmware 1.2: with LIVE on, the app also updates the keyboard as you edit (steps, tempo, drum mutes) and switches it to the scene you're on.
 
 ## Go back to the stock firmware
 Install M-VAVE's own package for your model with M-VAVE's updater (M-UPGRADE).

@@ -1,8 +1,8 @@
 diff --git a/firmware/src/app/editor.c b/firmware/src/app/editor.c
-index 93744b8..640d3f1 100644
+index 93744b8..4ecc946 100644
 --- a/firmware/src/app/editor.c
 +++ b/firmware/src/app/editor.c
-@@ -10,6 +10,14 @@
+@@ -10,6 +10,17 @@
  #define ED_HDR1 0x46
  #define ED_HDR2 0x4C
  enum { ED_INFO = 1, ED_SMP_BEGIN = 11, ED_SMP_WRITE, ED_SMP_END, ED_SMP_ERASE, ED_SMP_INFO, ED_SMP_READ, ED_PING = 25 };
@@ -11,25 +11,29 @@ index 93744b8..640d3f1 100644
 + * slot 0..31; bpm 0 = keep, else 30..300 (7 + 7 bits); swing 0..100 (X0X's); root: MIDI note of the bass's 0;
 + * acid 0..100; rows: 11 drums in drum909.h order (BD SD LT MT HT RS CP CH OH CR RD), the accent, the bass gates,
 + * each 16 steps as 3 x 7 bits (bit i = step i + 1, LSB first); notes: the bass's offsets + 64.
-+ * Reply: 50 slot rc (0 ok, 1 arguments). The pattern is saved with the project (autosave). */
++ * Reply: 50 slot rc (0 ok, 1 arguments). The pattern is saved with the project (autosave).
++ * slot + 0x20 (1.2): live from the app: no message, and the keyboard cues that pattern (next bar, as HOME does).
++ * MUTE (51): F0 7D 46 4C 51 lo7 hi4 F7, the 909's tracks muted on their own (bit = drum909.h order). Reply 51 rc. */
 +#define ED_MD442_PUT 50
++#define ED_MD442_MUTE 51
 +#define MD442_PUT_LEN (6u + 13u * 3u + 16u)
  #define ED_READ_MAX 224u                     /* X0X: SMP_READ's bytes a frame (the break page draws the slots) */
  
  static uint8_t ed_out[288];
-@@ -175,6 +183,50 @@ static void ed_handle(const uint8_t *f, uint32_t n)
+@@ -175,6 +186,61 @@ static void ed_handle(const uint8_t *f, uint32_t n)
      case ED_PING:
          ed_b(0);
          break;
 +    case ED_MD442_PUT: {
 +        pattern_t *pt;
 +        uint32_t r, bpm, st;
-+        if (na < MD442_PUT_LEN || a[0] >= NPAT) {
++        uint32_t slot = a[0] & 0x1Fu, live = a[0] & 0x20u;
++        if (na < MD442_PUT_LEN || slot >= NPAT) {
 +            ed_b(a[0]);
 +            ed_b(1);
 +            break;
 +        }
-+        pt = &proj.pat[a[0]];
++        pt = &proj.pat[slot];
 +        for (r = 0; r < NDRUM; r++)
 +            pt->drum[0].hit[r][0] = pt->drum[0].hit[r][1] = 0;
 +        pt->drum[0].accent[0] = pt->drum[0].accent[1] = 0;
@@ -60,15 +64,25 @@ index 93744b8..640d3f1 100644
 +            proj.set.bpm_x10 = (uint16_t)(bpm * 10u);
 +        }
 +        mark_dirty();
-+        say("FROM MD|442", 0);
++        if (live)
++            seq_cue(&seq, (int)slot);
++        else
++            say("FROM MD|442", 0);
 +        ed_b(a[0]);
 +        ed_b(0);
 +        break;
 +    }
++    case ED_MD442_MUTE:
++        if (na >= 2u) {
++            uint32_t m = ((uint32_t)a[0] | (uint32_t)(a[1] & 0x0Fu) << 7) & ((1u << NDRUM) - 1u);
++            seq.vmute = (seq.vmute & ~((1u << NDRUM) - 1u)) | m;
++        }
++        ed_b(na >= 2u ? 0 : 1);
++        break;
      case ED_SMP_BEGIN:
      case ED_SMP_ERASE:
          if (na < 1u || a[0] >= SMP_USER_SLOTS || !flash_ok)
-@@ -281,7 +333,7 @@ static void ed_service(void)
+@@ -281,7 +347,7 @@ static void ed_service(void)
          return;
      }
      {
