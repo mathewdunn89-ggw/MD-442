@@ -1,5 +1,5 @@
 // MD|442 desktop app: offline copy of the console. Bump the name on every release.
-const C = 'md442-desk-v14';
+const C = 'md442-desk-v15';
 const CORE = ['./', './index.html', './md442.js', './md442.css', './md442-dark.css', './md442-ux.css', './mix-autoplay.js', './manifest.webmanifest', './app/icon-192.png', './app/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('md442-desk-') && k !== C).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
