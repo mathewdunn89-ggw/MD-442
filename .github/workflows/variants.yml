@@ -1,0 +1,76 @@
+name: MD hardware firmwares (MD442, MD187, MD888)
+# The three performance firmwares for the SMK-37 Elite / Pro and the FM-1: MD|442 1.2 (firmware/md442-smk37.patch)
+# plus variants/md-variants.patch (the PERFORM layout, per-instrument filters, MD|187 and MD|888's patterns, sound
+# and synthesised sample banks). A push to a branch makes a test PRE-release (never "latest", so the site's
+# latest/download links do not move); run it by hand with publish = yes to make the real release.
+on:
+  push:
+    branches-ignore: [main]
+    paths: ['variants/**', '.github/workflows/variants.yml']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'yes: a full release (becomes latest); anything else: a test pre-release'
+        default: 'no'
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: X0X SMK-37 source (GPL-3.0) + MD|442 1.2 + the variants
+        run: |
+          git clone -b smk37 https://github.com/genkigenki/fm1-x0x x0x
+          git -C x0x checkout 8af3731713ba6062f17b403300f436aac50aaf30
+          git -C x0x apply "$GITHUB_WORKSPACE/firmware/md442-smk37.patch"
+          git -C x0x apply "$GITHUB_WORKSPACE/variants/md-variants.patch"
+      - name: Toolchain and SDK
+        run: |
+          pip install Pillow numpy
+          sh x0x/tools/get_toolchain.sh
+          git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 --filter=blob:none --sparse \
+            https://github.com/amitv87/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK"
+          git -C "$HOME/fw-AC79_AIoT_SDK" sparse-checkout set --no-cone /cpu/wl82/tools/
+      - name: Build all three firmwares for all three keyboards
+        run: |
+          set -e
+          mkdir -p out
+          cd x0x
+          for V in 442 187 888; do
+            if [ $V = 442 ]; then FAM=X0X; BANK=; else FAM=MD$V; BANK="$PWD/build/md$V"; python3 tools/md_gen_samples.py $V "$BANK"; fi
+            export MD_VARIANT=$V FELUCCA_DATA_FAMILY=$FAM X0X_BREAK_BANK="$BANK"
+            BOARD=smk37 MODEL=elite ./build.sh --release 1.3 2>&1 | tee ../out/build-md$V-elite.log | tail -5
+            cp "$(ls -t build/*.fwsc | head -1)" ../out/md$V-smk37-elite.fwsc
+            BOARD=smk37 ./build.sh --release 1.3 2>&1 | tee ../out/build-md$V-pro.log | tail -5
+            cp "$(ls -t build/*.fwsc | head -1)" ../out/md$V-smk37-pro.fwsc
+            if ./build.sh --release 1.3 > ../out/build-md$V-fm1.log 2>&1; then
+              cp "$(ls -t build/x0x-[0-9]*.fwsc | head -1)" ../out/md$V-fm1.fwsc
+            else
+              echo "::warning::MD$V for the FM-1 did not build (see build-md$V-fm1.log)"; tail -15 ../out/build-md$V-fm1.log
+            fi
+            [ $V = 442 ] || cp -r "$BANK" ../out/md$V-samples
+          done
+          git diff > ../out/md-hardware-source.patch
+          ls -la ../out
+      - name: The MD Hardware bundle
+        run: |
+          B=bundle/MD-Hardware; mkdir -p "$B/tools"
+          cp out/*.fwsc "$B/"
+          cp variants/INSTALL.md variants/md-hardware-controls.pdf "$B/" 2>/dev/null || true
+          cp "variants/Install MD Hardware (Mac).command" "$B/" && chmod +x "$B/Install MD Hardware (Mac).command"
+          cp firmware/tools/fm1_install.py "$B/tools/"
+          (cd bundle && zip -qrX ../out/md-hardware.zip MD-Hardware)
+      - uses: actions/upload-artifact@v4
+        with: { name: md-hardware-firmwares, path: out/ }
+      - name: Release
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          for f in md442-smk37-elite md187-smk37-elite md888-smk37-elite; do test -f "out/$f.fwsc" || { echo "::error::$f was not built"; exit 1; }; done
+          if [ "${{ github.event.inputs.publish }}" = yes ]; then
+            gh release create "md-hardware-${GITHUB_RUN_NUMBER}" out/*.fwsc out/md-hardware.zip --target "$GITHUB_SHA" \
+              --title "MD Hardware firmwares (MD442, MD187, MD888) build ${GITHUB_RUN_NUMBER}" --notes-file variants/INSTALL.md --latest=false
+          else
+            gh release create "md-hardware-test-${GITHUB_RUN_NUMBER}" out/*.fwsc out/md-hardware.zip out/*.log --target "$GITHUB_SHA" \
+              --prerelease --title "TEST: MD Hardware firmwares build ${GITHUB_RUN_NUMBER} (untested on hardware)" --notes "Test build from ${GITHUB_REF_NAME}. Not for the site."
+          fi
