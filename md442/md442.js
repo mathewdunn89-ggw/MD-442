@@ -1056,9 +1056,12 @@ let palette = null, fitEl = null, conEl = null;
 const MACOS = /Mac|iPhone|iPad/.test(navigator.platform || '');
 const K = (...p) => p.map(x => MACOS ? ({ Ctrl: '⌘', Alt: '⌥', Shift: '⇧' }[x] || x) : x).join(MACOS ? '' : '+');   // how a key combination is printed on this computer
 function fitDesk() {
-  if (!fitEl) return; const fs = document.fullscreenElement === fitEl, w = fitEl.clientWidth, ch = conEl.offsetHeight;
-  const s = fs ? Math.min(w / 1440, innerHeight / ch) : Math.min(1.2, w / 1440);
+  // Scale the 1440 px design to the width there is. In full screen it also fits the height, but only while that keeps the console
+  // at least 85% of full width: with the keyboard, MIDI panel or guide open it stays legible and the screen scrolls instead of shrinking to a strip.
+  if (!fitEl) return; const fs = document.fullscreenElement === fitEl, w = fitEl.clientWidth, ch = conEl.offsetHeight, ws = w / 1440, hs = innerHeight / ch;
+  const s = fs ? (hs >= ws * .85 ? Math.min(ws, hs) : ws) : Math.min(2, ws);
   conEl.style.transform = `translate(${Math.max(0, (w - 1440 * s) / 2)}px, ${fs ? Math.max(0, (innerHeight - ch * s) / 2) : 0}px) scale(${s})`; fitEl.style.height = fs ? '' : ch * s + 'px'; fitEl.classList.toggle('fs', fs);
+  conEl.style.marginBottom = fs ? (ch * s - ch) + 'px' : '';   // in full screen the scroll height follows the scaled console
 }
 function fullScreen() { if (!fitEl) return; if (document.fullscreenElement) document.exitFullscreen(); else if (fitEl.requestFullscreen) fitEl.requestFullscreen().catch(() => {}); }
 function buildDesk() {

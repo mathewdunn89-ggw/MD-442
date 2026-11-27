@@ -110,3 +110,9 @@
 .md.desk .logo .key.sty { flex: 1; min-height: 22px; min-width: 0; font-family: 'Martian Mono', monospace; font-variation-settings: normal; font-size: 10px; font-weight: 500; letter-spacing: .08em; padding: 0 4px; }
 .md.desk .logo .key.sty.on { color: var(--g); background: linear-gradient(#141517, #08090a); border-color: var(--g); }
 .md .seg.style .key { font-weight: 600; letter-spacing: .06em; }
+/* wide screens: the tools row (One drum … Random) stays inside the console; the drum name gives way first */
+.md.desk .tools { min-width: 0; }
+.md.desk .tools { gap: 7px; }
+.md.desk .tools .wide .key { min-width: 104px; }
+.md.desk .tools .lab { margin-left: 4px; }
+.md.desk .tools .selnm { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 20px; }
