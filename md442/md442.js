@@ -465,7 +465,7 @@ function voice(X, k, t, i, vel, note) {
     const top = P['st.tone'], tn = Math.log2(top / 300) / 5.5, dur = P['st.decay'] / 1000;
     const lp = ac.createBiquadFilter(), e = ac.createGain(); lp.type = 'lowpass'; lp.Q.value = 2 + tn * 5;
     lp.frequency.setValueAtTime(Math.min(top, 16000), t); lp.frequency.exponentialRampToValueAtTime(Math.max(140, top * .15), t + dur * .85);
-    CHORDS[P['st.chord']][1].forEach(iv => [-8, 8].forEach(dt => { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 41.2 * 4 * Math.pow(2, (P.key + iv + (note || 0)) / 12); o.detune.value = dt; o.connect(lp); o.start(t); o.stop(t + dur + .1); }));
+    (X.live && stIv ? stIv : CHORDS[P['st.chord']][1]).forEach(iv => [-8, 8].forEach(dt => { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 41.2 * 4 * Math.pow(2, (P.key + iv + (note || 0)) / 12); o.detune.value = dt; o.connect(lp); o.start(t); o.stop(t + dur + .1); }));
     lp.connect(e); e.gain.value = 0; e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(.24, t + .004); e.gain.exponentialRampToValueAtTime(.0005, t + .004 + dur); e.gain.setTargetAtTime(0, t + .004 + dur, .012); e.connect(d);
   }
 }
@@ -1044,8 +1044,18 @@ function arpSeq() {
   if (S.keys.mode === 2) n.reverse(); if (S.keys.mode === 3 && n.length > 2) n = n.concat(n.slice(1, -1).reverse()); return n;
 }
 const slOf = note => ((Math.round(note) % 8) + 8) % 8 + 1;   // the keyboard plays the sampler's slices: C = 1 … G = 8, then round again
-let smPoly = false;
-function playNote(note, t, vel) { const k = S.keys.target; if (off(k)) return; smPoly = k === 'SM' && down.size > 1 && !S.keys.mode; voice(E, k, t, 0, vel || 1, k === 'SM' ? slOf(note) : note); smPoly = false; flashKey(k); }
+let smPoly = false, stIv = null;
+// IN KEY (keyboard panel, on by default): what you play over the beat always fits it. A note outside the pattern's minor scale
+// moves to the nearest note in it, and the stab builds its chord from the scale (the right major or minor chord for that note)
+// instead of the same chord shape on every key. Several keys held: each one is turned down a little, so chords don't overload.
+const SCALE = [0, 2, 3, 5, 7, 8, 10];
+const inKey = () => S.keys.lock !== false;
+function snapNote(n) { const o = Math.floor(n / 12), pc = ((n % 12) + 12) % 12; let best = 0, bd = 99; SCALE.forEach(d => { const x = Math.abs(d - pc); if (x < bd) { bd = x; best = d; } }); return o * 12 + best; }
+function scaleChord(n, size) { const d = SCALE.indexOf(((n % 12) + 12) % 12); if (d < 0) return null; const iv = []; for (let j = 0; j < size; j++) { const q = d + 2 * j; iv.push(SCALE[q % 7] + 12 * Math.floor(q / 7) - SCALE[d]); } return iv; }
+function playNote(note, t, vel) { const k = S.keys.target; if (off(k)) return; smPoly = k === 'SM' && down.size > 1 && !S.keys.mode;
+  if (inKey() && (k === 'BS' || k === 'ST')) { note = snapNote(note); if (k === 'ST') stIv = scaleChord(note, Math.min(4, CHORDS[P['st.chord']][1].length)); }
+  if (k !== 'SM' && down.size > 1 && !S.keys.mode) vel = (vel || 1) / Math.sqrt(down.size);
+  voice(E, k, t, 0, vel || 1, k === 'SM' ? slOf(note) : note); smPoly = false; stIv = null; flashKey(k); }
 function arpFire(t) { const n = arpSeq(); if (!n.length) return; playNote(S.keys.mode === 4 ? n[Math.floor(Math.random() * n.length)] : n[arpPos++ % n.length], t); }
 function arpAtStep(idx, t) {                        // called once for every 16th-note step
   if (!S.keys.mode || !held.length) return; const r = ARPR[S.keys.rate][1];
@@ -1073,7 +1083,7 @@ function writeNote(note, drum) {
   const k = drum || S.keys.target, sc = scene(); if (!sc.g[k]) return;
   const late = ac && headT && ac.currentTime - headT > stepLen() / 2, i = late ? (head + 1) % Math.max(1, S.last) : head;
   if (performance.now() - editT > 1500) keep('keys write'); editT = performance.now();
-  sc.g[k][i] = true; if (drum) {} else if (k === 'BS') sc.n[i] = note; else if (k === 'SM') sc.sl[i] = slOf(note);
+  sc.g[k][i] = true; if (drum) {} else if (k === 'BS') sc.n[i] = inKey() ? snapNote(note) : note; else if (k === 'SM') sc.sl[i] = slOf(note);
   mark(); drawAll();
 }
 function noteOff(note) { if (!down.has(note)) return; sgEv('f', note); down.delete(note); if (S.keys.mode && !S.keys.hold) held = held.filter(x => x !== note); drawKbd(); }
@@ -1081,10 +1091,11 @@ function drawKbd() { kbdEls.forEach(({ el, n }) => { if (el.isConnected) { el.cl
 function setKeys(o) { Object.assign(S.keys, o); if (!S.keys.mode || (o.hold === false)) { held = held.filter(n => down.has(n)); } if (!S.keys.mode) held = []; drawAll(); drawKbd(); persist(); }
 function buildKeys(box, count) {
   const ctl = h('div', 'kctl'), lab = (t, el) => { const w = h('div', 'lab'); w.append(h('span', 'cap', t), el); return w; };
+  const lock = key('IN KEY', () => setKeys({ lock: !inKey() }), 'led'); lock.title = 'Keeps what you play in the pattern\'s key: notes move to the scale and the stab plays the right chord for each note'; live(lock, () => { lock.classList.toggle('on', inKey()); lock.setAttribute('aria-pressed', inKey()); });
   const hold = key('HOLD', () => setKeys({ hold: !S.keys.hold }), 'led'), rec = key('SEQ REC', toggleWrite, 'led'); rec.title = 'Records what you play into the loop for the instrument above, on the nearest step, while it plays. Turn ARP off to use it.';
   live(hold, () => { hold.classList.toggle('on', S.keys.hold); hold.setAttribute('aria-pressed', S.keys.hold); }); live(rec, () => { rec.classList.toggle('on', S.keys.rec); rec.setAttribute('aria-pressed', S.keys.rec); rec.disabled = !!S.keys.mode; });
   ctl.append(lab('PLAYS', seg([['BS', 'BASS'], ['ST', 'STAB'], ['SM', 'SAMPLE']], () => S.keys.target, v => setKeys({ target: v }))), lab('ARP', seg(ARPM.map((m, j) => [j, m]), () => S.keys.mode, v => setKeys({ mode: v }))),
-    lab('RATE', seg(ARPR.map((r, j) => [j, r[0]]), () => S.keys.rate, v => setKeys({ rate: v }))), lab('OCTAVES', seg([[1, '1'], [2, '2']], () => S.keys.oct, v => setKeys({ oct: v }))), hold, rec);
+    lab('RATE', seg(ARPR.map((r, j) => [j, r[0]]), () => S.keys.rate, v => setKeys({ rate: v }))), lab('OCTAVES', seg([[1, '1'], [2, '2']], () => S.keys.oct, v => setKeys({ oct: v }))), lock, hold, rec);
   const kb = h('div', 'kbd'); let shownKey = -1;
   live(kb, () => {
     if (shownKey === P.key) return; shownKey = P.key; kb.textContent = ''; kbdEls.length = 0;
@@ -1592,7 +1603,7 @@ function onMidi(e) {
     if (midi.learn && midi.armA && b > 63) { midi.cc[id] = midi.armA; midiKeep(); toast('Button (CC ' + a + ') now does: ' + actName(midi.armA)); midi.armA = null; drawAll(); return; }
     if (midi.learn && midi.armP) { midi.cc[id] = midi.armP; midiKeep(); toast('Control ' + a + ' now turns ' + DEF[midi.armP].lb); midi.armP = null; drawAll(); return; }
     if (slotTake(id)) return;
-    let k = midiMap().cc[id]; const sp = midi.cc[id] ? null : slotParam(id); if (sp === '') return; if (sp) k = sp;   // a knob or fader set with SET KNOBS / SET FADERS follows the screen
+    let k = midiMap().cc[id]; const sp = midi.cc[id] ? null : slotParam(id); if (sp === '') return; if (sp === 'DRUMS') { if (!midi.padHeld) return drumBus(id, b); k = 'lvl.BD'; } else if (sp) k = sp;   // a knob or fader set with SET KNOBS / SET FADERS follows the screen
     if (k === 'vw:fx') { const hi = b > 63; if (hi && !midi.ccHi[id]) { midi.fxT = performance.now(); fxLayer(); } else if (!hi && midi.ccHi[id] && midi.fxl && performance.now() - midi.fxT > 400) fxLayer(); midi.ccHi[id] = hi; return; }   // a latching FX button sends on then off; a held one is FX while held
     if (isAct(k)) { const hi = b > 63; if (hi && !midi.ccHi[id]) doAct(k); midi.ccHi[id] = hi; return; }
     if (midi.padHeld && k && DEF[k]) {                                       // HOLD A PAD + MOVE A FADER OR KNOB: the volume of that pad's instrument (pad 1 kick, 2 snare ... in the order on screen)
@@ -1600,7 +1611,7 @@ function onMidi(e) {
       if (H.undo) { const [uk, ui, uw] = H.undo; H.undo = null; setStep(uk, ui, uw, false); elite.force = true; }   // the hold was for the volume, not for a step: put the step back
       midi.busy = true; set(lv, toVal(lv, b / 127)); midi.busy = false; lcdFlash(NAME[ins] + ' volume', DEF[lv].f(P[lv])); return;
     }
-    const kk = sp ? k : fxOf(k); if (kk && DEF[kk]) { midi.busy = true; set(kk, toVal(kk, b / 127)); midi.busy = false; if (sp) lcdFlash(DEF[kk].lb, DEF[kk].f(P[kk])); }
+    const kk = sp ? k : fxOf(k); if (kk && DEF[kk]) { midi.busy = true; const rg = sp && midi.fxl && (midi.faders || []).includes(id) && FAD_RNG[kk]; set(kk, rg ? Math.round(rg[0] + (rg[1] - rg[0]) * b / 127) : toVal(kk, b / 127)); midi.busy = false; if (sp) lcdFlash(DEF[kk].lb, DEF[kk].f(P[kk])); }
   }
 }
 /* ELITE FOLLOWS THE SCREEN. The laptop is the main surface; the SMK-37 Elite (stock M-VAVE firmware, nothing on it is changed)
@@ -1641,14 +1652,24 @@ function padUp(id) { if (midi.padHeld && midi.padHeld.id === id) midi.padHeld = 
 // instrument (bass, stab or sampler; a drum keeps the last one) and SEQ closes it, so the pads are steps again.
 // KNOBS AND FADERS FOLLOW THE SCREEN. Once SET KNOBS / SET FADERS has learned which control is which (turn them in order, once):
 // knobs 1-4 are the selected instrument's own sound knobs, knobs 5-8 its FILTER, DRIVE, REVERB and ECHO; a second knob bank (9-16)
-// carries the rest of its sound knobs, its volume and pan. Faders 1-4 are KICK, SNARE, BASS, STAB (chords) volume (5-8: HATS, CLAP,
-// OPEN HAT, SAMPLE); with FX on they are REVERB, DELAY, DRIVE, FILTER (5-8: reverb decay, echo time, echo feedback, master volume).
+// carries the rest of its sound knobs, its volume and pan. Faders 1-4 are four mixer channels: DRUMS (the whole kit together), SAMPLE (the breaks), BASS, CHORDS (the stab), as on MD firmware 1.7; 5-8: KICK, SNARE,
+// HATS, CLAP; with FX on they are REVERB, DELAY, DRIVE, FILTER (5-8: reverb decay, echo time, echo feedback, master volume).
 // A control tied to something with LEARN keeps that.
-const FAD_LV = ['lvl.BD', 'lvl.SD', 'lvl.BS', 'lvl.ST', 'lvl.CH', 'lvl.CP', 'lvl.OH', 'lvl.SM'], FAD_FX = ['fx.verb', 'fx.space', 'fx.drive', 'fx.filter', 'fx.vdec', 'fx.etime', 'fx.efb', 'vol'];
+const FAD_LV = ['DRUMS', 'lvl.SM', 'lvl.BS', 'lvl.ST', 'lvl.BD', 'lvl.SD', 'lvl.CH', 'lvl.CP'], FAD_FX = ['fx.verb', 'fx.space', 'fx.drive', 'fx.filter', 'fx.vdec', 'fx.etime', 'fx.efb', 'vol'];
 function knobList(k) { if (!SOUND.includes(k)) k = 'BD'; const own = KN[k].map(x => x[0]), fx = ['flt.' + k, 'drv.' + k, REVK(k), ECHK(k)]; return own.slice(0, 4).concat(Array(Math.max(0, 4 - own.length)).fill(null), fx, own.slice(4), ['lvl.' + k, 'pan.' + k]); }
+// the DRUMS fader: every drum's level moves together by what the fader moved, so the balance between the drums is kept
+const DRUMK = SOUND.filter(k => !['BS', 'ST', 'SM'].includes(k));
+function drumBus(id, v) {
+  const was = (midi.fadV || (midi.fadV = {}))[id]; midi.fadV[id] = v; if (was == null || was === v) return;
+  const dB = (v - was) / 127 * 46; midi.busy = true; DRUMK.forEach(k => { const lv = 'lvl.' + k; set(lv, clamp(Math.round((P[lv] + dB) * 2) / 2, DEF[lv].mn, DEF[lv].mx)); }); midi.busy = false;
+  lcdFlash('Drums volume', (dB > 0 ? 'up' : 'down') + ' · kick ' + DEF['lvl.BD'].f(P['lvl.BD']));
+}
+// FX faders stay musical: reverb, delay and drive stop short of the top of their knobs, and the filter fader is OFF at the bottom and
+// sweeps the high-pass up (it never shuts the low-pass, so a fader left down can't mute the mix).
+const FAD_RNG = { 'fx.verb': [0, 70], 'fx.space': [0, 65], 'fx.drive': [0, 70], 'fx.filter': [0, 85], 'fx.efb': [0, 80] };
 function slotParam(id) {
   let i = (midi.knobs || []).indexOf(id); if (i >= 0) { const p = knobList(S.sel)[i]; return p && DEF[p] ? p : ''; }
-  i = (midi.faders || []).indexOf(id); if (i >= 0) { const p = (midi.fxl ? FAD_FX : FAD_LV)[i]; return p && DEF[p] ? p : ''; }
+  i = (midi.faders || []).indexOf(id); if (i >= 0) { const p = (midi.fxl ? FAD_FX : FAD_LV)[i]; return p === 'DRUMS' || (p && DEF[p]) ? p : ''; }
   return null;
 }
 function slotLearn(kind) {
