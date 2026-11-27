@@ -26,21 +26,23 @@ always go back to M-VAVE's own firmware.
 Switching between MD442, MD187 and MD888 is the same: run the installer again and pick another. Your global
 settings (MIDI channels, clock and notes out, output level, key lights, autosave) stay as they are. Each firmware
 starts with its own patterns and sound; the other firmware's saved patterns are kept until you save in this one.
-MD|442 1.2, 1.5 and 1.6 users keep their patterns in MD442 1.7.
+MD|442 1.2 and 1.5 to 1.7 users keep their patterns in MD442 1.8.
 
 Windows or Linux: install Python 3, run `pip install mido python-rtmidi`, then
 `python3 tools/fm1_install.py md187-smk37-elite.fwsc` (or the file you want).
 
-## Playing it (all three, version 1.7)
+## Playing it (all three, version 1.8)
 The one-page cheat sheet (md-hardware-controls.pdf) has all of this on one page.
 
 | Control | What it does |
 | --- | --- |
-| < / > | pick the instrument: DRUMS 1 (909), DRUMS 2 (808), BASS, CHORDS, BREAKS. The screen shows its name |
-| keys (F3 to G5) | always play the instrument on screen, never the steps. Drums: BD SD CP CH OH LT MT HT RS CR RD from F3, again from E4. BASS and CHORDS: notes (OCTAVE- / + the octave). BREAKS: slices 1-8 |
-| pads | the instrument's 16 steps: tap on, tap off. BASS / CHORDS: a new step takes the note you last played; hold a pad + press a key to set that step's note |
+| < / > | pick the instrument: DRUMS 1 (909), DRUMS 2 (808), BASS, CHORDS, LEAD, BREAKS. The screen shows its name |
+| keys (F3 to G5) | always play the instrument on screen, never the steps. Drums: BD SD CP CH OH LT MT HT RS CR RD from F3, again from E4. BASS, CHORDS and LEAD: notes, kept in the key of the bass line (OCTAVE- / + the octave). BREAKS: slices 1-8 |
+| ARP | an arpeggiator for the keys on BASS, CHORDS and LEAD. One key held: that note up through the octaves. More keys: they run upwards, in 16ths, in time with the pattern. PATCH + ARP: the line generator |
+| PATCH + SCALE | IN KEY on / off. On (the start): the keys snap to the natural minor scale of the bass line's key, and CHORDS builds its chords from that scale, so playing over a pattern stays in tune |
+| pads | the instrument's 16 steps: tap on, tap off. BASS / CHORDS / LEAD: a new step takes the note you last played; hold a pad + press a key to set that step's note |
 | REC + PLAY | what you play on the keys goes into the pattern on the nearest step |
-| FX | the faders' switch. Lit: REVERB, DELAY, DRIVE, FILTER. Off: volumes of DRUMS 1, DRUMS 2, BASS, CHORDS |
+| FX | the faders' switch. Lit: REVERB, DELAY, DRIVE (bottom: off), FILTER (bottom: off, up: high-pass). Off: volumes of DRUMS 1, DRUMS 2, BASS, CHORDS |
 | FADER BANK | fader 1 switches between DRUMS 1 and BREAKS (lit: BREAKS) |
 | Hold a pad + any fader | that pad's instrument volume. Pads 1 to 11: the drums of the kit on screen (BD SD CP CH OH LT MT HT RS CR RD). Pads 12 to 16: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS. The step or mute the press changed is put back |
 | KNOB BANK held + K2 / K3 / K4 | filter, resonance, decay of the instrument (BASS / CHORDS: cutoff, reso, env mod) |
@@ -52,7 +54,16 @@ The one-page cheat sheet (md-hardware-controls.pdf) has all of this on one page.
 **CHORDS** is new: one key plays a whole chord through one filter, like a dub-techno or house stab. It starts as
 a minor 7th on MD442 (MD442's Deep House and Dub Techno patterns play its stab), a minor 9th on MD187 and a dark
 minor stab on MD888. **BASS** on MD442 starts as a round bass; turn up the resonance and env mod for acid.
-A project saved with 1.5 gets the new BASS and CHORDS sound once, the first time 1.6 loads it. Its patterns stay.
+A project saved with 1.5 gets the new BASS and CHORDS sound once, the first time 1.6 or later loads it. Its patterns stay.
+
+**LEAD** (new in 1.8) is the CHORDS voice playing single notes: pick it with < > and play a lead line or an
+arpeggio. LEAD and CHORDS are one voice and one pattern lane, so one of them sounds at a time. Arpeggiator
+notes are played live and are not recorded into the pattern.
+
+**Your own loops:** the keyboard keeps about 14 seconds of your own loops (SMK-37 Elite and Pro; about 21 on
+the FM-1; one loop about 7 seconds at most, mono, 22 kHz). They stay in the keyboard when it is unplugged and
+play on BREAKS as BR1, BR2 and so on (PARA, then LOOP A or LOOP B). The loops page on the MD-Modules site
+sends them over USB from Chrome or Edge.
 
 **Build-ups and breakdowns: the 10 end keys of the keybed (hold to play)**
 | Key | What it does |
