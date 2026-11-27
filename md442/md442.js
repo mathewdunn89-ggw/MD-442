@@ -22,7 +22,7 @@ const NOTES = ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#'];
 const NOTE_CYCLE = [0, 3, 5, 7, 10, 12, -2];
 const sgn = v => (v > 0 ? '+' : v < 0 ? '−' : '');
 // MD|442's three machines: one engine, the same filters, effects and controls; their own patterns, sound and sample banks.
-// The banks are the ones in the MD|187 / MD|888 keyboard firmwares (tools/md_gen_samples.py there): 8 slices each.
+// The banks: 8 slices each, synthesised (no recordings). RUMBLE, GABBA, TRANCE, STABS and VOX are the 44.1 kHz ones from tools/gen_banks.py; BOOMBP, DRUMS and HITS are the firmware's originals.
 const STYLES = { 442: { name: 'MD|442', tag: 'TECHNO', first: 'Peak Warehouse', bank: 4 }, 187: { name: 'MD|187', tag: 'HIP-HOP', first: 'Boom Bap', bank: 0 }, 888: { name: 'MD|888', tag: 'HARD TECHNO', first: 'Warehouse', bank: 4 } };
 const STYLE_IDS = ['442', '187', '888'];
 const BANKS = [['187', 'BOOMBP', 1, 96, 'Boom bap break'], ['187', 'DRUMS', 1, 96, 'Dusty drum hits'], ['187', 'STABS', 1, 96, 'Jazz stabs'], ['187', 'VOX', 1, 96, 'Vocal hits'],
@@ -158,8 +158,8 @@ function convert(p) {
 // ac: accent, bk: sample bank (BANKS), br: the SAMPLE row (1-8 = that slice, - = the slice before rings on, g = the loop plays on, . = off),
 // cx: chop (how often the loop jumps), lv: sample level %, root + bs: the 303 line (n = semitones; a = accent, s = slide).
 const VPRESETS = {
-  "Boom Bap": {"s":"187","sw":32,"g":{"BD":"x......x..x.....","SD":"....x.......x...","CH":"x.x.x.x.x.x.x.x.","OH":"..............x."},"ac":"....x.......x...","bk":0,"br":"gggggggggggggggg","cx":0,"lv":70,"root":38,"bs":["0",".",".",".",".",".",".","0",".",".","s3","5",".",".",".","."]},
-  "Dusty": {"s":"187","sw":36,"g":{"BD":"x.........x.....","CH":"..x...x...x...x."},"bk":1,"br":"1-..3-.2.1-3-..5","cx":0,"lv":100,"root":38,"bs":["0",".",".",".",".",".",".",".",".",".","0",".",".","-2",".","."]},
+  "Boom Bap": {"s":"187","k":"187o","sw":32,"g":{"BD":"x......x..x.....","SD":"....x.......x...","CH":"x.x.x.x.x.x.x.x.","OH":"..............x."},"ac":"....x.......x...","bk":0,"br":"gggggggggggggggg","cx":0,"lv":70,"root":38,"bs":["0",".",".",".",".",".",".","0",".",".","s3","5",".",".",".","."]},
+  "Dusty": {"s":"187","k":"187o","sw":36,"g":{"BD":"x.........x.....","CH":"..x...x...x...x."},"bk":1,"br":"1-..3-.2.1-3-..5","cx":0,"lv":100,"root":38,"bs":["0",".",".",".",".",".",".",".",".",".","0",".",".","-2",".","."]},
   "Stab City": {"s":"187","sw":30,"g":{"BD":"x......x.x......","SD":"....x.......x...","CH":"x.x.x.x.x.x.x.x.","RS":".......x......x."},"ac":"....x.......x...","bk":2,"br":"1-......2-....3.","cx":0,"lv":95,"root":38,"bs":["0",".",".",".",".",".",".","0",".","5",".",".",".",".",".","."]},
   "Vox Hits": {"s":"187","sw":32,"g":{"BD":"x.....x...x.....","SD":"....x.......x...","CP":"............x...","CH":"x.xxx.x.x.xxx.x."},"bk":3,"br":"..1-......2-..8-","cx":0,"lv":90,"root":38,"bs":["0",".",".",".",".",".","0",".",".",".","3",".",".",".",".","."]},
   "Laid Back": {"s":"187","sw":48,"g":{"BD":"x.......x.x.....","RS":"....x.......x...","CH":"x.x.x.x.x.x.x.x.","OH":"......x........."},"bk":1,"br":"......7-......7-","cx":0,"lv":80,"root":36,"bs":["0",".",".",".",".",".",".",".","0",".","s7","5",".",".",".","."]},
@@ -169,23 +169,30 @@ const VPRESETS = {
   "Warehouse": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"xxxxxxxxxxxxxxxx","OH":"..x...x...x...x.","CP":"....x.......x..."},"ac":"x...x...x...x...","bk":4,"br":"gggggggggggggggg","cx":0,"lv":90},
   "Gabba": {"s":"888","sw":0,"g":{"CH":"..x...x...x...x.","CP":"....x.......x..."},"bk":5,"br":"gggggggggggggggg","cx":0,"lv":110,"root":45,"bs":["a0",".","0",".","a0",".","0",".","a0",".","0",".","a0",".","s0","12"]},
   "Trance Stab": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"x.x.x.x.x.x.x.x.","OH":"..x...x...x...x.","RD":"x.x.x.x.x.x.x.x."},"bk":6,"br":"..1-..1-..2-..3-","cx":0,"lv":95},
-  "Industry": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"xxxxxxxxxxxxxxxx","RS":"...x..x....x..x."},"ac":"x...x...x...x...","bk":7,"br":"..1-......7-..5-","cx":0,"lv":90},
+  "Industry": {"s":"888","k":"888o","sw":0,"g":{"BD":"x...x...x...x...","CH":"xxxxxxxxxxxxxxxx","RS":"...x..x....x..x."},"ac":"x...x...x...x...","bk":7,"br":"..1-......7-..5-","cx":0,"lv":90},
   "Acid 155": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"..x...x...x...x.","CP":"....x.......x..."},"bk":4,"br":"gggggggggggggggg","cx":0,"lv":70,"root":45,"bs":["a0","0","s12","0","3","a0","s0","10","0","a12","0","s7","a0","0","3","s15"]},
-  "Schranz": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"xxxxxxxxxxxxxxxx","LT":"..x...x...x...x.","MT":".x...x...x...x..","HT":"...x...x...x...x"},"ac":"x...x...x...x...","bk":4,"br":"gggggggggggggggg","cx":0,"lv":75},
+  "Schranz": {"s":"888","k":"888o","sw":0,"g":{"BD":"x...x...x...x...","CH":"xxxxxxxxxxxxxxxx","LT":"..x...x...x...x.","MT":".x...x...x...x..","HT":"...x...x...x...x"},"ac":"x...x...x...x...","bk":4,"br":"gggggggggggggggg","cx":0,"lv":75},
   "Rolling": {"s":"888","sw":0,"g":{"RS":".x..x..x.x..x..x","BD":"x...x...x...x...","OH":"..x...x...x...x.","CH":"x.xxx.xxx.xxx.xx"},"bk":4,"br":"gggggggggggggggg","cx":0,"lv":95},
   "Peak Time": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CP":"....x.......x...","OH":"..x...x...x...x.","RD":"x.x.x.x.x.x.x.x.","CR":"x..............."},"ac":"x...x...x...x...","bk":6,"br":"1-..1-..6-..7-.4","cx":0,"lv":100}
 };
 // each machine's own sound, under every one of its patterns (the knobs are the same on all three)
 const VSOUND = {
-  187: { bpm: 96, 'bd.tune': 47, 'bd.decay': 950, 'bd.attack': 30, 'bd.punch': 38, 'bd.rumble': 0, 'sd.tune': -1.5, 'sd.tone': 38, 'sd.snappy': 48, 'sd.decay': 260, 'cp.tone': 1050, 'cp.decay': 260,
+  // the first kits: Schranz, Industry, Boom Bap and Dusty keep them ("k" in the pattern), because Mathew preferred those four as they were
+  '187o': { bpm: 96, 'bd.tune': 47, 'bd.decay': 950, 'bd.attack': 30, 'bd.punch': 38, 'bd.rumble': 0, 'sd.tune': -1.5, 'sd.tone': 38, 'sd.snappy': 48, 'sd.decay': 260, 'cp.tone': 1050, 'cp.decay': 260,
     'ch.decay': 55, 'oh.decay': 380, 'hh.tone': 34, 'rs.tune': -2, 'cr.tone': 35, 'cr.decay': 1800, 'bs.cutoff': 280, 'bs.reso': 18, 'bs.acid': 0, 'bs.drive': 22, 'bs.fat': 65, 'bs.decay': 420,
-    'st.tone': 1700, 'st.decay': 520, 'st.chord': 3, 'fx.verb': 14, 'fx.space': 0, 'fx.drive': 18, 'fx.vdec': 1.2, 'drv.BD': 12, 'drv.SD': 18, 'flt.CH': -10, 'flt.SM': -6, 'drv.SM': 14, 'accent': 4 },
-  888: { bpm: 155, 'bd.tune': 54, 'bd.decay': 420, 'bd.attack': 92, 'bd.punch': 100, 'bd.rumble': 85, 'sd.tune': 1, 'sd.snappy': 75, 'sd.decay': 220, 'cp.tone': 1500, 'cp.decay': 240,
+    'st.tone': 1700, 'st.decay': 520, 'st.chord': 3, 'fx.verb': 2, 'fx.space': 0, 'fx.drive': 18, 'fx.vdec': .6, 'drv.BD': 12, 'drv.SD': 18, 'flt.CH': -10, 'flt.SM': -6, 'drv.SM': 14, 'accent': 4 },
+  '888o': { bpm: 155, 'bd.tune': 54, 'bd.decay': 420, 'bd.attack': 92, 'bd.punch': 100, 'bd.rumble': 85, 'sd.tune': 1, 'sd.snappy': 75, 'sd.decay': 220, 'cp.tone': 1500, 'cp.decay': 240,
     'ch.decay': 42, 'oh.decay': 300, 'hh.tone': 82, 'rd.tone': 70, 'bs.cutoff': 700, 'bs.reso': 72, 'bs.acid': 85, 'bs.drive': 80, 'bs.decay': 120, 'st.tone': 6000, 'st.decay': 280, 'st.chord': 1,
-    'fx.verb': 20, 'fx.space': 14, 'fx.drive': 34, 'fx.vdec': 2.2, 'fx.etime': 2, 'fx.efb': 40, 'drv.BD': 55, 'drv.CP': 30, 'flt.SM': 0, 'drv.SM': 25, 'accent': 7 }
+    'fx.verb': 20, 'fx.space': 14, 'fx.drive': 34, 'fx.vdec': 2.2, 'fx.etime': 2, 'fx.efb': 40, 'drv.BD': 55, 'drv.CP': 30, 'flt.SM': 0, 'drv.SM': 25, 'accent': 7 },
+  187: { bpm: 93, 'bd.tune': 49, 'bd.decay': 600, 'bd.attack': 58, 'bd.punch': 62, 'bd.rumble': 0, 'sd.tune': -1, 'sd.tone': 60, 'sd.snappy': 68, 'sd.decay': 230, 'cp.tone': 1350, 'cp.decay': 220,
+    'ch.decay': 48, 'oh.decay': 340, 'hh.tone': 58, 'rs.tune': 0, 'cr.tone': 50, 'cr.decay': 1600, 'bs.cutoff': 420, 'bs.reso': 18, 'bs.acid': 0, 'bs.drive': 28, 'bs.fat': 55, 'bs.decay': 380,
+    'st.tone': 3200, 'st.decay': 480, 'st.chord': 3, 'fx.verb': 2, 'fx.space': 0, 'fx.drive': 22, 'fx.vdec': .6, 'drv.BD': 22, 'drv.SD': 26, 'drv.SM': 20, 'accent': 5 },
+  888: { bpm: 155, 'bd.tune': 55, 'bd.decay': 330, 'bd.attack': 95, 'bd.punch': 100, 'bd.rumble': 40, 'sd.tune': 1, 'sd.tone': 62, 'sd.snappy': 78, 'sd.decay': 200, 'cp.tone': 1650, 'cp.decay': 200,
+    'ch.decay': 36, 'oh.decay': 260, 'hh.tone': 90, 'rd.tone': 78, 'cr.tone': 62, 'bs.cutoff': 900, 'bs.reso': 70, 'bs.acid': 85, 'bs.drive': 80, 'bs.decay': 120, 'st.tone': 7500, 'st.decay': 260, 'st.chord': 1,
+    'fx.verb': 12, 'fx.space': 12, 'fx.drive': 40, 'fx.vdec': 1.3, 'fx.etime': 2, 'fx.efb': 38, 'drv.BD': 60, 'drv.CP': 35, 'drv.SM': 30, 'accent': 7 }
 };
 function convertV(p) {
-  const v = Object.assign({}, VSOUND[p.s]); v.shuffle = Math.round(50 + p.sw / 4); v['sm.bank'] = p.bk; v['sm.chop'] = p.cx; v['lvl.SM'] = half(LEVEL.SM + 20 * Math.log10(Math.max(1, p.lv) / 100));
+  const v = Object.assign({}, VSOUND[p.k || p.s]); if (p.bpm) v.bpm = p.bpm; v.shuffle = Math.round(50 + p.sw / 4); v['sm.bank'] = p.bk; v['sm.chop'] = p.cx; v['lvl.SM'] = half(LEVEL.SM + 20 * Math.log10(Math.max(1, p.lv) / 100));
   const sc = emptyScene(); Object.keys(p.g).forEach(k => { sc.g[k] = p.g[k].split('').map(c => c === 'x'); }); if (p.ac) sc.g.AC = p.ac.split('').map(c => c === 'x');
   p.br.split('').forEach((c, i) => { sc.g.SM[i] = c !== '.'; sc.sl[i] = c >= '1' && c <= '8' ? +c : 0; });
   const root = p.root || (p.s === '888' ? 45 : 38); v.key = ((root - 28) % 12 + 12) % 12; const oct = 12 * Math.floor((root - 28) / 12);
@@ -265,8 +272,8 @@ const keepBeats = () => { try { localStorage.setItem(LSB, JSON.stringify(beats))
 /* Drums are made the way the classic analogue machines make them: ringing resonators hit by a pulse,
    banks of six square waves for the metal, filtered noise for snap and clap. Works on a live or an offline context. */
 const BUS = .4, CLIPIN = .56, OUT = .79, DUCK = .75, BDUCK = .72;   // louder into the soft clip (patterns land near -13 LUFS with peaks around -3 dBFS, so the kick keeps its punch); the ceiling stays at -1 dBFS: tanh(3.5) / tanh(1.4) × .79
-const PTRIM = { 'Peak Warehouse': .5, 'Berlin Roll': -1, 'Electro': 1.6, 'Acid Jack': 1.9, 'Deep House': 2.6, 'Breakbeat': 1.8, 'Dub Techno': 1,
-  'Boom Bap': 2.0, 'Dusty': 2.5, 'Stab City': 3, 'Vox Hits': 3, 'Laid Back': 3, 'Chop Shop': 3, 'Horns': 2.5, 'Scratch': 3, 'Warehouse': -1.0, 'Gabba': -0.5, 'Trance Stab': 2.5, 'Industry': 0.5, 'Acid 155': -0.5, 'Schranz': -0.5, 'Rolling': 1.5, 'Peak Time': -1.0 };   // dB per pattern, so they all play at the same loudness   // headroom into the master chain, output trim after the limiter, how far the kick dips the rest
+const PTRIM = { 'Peak Warehouse': 0.5, 'Berlin Roll': -1.0, 'Electro': 1.5, 'Acid Jack': 2.0, 'Deep House': 3.0, 'Breakbeat': 1.5, 'Dub Techno': 0.5,
+  'Boom Bap': 1.5, 'Dusty': 2.0, 'Stab City': 3.5, 'Vox Hits': 4.0, 'Laid Back': 4.0, 'Chop Shop': 2.0, 'Horns': 3.0, 'Scratch': 3.5, 'Warehouse': 0.5, 'Gabba': 0.0, 'Trance Stab': 3.0, 'Industry': 0.0, 'Acid 155': 0.0, 'Schranz': -0.5, 'Rolling': 2.5, 'Peak Time': 0.5 };   // dB per pattern, so they all play at the same loudness   // headroom into the master chain, output trim after the limiter, how far the kick dips the rest
 const trimOf = () => { const b = beats.find(x => x.name === S.preset); return b ? +b.trim || 0 : PTRIM[S.preset] || 0; };
 const HAT_F = [205.3, 304.4, 369.6, 522.7, 540, 800], RIDE_F = [263, 400, 421, 474, 587, 845];
 const curves = {};
@@ -301,7 +308,7 @@ function mkEngine(ac, live) {
   X.revIn = g(); const pre = ac.createDelay(.1); pre.delayTime.value = .018;
   X.cvs = [ac.createConvolver(), ac.createConvolver()]; X.cvg = [g(1), g(0)]; X.cvA = 0; X.irSecs = 0;
   X.revRet = g(11); const rvf = bq('highpass', 320, .7); X.cvs.forEach((c, j) => { pre.connect(c); c.connect(X.cvg[j]); X.cvg[j].connect(rvf); }); X.revIn.connect(pre);
-  chain(rvf, bq('highshelf', 5000, null, -3), bq('lowpass', 9000, .7), X.revRet, X.duck);
+  chain(rvf, bq('highshelf', 5000, null, -2), bq('lowpass', 12000, .7), X.revRet, X.duck);
   // dub delay: dotted eighth, filtered feedback, a little of it into the room
   X.dlyIn = g(); X.dl = ac.createDelay(2); X.fb = g(.4); X.dlyRet = g(1.6);
   const dlp = bq('lowpass', 2000, -3), dhp = bq('highpass', 140, -3);   // Q is in dB here: -3 = no bump, so the loop can never gain and run away   // inside the loop, so every repeat is darker than the last
@@ -425,7 +432,7 @@ function voice(X, k, t, i, vel, note) {
     const open = k === 'OH', tn = P['hh.tone'] / 100, tau = open ? P['oh.decay'] / 3450 : P['ch.decay'] / 4160, life = tau * 9;
     if (X.openHat) { hold(X.openHat.gain, t); X.openHat.gain.setTargetAtTime(0, t, .006); X.openHat = null; }   // a new hat chokes the open one
     // the metal bank through the two classic band-passes (3.44 k body, 7.1 k sizzle), then a high-pass set by TONE, plus a layer of band-passed noise for air
-    const e = eg(open ? .36 : .6, tau, .0015), hp = flt('highpass', 2400 + tn * 4600, .7), lo = flt('bandpass', 3440, 1.1), hi = flt('bandpass', 7100, 1), lg = ac.createGain(), hg = ac.createGain(), sm = flt('highshelf', 9500, null, -4);   // softer front edge and a gentle top shelf: crisp, not fizzy
+    const e = eg(open ? .36 : .6, tau, .0015), hp = flt('highpass', 2400 + tn * 4600, .7), lo = flt('bandpass', 3440, 1.1), hi = flt('bandpass', 7100, 1), lg = ac.createGain(), hg = ac.createGain(), sm = flt('highshelf', 9500, null, -2);   // softer front edge and a gentle top shelf: crisp, not fizzy
     lg.gain.value = 6 * (1 - tn * .6); hg.gain.value = 8; X.bank.connect(lo); X.bank.connect(hi); lo.connect(lg); hi.connect(hg); lg.connect(hp); hg.connect(hp); hp.connect(sm); sm.connect(e); e.connect(d);
     if (X.live) setTimeout(() => { try { X.bank.disconnect(lo); X.bank.disconnect(hi); } catch (_) {} }, Math.max(0, (t - ac.currentTime) + life + .2) * 1000);
     const nz = ac.createBufferSource(), ng = ac.createGain(); nz.buffer = X.noise; nz.loop = true; ng.gain.value = 1.6 + tn * .6;
