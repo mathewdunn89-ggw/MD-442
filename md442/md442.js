@@ -486,7 +486,7 @@ function sampler(X, t, i, vel, sl) {
   let off, dur;
   if (sl > 0) { off = (sl - 1) * buf.duration / 8; dur = buf.duration / 8; X.smLoop = false; }
   else { const pos = sl < 0 ? (-sl - 1) % steps : (i + 16 * ((X.bar || 0) % b[2])) % steps; off = pos * per; dur = buf.duration - off; X.smLoop = true; }
-  if (X.smG && X.smEnd > t) { hold(X.smG.gain, t); X.smG.gain.setTargetAtTime(0, t, .003); }      // one sampler voice: a new hit cuts the last, as on the keyboard
+  if (X.smG && X.smEnd > t && !(X.live && smPoly)) { hold(X.smG.gain, t); X.smG.gain.setTargetAtTime(0, t, .003); }      // one sampler voice: a new hit cuts the last. Several keys held together: the slices play together
   const src = ac.createBufferSource(), e = ac.createGain(), end = t + dur / rate; src.buffer = buf; src.playbackRate.value = rate;
   e.gain.value = 0; e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(vel * SM_GAIN, t + .002); e.gain.setValueAtTime(vel * SM_GAIN, Math.max(t + .002, end - .006)); e.gain.linearRampToValueAtTime(0, end);
   src.connect(e); e.connect(X.in.SM); src.start(t, off, dur + .01); src.stop(end + .02); X.smG = e; X.smEnd = end; return true;
@@ -1044,7 +1044,8 @@ function arpSeq() {
   if (S.keys.mode === 2) n.reverse(); if (S.keys.mode === 3 && n.length > 2) n = n.concat(n.slice(1, -1).reverse()); return n;
 }
 const slOf = note => ((Math.round(note) % 8) + 8) % 8 + 1;   // the keyboard plays the sampler's slices: C = 1 … G = 8, then round again
-function playNote(note, t, vel) { const k = S.keys.target; if (off(k)) return; voice(E, k, t, 0, vel || 1, k === 'SM' ? slOf(note) : note); flashKey(k); }
+let smPoly = false;
+function playNote(note, t, vel) { const k = S.keys.target; if (off(k)) return; smPoly = k === 'SM' && down.size > 1 && !S.keys.mode; voice(E, k, t, 0, vel || 1, k === 'SM' ? slOf(note) : note); smPoly = false; flashKey(k); }
 function arpFire(t) { const n = arpSeq(); if (!n.length) return; playNote(S.keys.mode === 4 ? n[Math.floor(Math.random() * n.length)] : n[arpPos++ % n.length], t); }
 function arpAtStep(idx, t) {                        // called once for every 16th-note step
   if (!S.keys.mode || !held.length) return; const r = ARPR[S.keys.rate][1];
