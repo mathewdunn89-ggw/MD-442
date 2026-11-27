@@ -68,12 +68,13 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <p><button class="go" id="go">Install</button></p>
 <progress id="bar" max="100" value="0"></progress>
 <div id="status"></div><div id="log"></div>
-<p class="small"><b>New in 1.6:</b> the keys always play the instrument on screen, the pads are the steps, &lt; and &gt; pick the instrument (DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS), and FX switches the faders between effects and volumes. <a href="#manual">How to play it is further down this page</a> (<a href="fw/1.6/md-hardware-controls.pdf">PDF</a>). 1.6 has not been tested on a keyboard yet; 1.5 is below if you want it back.</p>
+<p class="small"><b>New in 1.7:</b> hold a pad and move a fader for that instrument's volume, and two fixes. As in 1.6, the keys always play the instrument on screen, the pads are the steps, &lt; and &gt; pick the instrument (DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS), and FX switches the faders between effects and volumes. <a href="#manual">How to play it is further down this page</a> (<a href="fw/1.7/md-hardware-controls.pdf">PDF</a>). 1.7 has not been tested on a keyboard yet; 1.6 and 1.5 are below if you want one back.</p>
 </div>
 
-<details><summary>Go back to version 1.5</summary>
-<p class="small">The version before: stock key layout (keys and pads are both steps). Pick your keyboard and firmware at the top, then:</p>
-<p><button class="sec" id="goold">Install 1.5</button></p>
+<details><summary>Go back to version 1.6 or 1.5</summary>
+<p class="small">Pick your keyboard and MD-Module at the top, then:</p>
+<p><button class="sec" id="goprev">Install 1.6</button> <span class="small">The version before: the same layout, without hold a pad + fader.</span></p>
+<p><button class="sec" id="goold">Install 1.5</button> <span class="small">The stock key layout: keys and pads are both steps.</span></p>
 </details>
 
 
@@ -87,8 +88,8 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 </details>
 
 <section class="man" id="manual">
-<div class="logo" style="font-size:24px;margin:34px 0 4px">HOW TO PLAY <span>1.6</span></div>
-<p class="sub" style="margin-bottom:10px">The actual mapping of the MD-Modules (version 1.6) on the SMK-37 Elite and Pro. All three play the same way. <a href="fw/1.6/md-hardware-controls.pdf">One-page PDF to print</a>.</p>
+<div class="logo" style="font-size:24px;margin:34px 0 4px">HOW TO PLAY <span>1.7</span></div>
+<p class="sub" style="margin-bottom:10px">The actual mapping of the MD-Modules (version 1.7) on the SMK-37 Elite and Pro. All three play the same way. <a href="fw/1.7/md-hardware-controls.pdf">One-page PDF to print</a>.</p>
 <p class="toc"><a href="#m-idea">The idea</a><a href="#m-keys">Keys</a><a href="#m-pads">Pads</a><a href="#m-buttons">Buttons</a><a href="#m-knobs">Knobs</a><a href="#m-faders">Faders</a><a href="#m-rec">Record</a><a href="#m-perf">Build-ups</a><a href="#m-mute">Mutes and patterns</a><a href="#m-app">With the app</a><a href="#m-stock">Module or M-VAVE</a></p>
 
 <div class="card" id="m-idea"><h3>The idea in four lines</h3>
@@ -171,6 +172,7 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <tr><td><kbd>FX</kbd> lit</td><td>1 REVERB &middot; 2 DELAY &middot; 3 DRIVE &middot; 4 FILTER (middle off, down low-pass, up high-pass).</td></tr>
 <tr><td><kbd>FX</kbd> off</td><td>1 DRUMS 1 &middot; 2 DRUMS 2 &middot; 3 BASS &middot; 4 CHORDS volume.</td></tr>
 <tr><td><kbd>FADER BANK</kbd> lit</td><td>Fader 1 is BREAKS volume instead of DRUMS 1.</td></tr>
+<tr><td>Hold a pad + any fader</td><td>That pad's instrument volume. Pads 1 to 11: the drums of the kit on screen (kick, snare, clap, closed hat, open hat, toms, rim, crash, ride). Pads 12 to 16: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS. The step or mute the press changed is put back.</td></tr>
 </table>
 <p class="small" style="margin-top:8px">A fader only takes over once you move it, so nothing jumps when you switch.</p></div>
 
@@ -222,7 +224,7 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <tr><td>What you give up meanwhile</td><td>M-VAVE's controller features: its own arp, chord, scale and note repeat modes, Bluetooth, and working as a plain MIDI controller for a DAW or for the MD|442 app's pads and keys.</td></tr>
 <tr><td>Swapping</td><td>A few minutes either way, as often as you like: another module at the top of this page, or <a href="#restore">M-VAVE's own firmware back</a>. Your module settings are kept.</td></tr>
 </table>
-<p class="small" style="margin-top:8px">1.6 has not been tested on a real keyboard yet. If something here does not match what the keyboard does, the keyboard is wrong, not you: go back to 1.5 above and say what you pressed.</p></div>
+<p class="small" style="margin-top:8px">1.7 has not been tested on a real keyboard yet. If something here does not match what the keyboard does, the keyboard is wrong, not you: go back to 1.6 or 1.5 above and say what you pressed.</p></div>
 </section>
 <p class="small" style="margin-top:22px">Uses the same USB-MIDI update as M-UPGRADE (X0X's fm1ota.js, GPL-3.0, Leo Kuroshita / Hügelton Instruments; SMK-37 port by genkigenki). MD firmware source: <a href="https://github.com/mathewdunn89-ggw/MD-442">github.com/mathewdunn89-ggw/MD-442</a>. M-VAVE, SMK-37 and FM-1 are trademarks of their owners. No warranty.</p>
 </main>
@@ -494,7 +496,8 @@ const pick = (group, val) => document.querySelectorAll(`[data-${group}]`).forEac
 function refresh() {
   pick("kb", kb); pick("fw", fw);
   $("stocklink").textContent = "Download " + STOCK[kb][0]; $("stocklink").href = STOCK[kb][1];
-  $("go").textContent = "Install " + fw.toUpperCase() + " 1.6";
+  $("go").textContent = "Install " + fw.toUpperCase() + " 1.7";
+  $("goprev").textContent = "Install " + fw.toUpperCase() + " 1.6";
   $("goold").textContent = "Install " + fw.toUpperCase() + " 1.5";
 }
 document.querySelectorAll("[data-kb]").forEach((b) => b.onclick = () => { if (!busy) { kb = b.dataset.kb; refresh(); } });
@@ -565,7 +568,8 @@ const install = async (dir, ver) => {
     await write(p);
   } catch (e) { if (!busy) say("Could not start: " + e.message); }
 };
-$("go").onclick = () => install("fw/1.6/", "1.6");
+$("go").onclick = () => install("fw/1.7/", "1.7");
+$("goprev").onclick = () => install("fw/1.6/", "1.6");
 $("goold").onclick = () => install("fw/", "1.5");
 let stockPkg = null;
 $("stockfile").onchange = async (e) => {
