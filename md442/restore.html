@@ -11,14 +11,20 @@ button:disabled{opacity:.35;cursor:default}progress{width:100%;height:14px}
 </style></head><body>
 <h1>Restore M-VAVE firmware, or install MD|442</h1>
 <p class="small">For an SMK-37 Elite / Pro or FM-1 running MD|442 (or stuck in its update mode). Use Chrome. Nothing to install.</p>
+<h2 style="font-size:17px">A. Install MD firmware 1.5 (SMK-37 Elite)</h2>
+<p class="small">Works on a keyboard running M-VAVE 016 or any MD firmware. Pick one, then press Write to the keyboard below.</p>
+<p><button data-fw="fw/md442-smk37-elite.fwsc" style="background:#3dff7a">MD442 1.5</button>
+<button data-fw="fw/md187-smk37-elite.fwsc" style="background:#ffd23d">MD187 1.5</button>
+<button data-fw="fw/md888-smk37-elite.fwsc" style="background:#ff6b3d">MD888 1.5</button></p>
+<h2 style="font-size:17px">B. Or restore M-VAVE's own firmware</h2>
 <ol>
 <li>Quit M-UPGRADE, other Chrome tabs with MD|442, the MD|442 app and any DAW. Plug the keyboard straight into the computer.</li>
 <li>Download M-VAVE's file for your keyboard: <a href="https://yms-file-store.oss-cn-hongkong.aliyuncs.com/software/firmware/SMK-37Elite/SMK-37%20Elite_016.fwsc">SMK-37 Elite_016</a> ·
 <a href="https://yms-file-store.oss-cn-hongkong.aliyuncs.com/software/firmware/SMK-37Pro/SMK-37%20Pro_016.fwsc">SMK-37 Pro_016</a> ·
 <a href="https://yms-file-store.oss-cn-hongkong.aliyuncs.com/software/firmware/FM-1.fwsc">FM-1 V15</a></li>
-<li>Choose that file (or an MD|442 .fwsc to install MD|442 instead): <input type="file" id="file" accept=".fwsc"></li>
-<li>Press the button, allow MIDI when Chrome asks, and keep the cable in until it says Done.</li>
+<li>Choose that file: <input type="file" id="file" accept=".fwsc"></li>
 </ol>
+<p class="small">Then: quit other MIDI apps, plug the keyboard straight in, press the button, allow MIDI when Chrome asks, and keep the cable in until it says Done (a few minutes).</p>
 <p><button id="go" disabled>Write to the keyboard</button></p>
 <progress id="bar" max="100" value="0"></progress>
 <div id="status"></div>
@@ -283,9 +289,16 @@ function hasMark(raw) { outer: for (let i = 0; i + MARK.length <= raw.length; i+
 let pkg = null, busy = false;
 if (!navigator.requestMIDIAccess) say("This browser has no Web MIDI. Open this page in Google Chrome.");
 $("file").addEventListener("change", async (e) => {
-  pkg = null; $("go").disabled = true;
   const f = e.target.files && e.target.files[0]; if (!f) return;
-  const raw = new Uint8Array(await f.arrayBuffer());
+  take(new Uint8Array(await f.arrayBuffer()), f.name);
+});
+document.querySelectorAll("[data-fw]").forEach((btn) => btn.addEventListener("click", async () => {
+  pkg = null; $("go").disabled = true; say("Loading " + btn.textContent + " ...");
+  try { const r = await fetch(btn.dataset.fw, { cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); take(new Uint8Array(await r.arrayBuffer()), btn.textContent); }
+  catch (err) { say("Could not load " + btn.textContent + ": " + err.message); }
+}));
+function take(raw, label) {
+  pkg = null; $("go").disabled = true;
   let product = "";
   try { product = productOf(raw); } catch (_) {}
   if (!/^[^_]+_\d+$/.test(product)) { say("That isn't an M-VAVE firmware file (it says " + JSON.stringify(product) + ")."); return; }
@@ -293,8 +306,8 @@ $("file").addEventListener("change", async (e) => {
   const img = deinterleave(raw), d = damage(img);
   if (d) { say("This file looks damaged (" + d + "). Download it again."); return; }
   pkg = { img, product, md }; $("go").disabled = busy;
-  say((md ? "Ready: MD|442 firmware " : "Ready: M-VAVE ") + product + ". Press the button.");
-});
+  say("Ready: " + (md ? label + " (" + product + ")" : "M-VAVE " + product) + ". Press Write to the keyboard.");
+}
 $("go").addEventListener("click", async () => {
   if (!pkg || busy) return;
   let midi;
