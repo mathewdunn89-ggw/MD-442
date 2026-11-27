@@ -116,3 +116,9 @@
 .md.desk .tools .wide .key { min-width: 104px; }
 .md.desk .tools .lab { margin-left: 4px; }
 .md.desk .tools .selnm { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 20px; }
+
+/* SONG keys at the top: ● SONG records the whole set, ▶ SONG plays it back, WAV saves it */
+.md.desk .hk .sgk { display: flex; gap: 4px; align-items: stretch; padding: 0 6px; border-left: 1px solid rgba(127,127,127,.25); border-right: 1px solid rgba(127,127,127,.25); }
+.md.desk .hk .sgk .key { min-width: 74px; }
+.md.desk .hk .sgk .key:disabled { opacity: .4; }
+.md .key.song.on:not(.rec) { color: #e8a317; }
