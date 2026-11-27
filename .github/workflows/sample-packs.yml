@@ -1,0 +1,32 @@
+name: Sample packs (MD187, MD888)
+# Builds the two sample packs from tools/gen_banks.py and puts them on the "sample-packs" release, the fixed
+# address the README and the site link to. Never "latest", so the firmware's latest/download links do not move.
+on:
+  push:
+    branches: [main]
+    paths: ['tools/gen_banks.py', 'tools/make_sample_packs.py', 'samples/LICENSE', '.github/workflows/sample-packs.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the packs
+        run: |
+          pip install numpy scipy
+          python3 tools/make_sample_packs.py dist
+          for f in MD187 MD888; do unzip -tq "dist/$f-sample-pack.zip"; done
+          ls -la dist
+      - uses: actions/upload-artifact@v4
+        with: { name: sample-packs, path: dist/ }
+      - name: Release
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          if gh release view sample-packs >/dev/null 2>&1; then
+            gh release upload sample-packs dist/*.zip --clobber
+          else
+            gh release create sample-packs dist/*.zip --target "$GITHUB_SHA" --latest=false \
+              --title "MD-Modules sample packs (MD187, MD888)" --notes-file samples/README.md
+          fi
