@@ -567,7 +567,7 @@ let ckStarted = false;
 // tempo, and START here sends Start and clock to it (even with CLOCK OUT off), so the two never run separate beats. Unplugged, it plays on its own.
 const KB_NAME = /SMK|FM-?1|M-?VAVE|MD ?\|? ?(442|187|888)/i;
 const isKb = o => KB_NAME.test(o.name || '') || (kbx.out && o.name === kbx.out.name);
-const ckOuts = () => { if (midi.ext || !midi.access || (midi.lastCk && performance.now() - midi.lastCk < 1000)) return []; const all = [...midi.access.outputs.values()]; return midi.cko ? all : all.filter(isKb); };
+const ckOuts = () => { if (midi.ext || !midi.access || (midi.lastCk && performance.now() - midi.lastCk < 1000)) return []; const all = [...midi.access.outputs.values()]; return midi.cko ? all : all.filter(o => kbx.out && o.name === kbx.out.name); };   // by name alone it may be a stock M-VAVE: that gets nothing unless CLOCK OUT is on
 function clockStep(t, now) {
   const outs = ckOuts(); if (!outs.length) return;
   const base = performance.now() - now * 1000, dt = stepLen() / 6;
@@ -1545,8 +1545,8 @@ function clockTick(t) { midi.lastCk = performance.now(); const c = midi.ck; c.pu
 const MIDI_DEF = { cc: { '1:20': 'bd.decay', '1:21': 'sd.snappy', '1:22': 'ch.decay', '1:23': 'hh.tone', '1:24': 'bs.cutoff', '1:25': 'bs.reso', '1:26': 'bs.acid', '1:27': 'st.tone', '1:28': 'fx.filter', '1:29': 'fx.verb', '1:30': 'fx.efb', '1:31': 'vol',
   '1:40': 'lvl.BD', '1:41': 'lvl.SD', '1:42': 'lvl.CP', '1:43': 'lvl.CH', '1:44': 'lvl.OH', '1:45': 'lvl.BS', '1:46': 'lvl.ST', '1:47': 'fx.drive', '1:48': 'shuffle', '1:49': 'fx.space', '1:50': 'accent', '1:51': 'fx.etime' }, note: { '10:62': 'BS', '10:63': 'ST' } };
 const midiMap = () => (Object.keys(midi.cc).length || Object.keys(midi.note).length ? midi : MIDI_DEF);
-try { const m = JSON.parse(localStorage.getItem(MIDI_LS) || '{}'); if (m && m.cc) midi.cc = m.cc; if (m && m.note) midi.note = m.note; if (m && m.cko) midi.cko = true; if (m && Array.isArray(m.pads) && m.pads.length) midi.pads = m.pads; if (m && m.lights === false) midi.lights = false; } catch (_) {}
-const midiKeep = () => { try { localStorage.setItem(MIDI_LS, JSON.stringify({ cc: midi.cc, note: midi.note, cko: !!midi.cko, pads: midi.pads, lights: midi.lights !== false })); } catch (_) {} };
+try { const m = JSON.parse(localStorage.getItem(MIDI_LS) || '{}'); if (m && m.cc) midi.cc = m.cc; if (m && m.note) midi.note = m.note; if (m && m.cko) midi.cko = true; if (m && Array.isArray(m.pads) && m.pads.length) midi.pads = m.pads; if (m && m.pl === true) midi.lights = true;   /* pad lights are off until PAD LIGHTS is pressed: nothing is sent to a keyboard by default */ } catch (_) {}
+const midiKeep = () => { try { localStorage.setItem(MIDI_LS, JSON.stringify({ cc: midi.cc, note: midi.note, cko: !!midi.cko, pads: midi.pads, pl: !!midi.lights })); } catch (_) {} };
 function midiHit(k, v) { if (!SOUND.includes(k)) return; sgEv('h', k, v); if (off(k)) return; boot(); const g = .35 + .65 * (v / 127), go = () => voice(E, k, ac.currentTime + .005, 0, g); if (ac.state === 'running') go(); else ac.resume().then(go).catch(() => {}); flashKey(k); if (writing()) writeNote(0, k); }
 // started by the keyboard or a DAW: follow it, and send it nothing back (no second Start, no clock of our own)
 function follow() { if (playing) return; boot(); midi.ext = true; setPlaying(true); if (!playing) midi.ext = false; }
@@ -1559,6 +1559,7 @@ function onMidi(e) {
   const type = st & 0xF0, ch = (st & 15) + 1, a = d[1], b = d[2] || 0;
   if (type === 0x90 && b > 0) {
     const id = ch + ':' + a; midi.last = 'note ' + a + ' ch ' + ch;
+    if (eliteEcho(id, b)) return;
     if (padLearnTake(id)) return;
     if (midi.learn && midi.armA) { midi.note[id] = midi.armA; midiKeep(); toast('Pad (note ' + a + ') now does: ' + actName(midi.armA)); midi.armA = null; drawAll(); return; }
     if (midi.learn && midi.armD) { midi.note[id] = midi.armD; midiKeep(); toast('Pad (note ' + a + ') now plays ' + NAME[midi.armD]); midi.armD = null; drawAll(); return; }
@@ -1590,6 +1591,14 @@ const PADS_DEF = Array.from({ length: 16 }, (_, i) => '10:' + (36 + i));      //
 const padIds = () => (midi.pads && midi.pads.length ? midi.pads : PADS_DEF);
 const eliteMode = () => 'seq';                                                // as on MD firmware 1.6: the pads are always the steps (drums from the pads only while SEQ REC records)
 const eliteOuts = () => (midi.access ? [...midi.access.outputs.values()].filter(o => /smk|m-?vave/i.test(o.name || '') && !(kbx.out && o.name === kbx.out.name)) : []);   // never to a keyboard that answered as MD firmware: there a note plays a drum
+// A keyboard that passes our light notes straight back (MIDI thru, a DAW loop) must never toggle steps or start a loop:
+// a note that comes in right after we sent the same one is ours. Three of those and the lights switch themselves off.
+function eliteEcho(id, vel) {
+  const now = performance.now(); if (vel !== 127 || !(now - (elite.sent[id] || 0) < 120)) return false;   // ours are always velocity 127
+  if (now - (elite.echoT || 0) > 1000) elite.echo = 0; elite.echoT = now;
+  if (++elite.echo >= 3 && midi.lights) { midi.lights = false; midiKeep(); elite.lit = {}; drawAll(); toast('Pad lights switched off: the keyboard sends them straight back.'); }
+  return true;
+}
 function padStep(id) {
   if (midi.learn || eliteMode() !== 'seq' || writing()) return false;   // WRITE recording: pads play the drums into the loop
   if (isAct(midiMap().note[id])) return false;                               // a pad learned as PLAY, a scene or a mute keeps doing that
@@ -1620,12 +1629,12 @@ function padLearnTake(id) {
   else lcdFlash('SMK-37 pads', 'Pad ' + (L.length + 1) + ' of 16');
   drawAll(); return true;
 }
-const elite = { lit: {}, mode: '', sel: '', force: true, upT: 0 };
-function eliteSend(outs, id, on) { const [c, n] = id.split(':').map(Number); if (!(c >= 1 && c <= 16 && n >= 0 && n < 128)) return; const m = on ? [0x8F + c, n, 127] : [0x8F + c, n, 0]; outs.forEach(o => { try { o.send(m); } catch (_) {} }); }
+const elite = { lit: {}, mode: '', sel: '', force: true, upT: 0, sent: {}, echo: 0 };
+function eliteSend(outs, id, on) { const [c, n] = id.split(':').map(Number); if (!(c >= 1 && c <= 16 && n >= 0 && n < 128)) return; const m = on ? [0x8F + c, n, 127] : [0x8F + c, n, 0]; elite.sent[id] = performance.now(); outs.forEach(o => { try { o.send(m); } catch (_) {} }); }
 function eliteDark(outs) { Object.keys(elite.lit).forEach(id => { if (elite.lit[id]) eliteSend(outs, id, false); }); elite.lit = {}; }
 function eliteTick() {
   if (!midi.access || !midi.names.length) return;
-  const mode = eliteMode(), outs = midi.lights === false ? [] : eliteOuts();
+  const mode = eliteMode(), outs = midi.lights ? eliteOuts() : [];
   if (mode !== elite.mode || S.sel !== elite.sel) {
     if (elite.mode && mode !== elite.mode) lcdFlash('SMK-37', mode === 'seq' ? 'Pads: ' + SHORT[S.sel] + ' steps' : 'Pads play drums');
     elite.mode = mode; elite.sel = S.sel; elite.force = true; drawLite();
@@ -1639,18 +1648,19 @@ function eliteTick() {
   elite.force = false;
 }
 setInterval(eliteTick, 30);
-function togglePadLights() { midi.lights = midi.lights === false; midiKeep(); if (midi.lights === false) eliteDark(eliteOuts()); else elite.force = true; drawAll(); toast(midi.lights !== false ? 'Pad lights on: the Elite shows the steps (if its firmware lights pads from MIDI)' : 'Pad lights off: nothing is sent back to the Elite'); }
+function togglePadLights() { midi.lights = !midi.lights; elite.echo = 0; midiKeep(); if (!midi.lights) eliteDark(eliteOuts()); else elite.force = true; drawAll(); toast(midi.lights ? 'Pad lights on: the Elite shows the steps (if its firmware lights pads from MIDI)' : 'Pad lights off: nothing is sent back to the Elite'); }
 function midiScan() { const acc = midi.access; if (!acc) return; const was = midi.names.slice(); midi.names = []; acc.inputs.forEach(inp => { inp.onmidimessage = onMidi; midi.names.push(inp.name || 'MIDI device'); }); midi.on = true; elite.force = true;
   const add = midi.names.filter(n => !was.includes(n)), gone = was.filter(n => !midi.names.includes(n));
   if (midi.scanned && add.length) toast('Connected: ' + add.join(', ')); else if (midi.scanned && gone.length) toast('Unplugged: ' + gone.join(', ') + (/smk|m-?vave/i.test(gone.join(' ')) ? '. It runs on its own firmware again.' : ''));
   midi.scanned = true; drawAll(); kbAuto(); }
 // an MD keyboard plugged in: put this beat on it (patterns 9+) and keep LIVE on it, so both play the same beat from one PLAY. Once per plug-in.
 function kbAuto() {
-  const outs = midi.access ? [...midi.access.outputs.values()].filter(o => o.state !== 'disconnected' && isKb(o)) : [];
+  let known = []; try { known = JSON.parse(localStorage.getItem('md442-kbok') || '[]'); } catch (_) {}
+  const outs = midi.access ? [...midi.access.outputs.values()].filter(o => o.state !== 'disconnected' && known.includes(o.name)) : [];   // only a keyboard that answered SEND TO KEYBOARD before: a stock M-VAVE is never sent SysEx on its own
   if (kbx.out && kbx.out.state === 'disconnected') kbx.out = null;
   if (!outs.length) { kbx.auto = false; return; }
   if (kbx.auto || !kbx.live || kbx.out) return;
-  kbx.auto = true; setTimeout(() => sendToKeyboard(true), 300);
+  kbx.auto = true; setTimeout(() => sendToKeyboard(true, known), 300);
 }
 async function midiConnect(quiet) {
   if (!navigator.requestMIDIAccess) { if (quiet !== true) toast(NOMIDI); return false; }
@@ -1774,15 +1784,17 @@ async function kbAccess() {
   return true;
 }
 const kbAsk = (out, f) => new Promise(res => { kbx.wait = res; try { out.send(f); } catch (_) { kbx.wait = null; res(false); } setTimeout(() => { if (kbx.wait === res) { kbx.wait = null; res(false); } }, 1500); });
-async function sendToKeyboard(quiet) {
+async function sendToKeyboard(quiet, only) {
   if (!(await kbAccess())) return;
   kbx.out = null;                                   // LIVE pauses while the scenes go over, so its replies don't mix in
   const scenes = S.scenes.slice(0, 8);
   for (const out of kbx.outs) {                     // the first output that answers is the keyboard
+    if (only && !only.includes(out.name)) continue;
     if (!(await kbAsk(out, kbFrame(8, scenes[0])))) continue;
     try { out.send(kbBreak(8, scenes[0])); } catch (_) {}
     for (let i = 1; i < scenes.length; i++) { await kbAsk(out, kbFrame(8 + i, scenes[i])); try { out.send(kbBreak(8 + i, scenes[i])); } catch (_) {} }
     kbx.ok = true; kbx.out = out; kbx.lastF = kbx.lastM = ''; drawAll();
+    try { const kn = JSON.parse(localStorage.getItem('md442-kbok') || '[]'); if (out.name && !kn.includes(out.name)) { kn.push(out.name); localStorage.setItem('md442-kbok', JSON.stringify(kn.slice(-8))); } } catch (_) {}
     setTimeout(() => { try { out.send([0xF0, 0x7D, 0x46, 0x4C, 25, 0xF7]); } catch (_) {} }, 2400);   // ask which machine it is, after the toast below has been read
     toast('Sent to ' + (out.name || 'the keyboard') + ': ' + scenes.length + (scenes.length > 1 ? ' scenes on patterns 9–' + (8 + scenes.length) : ' scene on pattern 9') + '. The dub stab stays on the computer' + (S.style === '442' ? '.' : '; the SAMPLE row plays the keyboard\'s own ' + STYLES[S.style].name + ' bank.'));
     return;
@@ -1794,7 +1806,7 @@ function buildMidi(box) {
   live(cko, () => { cko.classList.toggle('on', !!midi.cko); cko.setAttribute('aria-pressed', !!midi.cko); });
   const dp = key('◀ DRUM', () => { if (!learnAct('prev')) stepDrum(-1); }), dn = key('DRUM ▶', () => { if (!learnAct('next')) stepDrum(1); });
   live(lv, () => { lv.classList.toggle('on', !!(kbx.live && kbx.out)); lv.setAttribute('aria-pressed', !!(kbx.live && kbx.out)); });
-  live(pk, () => { pk.classList.toggle('on', !!midi.padLearn); pk.textContent = midi.padLearn ? 'PADS ' + midi.padLearn.length + '/16 · CANCEL' : 'SET PADS'; }); live(pl, () => { pl.classList.toggle('on', midi.lights !== false); pl.setAttribute('aria-pressed', midi.lights !== false); });
+  live(pk, () => { pk.classList.toggle('on', !!midi.padLearn); pk.textContent = midi.padLearn ? 'PADS ' + midi.padLearn.length + '/16 · CANCEL' : 'SET PADS'; }); live(pl, () => { pl.classList.toggle('on', !!midi.lights); pl.setAttribute('aria-pressed', !!midi.lights); });
   const vwOn = a => Object.values(midi.cc).concat(Object.values(midi.note)).includes(a); [[vp, 'play'], [vr, 'wr'], [vk, 'vw:keys'], [vs, 'vw:seq'], [vf, 'vw:fx']].forEach(([b, a]) => live(b, () => { b.classList.toggle('arm', midi.learn && midi.armA === a); b.classList.toggle('on', vwOn(a)); }));
   row.append(con, lk, ck, cko, pk, pl, vp, vr, vk, vs, vf, sk, lv, dp, dn); box.append(stat, row, list, guide(), h('p', 'note', 'Pads on MIDI channel 10 play the drums with the standard drum notes (36 kick, 38 snare, 39 clap, 42 and 46 hats…). Keys play the bass or the stab, whichever the keyboard panel is set to. LEARN ties any hardware knob, fader, pad or button to anything on screen: a drum, a knob, ▶ PLAY, ◀ DRUM / DRUM ▶, MUTE or a scene. Press LEARN, click it on screen, then press the control. Start, stop, continue and the tempo (MIDI clock) from a controller or a DAW are followed. LIVE (on once a keyboard with MD|442 firmware 1.2 has answered SEND TO KEYBOARD) keeps the keyboard on the scene you are editing, with the same mutes. CLOCK OUT does the opposite: an FM-1, an SMK-37 with MD|442 firmware, Maschine or Ableton follow MD|442\'s tempo, start and stop.'));
   live(lk, () => { lk.classList.toggle('on', midi.learn); lk.setAttribute('aria-pressed', midi.learn); });
