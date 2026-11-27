@@ -10,6 +10,13 @@ Peak Warehouse, Berlin Roll, Electro, Acid Jack, Deep House, Breakbeat, Dub Tech
 | M-VAVE SMK-37 Pro (also Starrykey 37 Play) | md442-smk37-pro.fwsc |
 | M-VAVE FM-1 | md442-fm1.fwsc |
 
+## Version 1.7
+- Hold a pad and move any fader: that pad's instrument volume. Pads 1 to 11 are the drums of the kit on screen,
+  pads 12 to 16 are DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS. The step or mute the press changed is put back.
+- Fixed: changing the instrument with knob 3 while holding a key left the note held. The last messages with the
+  old names (303A, 303B, 909, 808) use the plain names.
+- Identity SMK-37 Elite_917. Everything from 1.6 below is unchanged.
+
 ## Version 1.6
 - The keys always play the instrument on screen (drums, bass, chords or break slices) and never turn steps on or off.
   The 16 pads are the steps. < / > pick the instrument: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS.
