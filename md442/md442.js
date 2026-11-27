@@ -1641,10 +1641,10 @@ function padUp(id) { if (midi.padHeld && midi.padHeld.id === id) midi.padHeld = 
 // instrument (bass, stab or sampler; a drum keeps the last one) and SEQ closes it, so the pads are steps again.
 // KNOBS AND FADERS FOLLOW THE SCREEN. Once SET KNOBS / SET FADERS has learned which control is which (turn them in order, once):
 // knobs 1-4 are the selected instrument's own sound knobs, knobs 5-8 its FILTER, DRIVE, REVERB and ECHO; a second knob bank (9-16)
-// carries the rest of its sound knobs, its volume and pan. Faders 1-4 are KICK, SNARE, HATS, BASS volume (5-8: CLAP, OPEN HAT,
-// STAB, SAMPLE); with FX on they are REVERB, DELAY, DRIVE, FILTER (5-8: reverb decay, echo time, echo feedback, master volume).
+// carries the rest of its sound knobs, its volume and pan. Faders 1-4 are KICK, SNARE, BASS, STAB (chords) volume (5-8: HATS, CLAP,
+// OPEN HAT, SAMPLE); with FX on they are REVERB, DELAY, DRIVE, FILTER (5-8: reverb decay, echo time, echo feedback, master volume).
 // A control tied to something with LEARN keeps that.
-const FAD_LV = ['lvl.BD', 'lvl.SD', 'lvl.CH', 'lvl.BS', 'lvl.CP', 'lvl.OH', 'lvl.ST', 'lvl.SM'], FAD_FX = ['fx.verb', 'fx.space', 'fx.drive', 'fx.filter', 'fx.vdec', 'fx.etime', 'fx.efb', 'vol'];
+const FAD_LV = ['lvl.BD', 'lvl.SD', 'lvl.BS', 'lvl.ST', 'lvl.CH', 'lvl.CP', 'lvl.OH', 'lvl.SM'], FAD_FX = ['fx.verb', 'fx.space', 'fx.drive', 'fx.filter', 'fx.vdec', 'fx.etime', 'fx.efb', 'vol'];
 function knobList(k) { if (!SOUND.includes(k)) k = 'BD'; const own = KN[k].map(x => x[0]), fx = ['flt.' + k, 'drv.' + k, REVK(k), ECHK(k)]; return own.slice(0, 4).concat(Array(Math.max(0, 4 - own.length)).fill(null), fx, own.slice(4), ['lvl.' + k, 'pan.' + k]); }
 function slotParam(id) {
   let i = (midi.knobs || []).indexOf(id); if (i >= 0) { const p = knobList(S.sel)[i]; return p && DEF[p] ? p : ''; }
