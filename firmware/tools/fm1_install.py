@@ -462,18 +462,18 @@ class Updater:
         step("done", back.id.text)
         return back.id.text
 
-    def install(self, dev, image, product, step=lambda *a: None):
+    def install(self, dev, image, product, step=lambda *a: None, stock=False):
         """running firmware -> loader -> new firmware; dev from find(). A device already in
         update mode only needs the write."""
         if not same_keyboard(dev.id.text, product):
             dev.link.close()
             raise InstallError("model", f"the device is {dev.id.text}, the package is for {product}")
-        if dev.id.loader and dev.id.version < 900:
+        if not stock and dev.id.loader and dev.id.version < 900:
             dev.link.close()
             raise InstallError("model", f"the keyboard is in M-VAVE's own update mode ({dev.id.text}), which only takes "
                                         "M-VAVE's firmware. Nothing was written. Install M-VAVE's latest firmware for "
                                         "your keyboard with M-UPGRADE first, then run this again.")
-        if not dev.id.loader and dev.id.model.upper().startswith("SMK-37") and dev.id.version < 16:
+        if not stock and not dev.id.loader and dev.id.model.upper().startswith("SMK-37") and dev.id.version < 16:
             dev.link.close()
             raise InstallError("model", f"the keyboard runs M-VAVE firmware {dev.id.version:03d}. MD|442 needs M-VAVE "
                                         "016 or later underneath: update it with M-UPGRADE first, then run this again. "
@@ -496,7 +496,7 @@ def load_package(path, force):
     if LOADER_MARK not in raw and not force:
         raise InstallError("badpkg", f"{path}: no Felucca update loader in this package; "
                                      "only Felucca's own packages are installed (--force overrides)")
-    return product, deinterleave(raw)[0]
+    return product, deinterleave(raw)[0], LOADER_MARK not in raw
 
 
 def not_found(up):
@@ -543,7 +543,7 @@ def run(a, backend, out, ask):
         mode = "update loader (update not finished)" if dev.id.loader else "running"
         print(f"{dev.id.text}  [{mode}]  port: {dev.name}", file=out)
         return 0
-    product, image = load_package(a.package, a.force)
+    product, image, stock = load_package(a.package, a.force)
     print(f"package: {product}  ({a.package})", file=out)
     dev = up.find()
     if not dev:
@@ -559,7 +559,7 @@ def run(a, backend, out, ask):
     WAIT = lambda n, q, idle: prog("wait", f"checking the package ({n} reads), waiting for the keyboard {q}/{idle} s")
     log(f"package {product}, device {dev.id.text} on {dev.name}")
     try:
-        up.install(dev, image, product, prog)
+        up.install(dev, image, product, prog, stock)
     finally:
         prog.end()
     return 0
