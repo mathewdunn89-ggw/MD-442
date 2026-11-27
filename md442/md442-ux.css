@@ -169,3 +169,15 @@
 
 /* MIDI monitor line in the MIDI panel: what the keyboard really sends */
 .md .mstat.mmon { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; padding: 6px 8px; border: 1px dashed rgba(127,127,127,.5); border-radius: 6px; margin: 6px 0; }
+
+/* phone: the three machines sit under the header, always in view */
+.md.phone .phd .pmach { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.md.phone .pmach .key.sty { min-height: 32px; min-width: 0; padding: 0 4px; font-family: 'Martian Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: .08em; }
+.md.phone .pmach .key.sty.on { color: var(--g); background: linear-gradient(#141517, #08090a); border-color: var(--g); box-shadow: 0 0 8px color-mix(in srgb, var(--g) 45%, transparent); }
+@media (orientation: landscape) and (max-height: 560px) {
+  .md.phone .phd { grid-template-columns: 84px auto minmax(0, 1fr) auto; }
+  .md.phone .phd > * { grid-row: 1; }
+  .md.phone .phd .key.play { grid-column: 1; } .md.phone .phd .pmach { grid-column: 2; grid-template-columns: repeat(3, 58px); gap: 4px; } .md.phone .phd .lcd { grid-column: 3; } .md.phone .phd .key.menu { grid-column: 4; }
+  .md.phone .pmach .key.sty { min-height: 40px; height: 40px; font-size: 9px; }
+}
+@media (orientation: portrait) and (max-height: 700px) { .md.phone .pmach .key.sty { min-height: 22px; height: 22px; font-size: 9px; } }

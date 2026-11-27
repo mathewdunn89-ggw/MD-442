@@ -1414,7 +1414,10 @@ function buildPhone() {
   txt.append(l1, l2); lcd.append(txt, tp); lcd.setAttribute('aria-label', "Mathew's patterns"); lcd.addEventListener('click', e => { boot(); if (e.target === tp) openSheet(...SHEETS.master); else openSheet(...SHEETS.patterns); });   // the number opens tempo, the name opens patterns logo.append('MD', h('b', '', '|442'));
   live(lcd, () => { const t = lcdText(); l1.textContent = t[0]; l2.textContent = t[1]; tp.textContent = Math.round(P.bpm); }, true);
   const menu = h('button', 'key menu'), lnum = h('b'); logo.append('MD', live(lnum, () => { lnum.textContent = '|' + S.style; })); menu.append(h('i', 'mi', '☰'), logo); menu.setAttribute('aria-label', 'Menu: MIDI and DAW help, downloads, other pages'); menu.addEventListener('click', () => openSheet(...SHEETS.menu));
-  hd.append(play, lcd, menu);
+  // the three machines, always on the screen: MD|442 · MD|187 · MD|888 (the menu has them too)
+  const mach = h('div', 'pmach'); mach.setAttribute('role', 'group'); mach.setAttribute('aria-label', 'Drum machine');
+  STYLE_IDS.forEach(st => { const k = key(STYLES[st].name, () => pickStyle(st), 'sty'); k.setAttribute('aria-label', STYLES[st].name + ', ' + STYLES[st].tag.toLowerCase()); mach.append(live(k, () => { k.classList.toggle('on', S.style === st); k.setAttribute('aria-pressed', S.style === st); })); });
+  hd.append(play, lcd, menu, mach);
   // the selected drum's knobs: its sound on the top row, its channel tools underneath. Nothing is hidden off to the side.
   const kn = h('div', 'pkn'), nm = h('div', 'pknm'), nt = h('span'), r1 = h('div', 'krow'), r2 = h('div', 'krow'); nm.append(nt); kn.append(nm, r1, r2); let shown = '';
   if (!hinted) {   /* the tips share the drum-name line, so nothing moves */
@@ -1543,6 +1546,7 @@ if (SIGNUP_URL) { try { const pendingSign = localStorage.getItem(SIGN_LS); if (p
 // fader can be tied to any knob on screen with LEARN. Works over USB, and over Bluetooth once the computer has paired it.
 const MIDI_LS = 'md442-midi';
 const NOMIDI_DEV = /iPhone|iPad|iPod/.test(navigator.userAgent);
+const ANDROID_APP = /MD442-Android/.test(navigator.userAgent);   // the Android app allows MIDI itself, so it connects without asking
 const NOMIDI = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1) ? 'iPhone and iPad browsers cannot use MIDI. Use a computer with Chrome or Edge, or an Android phone with Chrome.' : /Firefox/.test(navigator.userAgent) && /Android/.test(navigator.userAgent) ? 'Firefox on Android cannot use MIDI. Open MD|442 in Chrome to use a controller.' : 'This browser cannot use MIDI controllers. Use Chrome or Edge (desktop Firefox works too and asks you to allow it).';
 const GM = { 35: 'BD', 36: 'BD', 37: 'RS', 38: 'SD', 40: 'SD', 39: 'CP', 41: 'LT', 43: 'LT', 45: 'MT', 47: 'MT', 48: 'HT', 50: 'HT', 42: 'CH', 44: 'CH', 46: 'OH', 49: 'CR', 57: 'CR', 51: 'RD', 59: 'RD', 53: 'RD' };
 const midi = { on: false, access: null, names: [], learn: false, armP: null, armD: null, armA: null, cc: {}, note: {}, last: '', ck: [], ccHi: {}, synced: false };
@@ -1750,8 +1754,8 @@ async function midiAsk(quiet) {
 // plugged in later appears on its own (no CONNECT). Unplugged, the SMK-37 just runs its own firmware.
 setTimeout(async () => {
   if (!navigator.requestMIDIAccess || NOMIDI_DEV) return;
-  let ok = false; try { ok = localStorage.getItem(MIDI_LS + '-auto') === '1'; } catch (_) {}
-  try { if (navigator.permissions) { const st = await navigator.permissions.query({ name: 'midi', sysex: true }); if (st.state === 'granted') ok = true; else if (st.state === 'denied') ok = false; } } catch (_) {}
+  let ok = ANDROID_APP; try { ok = ok || localStorage.getItem(MIDI_LS + '-auto') === '1'; } catch (_) {}
+  try { if (navigator.permissions && !ANDROID_APP) { const st = await navigator.permissions.query({ name: 'midi', sysex: true }); if (st.state === 'granted') ok = true; else if (st.state === 'denied') ok = false; } } catch (_) {}
   if (ok) midiConnect(true);
 }, 300);
 function toggleMidi() { S.midiOpen = !S.midiOpen; if (S.midiOpen && !midi.access) midiConnect(); drawAll(); persist(); }
@@ -1900,14 +1904,16 @@ const midiKey = () => { const b = key('MIDI · DAW', toggleMidi, 'led'); return 
 /* ---------- 8. start-up ---------- */
 if (!restore()) loadPreset(FIRST);
 // each machine has its own link: /md442/, /md187/ and /md888/ (and /mdXXX/app/ for the phone) open straight on that machine
-const PATH_RE = /^\/md(442|187|888)(\/(?:app\/)?)?(index\.html)?$/, pathM = location.pathname.match(PATH_RE);
+// Inside the Android app (and the installed phone app) there is one address, so the machine you left on comes back and the address stays put.
+const INAPP = ANDROID_APP || (PHONE && typeof matchMedia === 'function' && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches));
+const PATH_RE = /^\/md(442|187|888)(\/(?:app\/)?)?(index\.html)?$/, pathM = INAPP ? null : location.pathname.match(PATH_RE);
 if (pathM && STYLES[pathM[1]] && S.style !== pathM[1]) loadPreset(STYLES[pathM[1]].first);
 applyTheme();
 (PHONE ? buildPhone : buildDesk)();
 live(root, () => {
   if (root.dataset.style === S.style) return; root.dataset.style = S.style; document.documentElement.dataset.mdStyle = S.style;
   // the address follows the machine, so the link in the bar is always the one to share
-  const m = location.pathname.match(PATH_RE); if (m && m[1] !== S.style && history.replaceState) history.replaceState(history.state, '', location.pathname.replace('/md' + m[1], '/md' + S.style) + location.search + location.hash);
+  const m = INAPP ? null : location.pathname.match(PATH_RE); if (m && m[1] !== S.style && history.replaceState) history.replaceState(history.state, '', location.pathname.replace('/md' + m[1], '/md' + S.style) + location.search + location.hash);
   try { document.dispatchEvent(new CustomEvent('md:style', { detail: S.style })); } catch (_) {}
 });   // MD|442 green, MD|187 amber, MD|888 red, as on the keyboards
 preloadBank(P['sm.bank']);
