@@ -67,6 +67,17 @@ One console, three sounds. Switch under the logo, or open a machine by its own l
   </tr>
 </table>
 
+### Each machine's own downloads
+
+| | <a name="md442"></a>MD\|442 | <a name="md187"></a>MD\|187 | <a name="md888"></a>MD\|888 |
+| --- | --- | --- | --- |
+| **Play it** | [music.nestgroup.space/md442](https://music.nestgroup.space/md442/) | [music.nestgroup.space/md187](https://music.nestgroup.space/md187/) | [music.nestgroup.space/md888](https://music.nestgroup.space/md888/) |
+| **Desktop app** | [Mac](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/desktop/md442-mac.dmg) · [Windows](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/desktop/md442-windows.exe) | [Mac](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/desktop/md187-mac.dmg) · [Windows](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/desktop/md187-windows.exe) | [Mac](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/desktop/md888-mac.dmg) · [Windows](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/desktop/md888-windows.exe) |
+| **Keyboard firmware 1.7** | [Elite](https://music.nestgroup.space/md442/fw/1.7/md442-smk37-elite.fwsc) · [Pro](https://music.nestgroup.space/md442/fw/1.7/md442-smk37-pro.fwsc) · [FM-1](https://music.nestgroup.space/md442/fw/1.7/md442-fm1.fwsc) | [Elite](https://music.nestgroup.space/md442/fw/1.7/md187-smk37-elite.fwsc) · [Pro](https://music.nestgroup.space/md442/fw/1.7/md187-smk37-pro.fwsc) · [FM-1](https://music.nestgroup.space/md442/fw/1.7/md187-fm1.fwsc) | [Elite](https://music.nestgroup.space/md442/fw/1.7/md888-smk37-elite.fwsc) · [Pro](https://music.nestgroup.space/md442/fw/1.7/md888-smk37-pro.fwsc) · [FM-1](https://music.nestgroup.space/md442/fw/1.7/md888-fm1.fwsc) |
+| **Sample pack** | No loops of its own | [MD187-sample-pack.zip](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/sample-packs/MD187-sample-pack.zip) | [MD888-sample-pack.zip](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/sample-packs/MD888-sample-pack.zip) |
+
+The phone app and the plugin carry all three machines in one download.
+
 What is on the console:
 
 - **14 voices**: kick, snare, clap, rim, three toms, closed and open hat, crash, ride, bass, stab (chords) and a sampler.
