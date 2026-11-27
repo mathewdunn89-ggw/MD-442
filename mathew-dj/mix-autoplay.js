@@ -21,8 +21,9 @@
     step();
   }
   let frame = null, widget = null, playing = false, stopped = false, wanted = true, inView = false, pill = null, label = null;
-  try { if (sessionStorage.getItem('mix-off') === '1') wanted = false; } catch (_) {}
-  const remember = off => { try { sessionStorage.setItem('mix-off', off ? '1' : '0'); } catch (_) {} };
+  // Stopping the music is remembered (in this browser, across pages and visits) until the visitor starts it again.
+  try { if (localStorage.getItem('mix-off') === '1' || sessionStorage.getItem('mix-off') === '1') wanted = false; } catch (_) {}
+  const remember = off => { try { sessionStorage.setItem('mix-off', off ? '1' : '0'); } catch (_) {} try { localStorage.setItem('mix-off', off ? '1' : '0'); } catch (_) {} };
 
   function draw() {
     if (!pill) return;
@@ -85,8 +86,10 @@
       w.ready.then(() => {
         if (frame !== el) return;
         widget = w;
-        w.events.play.on(() => { if (frame !== el) return; playing = true; draw(); beats(true); });
-        w.events.pause.on(() => { if (frame !== el) return; playing = false; draw(); beats(false); });
+        // Play and pause pressed inside the Mixcloud player itself count as the visitor's choice too:
+        // a pause there stops the page from starting the mix again on the next click, scroll or page.
+        w.events.play.on(() => { if (frame !== el) return; playing = true; stopped = false; if (!wanted) { wanted = true; remember(false); } draw(); beats(true); });
+        w.events.pause.on(() => { if (frame !== el) return; const mine = playing && !stopped; playing = false; if (mine && wanted) { wanted = false; remember(true); } draw(); beats(false); });
         w.events.ended.on(() => { if (frame !== el) return; playing = false; draw(); beats(false); });
         try { w.setVolume(VOLUME); } catch (_) {}
         draw(); tryPlay();
