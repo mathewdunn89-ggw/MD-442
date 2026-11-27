@@ -45,6 +45,26 @@
       "source": "/md-911/app/",
       "destination": "/md442/app/",
       "permanent": false
+    },
+    {
+      "source": "/md-187",
+      "destination": "/md187/",
+      "permanent": false
+    },
+    {
+      "source": "/md-187/",
+      "destination": "/md187/",
+      "permanent": false
+    },
+    {
+      "source": "/md-888",
+      "destination": "/md888/",
+      "permanent": false
+    },
+    {
+      "source": "/md-888/",
+      "destination": "/md888/",
+      "permanent": false
     }
   ],
   "headers": [
@@ -74,7 +94,7 @@
       ]
     },
     {
-      "source": "/md442/(.*)\\.(js|css)",
+      "source": "/md(442|187|888)/(.*)\\.(js|css)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -83,7 +103,7 @@
       ]
     },
     {
-      "source": "/md442/app/(.*)\\.png",
+      "source": "/md(442|187|888)/app/(.*)\\.png",
       "headers": [
         {
           "key": "Cache-Control",
@@ -92,7 +112,7 @@
       ]
     },
     {
-      "source": "/md442/app/sw.js",
+      "source": "/md(442|187|888)/app/sw.js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -101,13 +121,31 @@
       ]
     },
     {
-      "source": "/md442/sw.js",
+      "source": "/md(442|187|888)/sw.js",
       "headers": [
         {
           "key": "Cache-Control",
           "value": "no-cache"
         }
       ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/md187/",
+      "destination": "/md442/"
+    },
+    {
+      "source": "/md187/:path*",
+      "destination": "/md442/:path*"
+    },
+    {
+      "source": "/md888/",
+      "destination": "/md442/"
+    },
+    {
+      "source": "/md888/:path*",
+      "destination": "/md442/:path*"
     }
   ]
 }

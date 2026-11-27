@@ -126,3 +126,43 @@
 .md.desk .hk .sgk .key { min-width: 74px; }
 .md.desk .hk .sgk .key:disabled { opacity: .4; }
 .md .key.song.on:not(.rec) { color: #e8a317; }
+
+/* ---------- each machine has its own look ----------
+   MD|442: graphite and green (the base styles). MD|187: warm walnut and cream with amber, a 90s sampler.
+   MD|888: cold black steel with red and a slanted logo, built for hard techno. Colours and type only: no size or layout changes. */
+.md[data-style="187"] .logo b, .md[data-style="888"] .logo b { color: var(--g); }
+.md[data-style="187"] .logo { font-variation-settings: 'wdth' 112; letter-spacing: -.02em; }
+.md[data-style="888"] .logo { font-style: italic; }
+.md[data-style="888"].desk .hd .logo > b, .md[data-style="888"].desk .hd .logo { letter-spacing: -.05em; }
+.md[data-style="888"] .lcd .tp { font-style: italic; }
+
+/* MD|187 light: cream and tan */
+.md[data-style="187"] { --panel: repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, rgba(80,50,10,.03) 1px 3px), linear-gradient(180deg, #efe6d2 0%, #ddcfb3 50%, #cbb995 100%); --keyb: linear-gradient(#fbf5e8, #e2d6bd); --line: rgba(70,45,10,.22); --ink: #2a1d0c; --mut: #6b5534; }
+.md[data-style="187"] .md-console { border-color: #a58d66; }
+.md[data-style="187"] .lcd { background: #120b04; color: #ffe6bb; }
+.md[data-style="187"] .lcd .l1 { text-shadow: 0 0 6px rgba(255,190,90,.55); }
+.md[data-style="187"] .lcd .l2, .md[data-style="187"] .lcd .tl { color: #c9a777; }
+.md[data-style="187"].desk .sec-t { background: linear-gradient(#3b2b1a, #1d140b); color: #ffe9c4; }
+/* MD|187 dark: walnut */
+.md[data-style="187"][data-theme="dark"] { --panel: repeating-linear-gradient(90deg, rgba(255,220,170,.018) 0 1px, transparent 1px 3px), linear-gradient(180deg, #352b22 0%, #2b231c 50%, #251e18 100%); --keyb: linear-gradient(#5a4d40, #463b31); --dark: linear-gradient(#1a140f, #120d09); --kbd: #75644f; --line: rgba(255,220,170,.13); --ink: #f6ead6; --mut: #c4ae8e; }
+.md[data-style="187"][data-theme="dark"] .md-console { border-color: #6a5236; box-shadow: inset 0 1px 0 rgba(255,220,170,.12), 0 30px 80px rgba(0,0,0,.7); }
+.md[data-style="187"][data-theme="dark"] .logo { color: #f6ead2; }
+.md[data-style="187"][data-theme="dark"].desk .sec-t { background: linear-gradient(#1f1812, #150f0a); color: #f6ead6; }
+.md[data-style="187"][data-theme="dark"] .key.big { background: linear-gradient(#1a130c, #0d0905); border-color: #75644f; }
+.md[data-style="187"][data-theme="dark"] .lcd { background: #0c0703; box-shadow: inset 0 2px 8px rgba(0,0,0,.9), inset 0 0 0 1px rgba(255,190,90,.12); }
+
+/* MD|888 light: cold steel */
+.md[data-style="888"] { --panel: repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, rgba(0,10,30,.04) 1px 2px), linear-gradient(180deg, #dde1e6 0%, #bcc2ca 50%, #a1a8b1 100%); --keyb: linear-gradient(#f2f4f7, #c9ced5); --ink: #101318; }
+.md[data-style="888"] .md-console { border-color: #7b2230; }
+.md[data-style="888"] .lcd { background: #080203; color: #ffe1e5; }
+.md[data-style="888"] .lcd .l1 { text-shadow: 0 0 6px rgba(255,61,87,.55); }
+.md[data-style="888"] .lcd .l2, .md[data-style="888"] .lcd .tl { color: #c98a93; }
+.md[data-style="888"].desk .sec-t { background: linear-gradient(#2a0c12, #0c0506); color: #ffe6ea; }
+/* MD|888 dark: black steel with hazard stripes */
+.md[data-style="888"][data-theme="dark"] { --panel: repeating-linear-gradient(135deg, rgba(255,255,255,.014) 0 10px, transparent 10px 20px), linear-gradient(180deg, #1c1d21 0%, #16171a 50%, #111214 100%); --keyb: linear-gradient(#36383e, #28292e); --dark: linear-gradient(#111113, #09090a); --kbd: #4d4f56; --line: rgba(255,255,255,.09); --ink: #f2f3f5; --mut: #9fa3ab; }
+.md[data-style="888"][data-theme="dark"] .md-console { border-color: #5a1520; box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 0 0 1px rgba(255,61,87,.08), 0 30px 80px rgba(0,0,0,.8); }
+.md[data-style="888"][data-theme="dark"].desk .sec-t { background: linear-gradient(#0f0f11, #070708); color: #f2f3f5; }
+.md[data-style="888"][data-theme="dark"] .key.big { background: linear-gradient(#0d0d0f, #040405); border-color: #5a1520; }
+.md[data-style="888"][data-theme="dark"] .lcd { background: #040102; box-shadow: inset 0 2px 8px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,61,87,.14); }
+.md[data-style="888"][data-theme="dark"] .md-fit.fs, .md[data-style="888"] .md-fit.fs { background: #050506; }
+.md[data-style="187"] .md-fit.fs { background: #0c0906; }

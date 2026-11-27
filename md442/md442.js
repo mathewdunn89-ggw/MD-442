@@ -765,7 +765,7 @@ const nextView = () => setView(S.view === 'one' ? 'all' : 'one');
 function toggleMixer() { S.mixer = !S.mixer; drawAll(); persist(); }
 function pickStyle(st) {
   if (!STYLES[st]) return; if (st === S.style) return lcdFlash(STYLES[st].name, STYLES[st].tag);
-  pickPreset(STYLES[st].first); lcdFlash(STYLES[st].name, STYLES[st].tag + ' · ' + stylePresets(st).length + ' patterns'); buzz(15);
+  lcdFlash(STYLES[st].name, STYLES[st].tag + ' · ' + stylePresets(st).length + ' patterns'); pickPreset(STYLES[st].first); buzz(15);   // flash first, so the redraw shows this machine's name, not the last one's
 }
 function pickPreset(name) { const had = S.dirty || S.scenes.length > 1; keep('load ' + name); loadPreset(name); apply(); refreshKnobs(); drawAll(); persist(); if (had) toast(name + ' loaded.' + undoHint()); }
 function saveBeat() {
@@ -1803,9 +1803,17 @@ const midiKey = () => { const b = key('MIDI · DAW', toggleMidi, 'led'); return 
 
 /* ---------- 8. start-up ---------- */
 if (!restore()) loadPreset(FIRST);
+// each machine has its own link: /md442/, /md187/ and /md888/ (and /mdXXX/app/ for the phone) open straight on that machine
+const PATH_RE = /^\/md(442|187|888)(\/(?:app\/)?)?(index\.html)?$/, pathM = location.pathname.match(PATH_RE);
+if (pathM && STYLES[pathM[1]] && S.style !== pathM[1]) loadPreset(STYLES[pathM[1]].first);
 applyTheme();
 (PHONE ? buildPhone : buildDesk)();
-live(root, () => { if (root.dataset.style !== S.style) root.dataset.style = S.style; });   // MD|442 green, MD|187 amber, MD|888 red, as on the keyboards
+live(root, () => {
+  if (root.dataset.style === S.style) return; root.dataset.style = S.style; document.documentElement.dataset.mdStyle = S.style;
+  // the address follows the machine, so the link in the bar is always the one to share
+  const m = location.pathname.match(PATH_RE); if (m && m[1] !== S.style && history.replaceState) history.replaceState(history.state, '', location.pathname.replace('/md' + m[1], '/md' + S.style) + location.search + location.hash);
+  try { document.dispatchEvent(new CustomEvent('md:style', { detail: S.style })); } catch (_) {}
+});   // MD|442 green, MD|187 amber, MD|888 red, as on the keyboards
 preloadBank(P['sm.bank']);
 // MIDI allowed here before: listen straight away, so a plugged-in keyboard's PLAY starts this page in step (no CONNECT needed, no prompt)
 try { if (navigator.requestMIDIAccess && navigator.permissions) navigator.permissions.query({ name: 'midi', sysex: true }).then(p => { if (p.state === 'granted') midiConnect(true); }).catch(() => {}); } catch (_) {}
