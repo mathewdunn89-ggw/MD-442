@@ -2,14 +2,14 @@
 <html lang="en" data-layout="desk">
 <head>
 <meta charset="utf-8">
-<title>MD|442 · MATHEW</title>
+<title>MD-Modules · MD442 · MD187 · MD888 · MATHEW</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script>
 // Opened as an installed app on a phone: go straight to the phone console (the desk console needs a wide screen).
 (() => { const app = /[?&]app=1/.test(location.search) || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
   if (app && matchMedia('(max-width: 760px), (pointer: coarse) and (max-width: 1024px)').matches) location.replace('/md442/app/'); })();
 </script>
-<meta name="description" content="MD|442, a free drum machine developed by Mathew. Analogue-style drums, an acid bass, dub chords and a row of effects. Play in your browser or download it for Mac, Windows and Android.">
+<meta name="description" content="MD-Modules: three free drum machines in one app, developed by Mathew. MD442 techno, MD187 90s hip-hop and MD888 hard techno. Analogue-style drums, an acid bass, dub chords and a row of effects. Play in your browser or download it for Mac, Windows and Android.">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="icon" href="app/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -67,17 +67,20 @@
   html[data-md-style="888"] h1 { font-style: italic; transform: skewX(-6deg); transform-origin: 0 100%; }
   h1 .num { color: var(--g); }
   nav.site a.mlink.on { color: var(--g); }
+  nav.site .brand { font-weight: 600; color: #f2f2f2; padding: 12px 6px 12px 12px; }
+  .eyebrow { margin: 0 0 14px; color: var(--g); }
 </style>
 </head>
 <body>
 <div id="strobe" aria-hidden="true"></div>
 <main>
   <section class="wrap hero">
-    <nav class="site mono" aria-label="MD|442 pages"><a href="/mathew-dj/">← Mathew</a><a href="#machine" class="play">Play</a><a href="/md442/#machine" class="mlink" data-m="442">MD|442</a><a href="/md187/#machine" class="mlink" data-m="187">MD|187</a><a href="/md888/#machine" class="mlink" data-m="888">MD|888</a><a href="app/">Phone app</a><a href="download/">Download</a><a href="#connect">MIDI · Ableton · Maschine</a></nav>
+    <nav class="site mono" aria-label="MD-Modules pages"><a href="/mathew-dj/">← Mathew</a><b class="brand">MD-Modules</b><a href="#machine" class="play">Play</a><a href="/md442/#machine" class="mlink" data-m="442">MD442</a><a href="/md187/#machine" class="mlink" data-m="187">MD187</a><a href="/md888/#machine" class="mlink" data-m="888">MD888</a><a href="app/">Phone app</a><a href="download/">Download</a><a href="#connect">MIDI · Ableton · Maschine</a></nav>
     <div>
+      <p class="mono eyebrow">MD-Modules · three drum machines, one app</p>
       <h1 id="mname">MD|442</h1>
       <p class="tag" id="mtag">A free drum machine, developed by Mathew. Analogue-style drums, an acid bass, dub chords and a row of effects. Play it here for as long as you like, or download it.</p>
-      <p class="mono" style="margin:16px 0 0;color:#a3a3a3">Three machines in one: MD|442 techno · MD|187 90s hip-hop · MD|888 hard techno. Switch under the logo.</p>
+      <p class="mono" style="margin:16px 0 0;color:#a3a3a3">MD-Modules is one app with three drum machines you switch between: <a href="/md442/">MD442</a> techno · <a href="/md187/">MD187</a> 90s hip-hop · <a href="/md888/">MD888</a> hard techno. Switch under the logo.</p>
       <p class="mono" style="margin:16px 0 0;color:#a3a3a3">MD|442 · 442 is binary for NEST</p>
     </div>
     <div class="cta">
@@ -96,7 +99,7 @@
     <div id="md442" data-theme-default="dark"></div>
     <p class="small">The full console needs a wider screen. On a phone, <a href="app/">open the phone app</a>: same sounds, same scenes, made for your thumbs.</p>
   </section>
-  <p class="wrap foot mono">MD|442 · free · developed by Mathew · NEST Group</p>
+  <p class="wrap foot mono">MD-Modules · MD442 · MD187 · MD888 · free · developed by Mathew · NEST Group</p>
 </main>
 <script>
 // Strobe: flashes on every kick while the drum machine plays, and now and then when it is quiet.
@@ -115,13 +118,13 @@
 <script>
 // The hero follows the machine on the console: name, colour and a line about it. Each machine has its own link (/md442/, /md187/, /md888/).
 (() => {
-  const T = { 442: ['Techno', 'A free drum machine, developed by Mathew. Analogue-style drums, an acid bass, dub chords and a row of effects. Play it here for as long as you like, or download it.'],
-    187: ['90s hip-hop', 'A free 90s hip-hop drum machine, developed by Mathew. Dusty boom-bap drums, chopped breaks, vinyl stabs and vocal cuts. Play it here for as long as you like, or download it.'],
-    888: ['Hard techno', 'A free hard techno drum machine, developed by Mathew. Pounding kicks, rumble, gabber hits and trance stabs at full speed. Play it here for as long as you like, or download it.'] };
+  const T = { 442: ['Techno', 'The techno module. A free drum machine, developed by Mathew. Analogue-style drums, an acid bass, dub chords and a row of effects. Play it here for as long as you like, or download it.'],
+    187: ['90s hip-hop', 'The 90s hip-hop module. A free drum machine, developed by Mathew. Dusty boom-bap drums, chopped breaks, vinyl stabs and vocal cuts. Play it here for as long as you like, or download it.'],
+    888: ['Hard techno', 'The hard techno module. A free drum machine, developed by Mathew. Pounding kicks, rumble, gabber hits and trance stabs at full speed. Play it here for as long as you like, or download it.'] };
   const set = m => { if (!T[m]) return; document.documentElement.dataset.mdStyle = m;
     const n = document.getElementById('mname'); if (n) n.innerHTML = 'MD<span class="num">|' + m + '</span>';
     const t = document.getElementById('mtag'); if (t) t.textContent = T[m][1];
-    document.title = 'MD|' + m + ' · ' + T[m][0] + ' · MATHEW';
+    document.title = 'MD' + m + ' · ' + T[m][0] + ' · MD-Modules · MATHEW';
     document.querySelectorAll('nav.site a.mlink').forEach(a => a.classList.toggle('on', a.dataset.m === m)); };
   const p = location.pathname.match(/^\/md(442|187|888)\//); set(p ? p[1] : '442');
   document.addEventListener('md:style', e => set(e.detail));
