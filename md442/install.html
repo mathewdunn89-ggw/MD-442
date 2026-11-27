@@ -40,7 +40,7 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 @media(max-width:560px){.man td:first-child{width:42%}}
 </style></head><body><main>
 <div class="logo">MD<span>|</span>442</div>
-<p class="sub">Keyboard firmware installer. Runs in Chrome, nothing to install. Works on Mac and Windows.</p>
+<p class="sub">Turn your keyboard into a drum machine. Three to choose from, installed straight from Chrome on Mac or Windows. Nothing to download.</p>
 
 <div class="card"><h2><span class="n">1</span>Your keyboard</h2>
 <div class="opts">
@@ -49,12 +49,14 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <button class="opt" data-kb="fm1"><b>FM-1</b><small>M-VAVE</small></button>
 </div></div>
 
-<div class="card"><h2><span class="n">2</span>Firmware</h2>
+<div class="card"><h2><span class="n">2</span>Pick your drum machine</h2>
 <div class="opts">
 <button class="opt" data-fw="md442"><b>MD442</b><small>Techno and house, 142 BPM</small></button>
 <button class="opt" data-fw="md187"><b>MD187</b><small>90s hip-hop and boom-bap, 96 BPM</small></button>
 <button class="opt" data-fw="md888"><b>MD888</b><small>Hard techno, 155 BPM</small></button>
-</div></div>
+</div>
+<p class="small" style="margin:12px 0 0">Three different drum machines, each with its own sounds, patterns and samples. They all play the same way. The keyboard holds one at a time, and you can swap whenever you like: pick another and install. Your settings are kept.</p>
+</div>
 
 <div class="card"><h2><span class="n">3</span>Install</h2>
 <ol>
@@ -66,7 +68,6 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <p><button class="go" id="go">Install</button></p>
 <progress id="bar" max="100" value="0"></progress>
 <div id="status"></div><div id="log"></div>
-<p class="small">Switching between MD442, MD187 and MD888 works the same way: pick another one and install. Your settings are kept.</p>
 <p class="small"><b>New in 1.6:</b> the keys always play the instrument on screen, the pads are the steps, &lt; and &gt; pick the instrument (DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS), and FX switches the faders between effects and volumes. <a href="#manual">How to play it is further down this page</a> (<a href="fw/1.6/md-hardware-controls.pdf">PDF</a>). 1.6 has not been tested on a keyboard yet; 1.5 is below if you want it back.</p>
 </div>
 
