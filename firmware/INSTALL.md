@@ -69,4 +69,4 @@ Install M-VAVE's own package for your model with M-VAVE's updater (M-UPGRADE).
 
 ## Source (GPL-3.0)
 X0X by Charles Vestal (fork of Felucca by Leo Kuroshita / Hügelton Instruments), SMK-37 port by genkigenki.
-MD|442 changes: md442-smk37.patch against github.com/genkigenki/fm1-x0x @ 8af3731 (branch smk37); full build in github.com/mathewdunn89-ggw/MD-442.
+MD|442 changes: md442-smk37.patch against github.com/genkigenki/fm1-x0x @ 8af3731 (branch smk37); full build in github.com/mathewdunn89-ggw/MD-MODULE.
