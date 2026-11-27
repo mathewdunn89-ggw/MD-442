@@ -1564,6 +1564,7 @@ function onMidi(e) {
     if (padLearnTake(id)) return;
     if (midi.learn && midi.armA) { midi.note[id] = midi.armA; midiKeep(); toast('Pad (note ' + a + ') now does: ' + actName(midi.armA)); midi.armA = null; drawAll(); return; }
     if (midi.learn && midi.armD) { midi.note[id] = midi.armD; midiKeep(); toast('Pad (note ' + a + ') now plays ' + NAME[midi.armD]); midi.armD = null; drawAll(); return; }
+    { const hi = padIndex(id); midi.padHeld = hi >= 0 && hi < SOUND.length ? { i: hi, id, undo: null } : null; }   // held pad + a fader or knob: that instrument's volume
     if (padStep(id)) return;                                              // SEQ view: the Elite's pads are the selected drum's 16 steps
     const pi = padIndex(id), k = midiMap().note[id] || (midi.pads && midi.pads.length && pi >= 0 ? SOUND[pi] : ch === 10 ? GM[a] : null);   // pads set with SET PADS play the kit in order while SEQ REC records
     if (isAct(k)) doAct(k); else if (k) midiHit(k, b); else { boot(); noteOn(clamp(a - 40, 0, 36)); }        // everything else is the keyboard: E below middle C's octave is the root
@@ -1579,7 +1580,13 @@ function onMidi(e) {
     if (midi.learn && midi.armA && b > 63) { midi.cc[id] = midi.armA; midiKeep(); toast('Button (CC ' + a + ') now does: ' + actName(midi.armA)); midi.armA = null; drawAll(); return; }
     if (midi.learn && midi.armP) { midi.cc[id] = midi.armP; midiKeep(); toast('Control ' + a + ' now turns ' + DEF[midi.armP].lb); midi.armP = null; drawAll(); return; }
     const k = midiMap().cc[id]; if (k === 'vw:fx') { const hi = b > 63; if (hi && !midi.ccHi[id]) { midi.fxT = performance.now(); fxLayer(); } else if (!hi && midi.ccHi[id] && midi.fxl && performance.now() - midi.fxT > 400) fxLayer(); midi.ccHi[id] = hi; return; }   // a latching FX button sends on then off; a held one is FX while held
-    if (isAct(k)) { const hi = b > 63; if (hi && !midi.ccHi[id]) doAct(k); midi.ccHi[id] = hi; return; } const kk = fxOf(k); if (kk && DEF[kk]) { midi.busy = true; set(kk, toVal(kk, b / 127)); midi.busy = false; }
+    if (isAct(k)) { const hi = b > 63; if (hi && !midi.ccHi[id]) doAct(k); midi.ccHi[id] = hi; return; }
+    if (midi.padHeld && k && DEF[k]) {                                       // HOLD A PAD + MOVE A FADER OR KNOB: the volume of that pad's instrument (pad 1 kick, 2 snare ... in the order on screen)
+      const H = midi.padHeld, ins = SOUND[H.i], lv = 'lvl.' + ins; if (!DEF[lv]) return;
+      if (H.undo) { const [uk, ui, uw] = H.undo; H.undo = null; setStep(uk, ui, uw, false); elite.force = true; }   // the hold was for the volume, not for a step: put the step back
+      midi.busy = true; set(lv, toVal(lv, b / 127)); midi.busy = false; lcdFlash(NAME[ins] + ' volume', DEF[lv].f(P[lv])); return;
+    }
+    const kk = fxOf(k); if (kk && DEF[kk]) { midi.busy = true; set(kk, toVal(kk, b / 127)); midi.busy = false; }
   }
 }
 /* ELITE FOLLOWS THE SCREEN. The laptop is the main surface; the SMK-37 Elite (stock M-VAVE firmware, nothing on it is changed)
@@ -1613,9 +1620,9 @@ function padStep(id) {
   if (eliteMode() !== 'seq' || writing()) return false;   // WRITE recording: pads play the drums into the loop
   if (isAct(midiMap().note[id])) return false;                               // a pad learned as PLAY, a scene or a mute keeps doing that
   const i = padIndex(id); if (i < 0 || i > 15) return false;
-  boot(); setStep(S.sel, i, !scene().g[S.sel][i], true); elite.force = true; return true;
+  boot(); const was = scene().g[S.sel][i]; setStep(S.sel, i, !was, true); elite.force = true; if (midi.padHeld && midi.padHeld.id === id) midi.padHeld.undo = [S.sel, i, was]; return true;
 }
-function padUp(id) { if (padIndex(id) >= 0) { clearTimeout(elite.upT); elite.upT = setTimeout(() => { elite.force = true; }, 40); } }   // the pad's own light goes out on release: put ours back
+function padUp(id) { if (midi.padHeld && midi.padHeld.id === id) midi.padHeld = null; if (padIndex(id) >= 0) { clearTimeout(elite.upT); elite.upT = setTimeout(() => { elite.force = true; }, 40); } }   // the pad's own light goes out on release: put ours back
 // CHORD and SEQ on the Elite: once learned (MIDI panel: CHORD BUTTON, SEQ BUTTON), CHORD opens the keyboard for the selected
 // instrument (bass, stab or sampler; a drum keeps the last one) and SEQ closes it, so the pads are steps again.
 // FX on the Elite: once FX BUTTON is learned, FX on turns the faders (every control set to a track level) into the global
