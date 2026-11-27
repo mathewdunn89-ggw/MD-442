@@ -215,10 +215,10 @@ index 04df01a..241f839 100644
  void engine_drum(int kit, int voice, float vel);            /* play now (keys) */
  void engine_bass_on(int part, int note, int accent, int slide);
 diff --git a/firmware/src/app/main_fm1.c b/firmware/src/app/main_fm1.c
-index 0e44bf0..67d4f7b 100644
+index 0e44bf0..c8c73b4 100644
 --- a/firmware/src/app/main_fm1.c
 +++ b/firmware/src/app/main_fm1.c
-@@ -188,23 +188,28 @@ static void smk_pads(void)
+@@ -188,23 +188,31 @@ static void smk_pads(void)
      padled_flush();
  }
  
@@ -230,6 +230,8 @@ index 0e44bf0..67d4f7b 100644
 + * off, low-pass left, high-pass right); else the volumes of DRUMS 1 (FADER BANK, its LED lit: BREAKS),
 + * DRUMS 2, BASS, CHORDS. They set the same values as the knobs (saved with the project; a move while REC runs
 + * records motion). A fader takes over only once it moves (also after a switch), so nothing jumps. */
++static void md_vol_frame(void);                     /* md_perform.c: a held pad + a fader = its volume */
++static int md_pad_vol(uint32_t i, uint32_t v);
  static void smk_faders(void)
  {
 -    static const char *const NAME[2][4] = {{"909 LEVEL", "808 LEVEL", "303 A LEVEL", "303 B LEVEL"},
@@ -247,6 +249,7 @@ index 0e44bf0..67d4f7b 100644
 +        say(md_fxf ? "FX IS ON: FADERS = EFFECTS" : smk_fbank ? "FADER 1: BREAKS" : "FADER 1: DRUMS 1", 0);
 +    }
 +    held = (uint8_t)down;
++    md_vol_frame();
 +    m = md_fxf ? 2u : smk_fbank;
 +    if (m != mode) {                                     /* switched: each fader waits for a move */
          for (i = 0; i < 4u; i++)
@@ -258,7 +261,7 @@ index 0e44bf0..67d4f7b 100644
      for (i = 0; i < 4u; i++) {
          uint32_t v = fm1_in.fader[i];
          pref_t r;
-@@ -218,16 +223,11 @@ static void smk_faders(void)
+@@ -218,16 +226,13 @@ static void smk_faders(void)
          if (v == last[i])
              continue;
          last[i] = (uint8_t)v;
@@ -270,6 +273,8 @@ index 0e44bf0..67d4f7b 100644
 -            r = PR(R_ENG, T_FX, 0, FX_RV_LEVEL);
 -        else if (i == 2)
 -            r = PR(R_ENG, T_FX, 0, FX_DL_LEVEL);
++        if (md_pad_vol(i, v))                            /* a pad held: that instrument's volume */
++            continue;
 +        if (m == 2u)
 +            r = i == 0 ? PR(R_ENG, T_FX, 0, FX_RV_LEVEL) : i == 1 ? PR(R_ENG, T_FX, 0, FX_DL_LEVEL)
 +              : i == 2 ? PR(R_ENG, T_FX, 0, FX_DRIVE) : PR(R_ENG, T_MST, 0, MST_DJF);
@@ -279,7 +284,7 @@ index 0e44bf0..67d4f7b 100644
          d = pref_desc(r);
          if (!d)
              continue;
-@@ -235,7 +235,7 @@ static void smk_faders(void)
+@@ -235,7 +240,7 @@ static void smk_faders(void)
          motion_touch(r);
          ui.act_t = plat_ms();                            /* (the autosave waits for quiet) */
          pref_value(r, num, unit);
@@ -288,7 +293,7 @@ index 0e44bf0..67d4f7b 100644
          while (n < 16u && num[n])
              n++;
          if (n < 8u)                                      /* NAME (<= 11) + " " + num (< 8) + unit (< 8): fits say() */
-@@ -249,6 +249,7 @@ static void smk_faders(void)
+@@ -249,6 +254,7 @@ static void smk_faders(void)
   * has reached. On a 303 (the part on screen) they play its sound without changing what is saved: pitch = its
   * TUNE (about +-1.5 semitones), mod = its CUTOFF opened from the saved value up to the top. Released (or
   * another part chosen), the saved values sound again. Other parts: the wheels do nothing. */
@@ -296,7 +301,7 @@ index 0e44bf0..67d4f7b 100644
  static void smk_wheels(void)
  {
      enum { DEAD = 12, SPAN0 = 80, MOD_LO = 485, MOD_HI = 615 };
-@@ -288,6 +289,7 @@ static void smk_wheels(void)
+@@ -288,6 +294,7 @@ static void smk_wheels(void)
      }
      mw = mhi - m <= DEAD ? 0 : (mhi - m - DEAD) * 127 / (mhi - mlo - DEAD > 1 ? mhi - mlo - DEAD : 1);
      mw = clamp(mw, 0, 127);
@@ -304,7 +309,7 @@ index 0e44bf0..67d4f7b 100644
      if (part != (is_303() ? bidx() : -1)) {          /* another part: the last 303 sounds as saved again */
          if (part >= 0 && tune_now >= 0)
              engine_set(T_303, part, BASS303_TUNE, proj.sound.v[T_303][part][BASS303_TUNE]);
-@@ -315,13 +317,14 @@ static void smk_wheels(void)
+@@ -315,13 +322,14 @@ static void smk_wheels(void)
  
  /* < and >: one detent of SELECT back / forward (the page, a list's row: what SELECT does there; not with HOME held,
   * where SELECT is the tempo), as on the other SMK-37 Pro ports. Not if HARDWARE CALIBRATION gave them an FM-1 label. */
@@ -320,7 +325,7 @@ index 0e44bf0..67d4f7b 100644
          return;
      for (id = SMK_BTN_LEFT; id <= SMK_BTN_RIGHT; id++) {
          if (!((pressed >> id) & 1u))
-@@ -339,21 +342,33 @@ static void smk_arrows(void)
+@@ -339,21 +347,33 @@ static void smk_arrows(void)
  /* every frame, after ui_frame; the wheels also between frames. The 10 outer keys (C3..E3, G#5..C6) have no
   * X0X role: their events are dropped. */
  /* pads as a step grid (steps, patterns: 1-8 top row) unless they play notes (a 303's REC keyboard) */
@@ -359,7 +364,7 @@ index 0e44bf0..67d4f7b 100644
  }
  #endif
  
-@@ -442,7 +457,7 @@ static void safe_main(void)
+@@ -442,7 +462,7 @@ static void safe_main(void)
          if ((fm1_in.buttons & play) && fm1_ms - t0 > 500u) {
              bootguard.failed = 0;                   /* try X0X again, from scratch */
              bootguard.pending = 0;
@@ -368,7 +373,7 @@ index 0e44bf0..67d4f7b 100644
              usb_detach();
              fm1_delay_ms(30);
              fm1_reboot();
-@@ -478,9 +493,9 @@ static void fm1_main(void)
+@@ -478,9 +498,9 @@ static void fm1_main(void)
          }
      }
      lcd_init();
@@ -455,10 +460,10 @@ index 9bbe9f6..c4c807c 100644
 +#endif
 diff --git a/firmware/src/app/md_perform.c b/firmware/src/app/md_perform.c
 new file mode 100644
-index 0000000..a2a2df8
+index 0000000..57aa7d0
 --- /dev/null
 +++ b/firmware/src/app/md_perform.c
-@@ -0,0 +1,857 @@
+@@ -0,0 +1,971 @@
 +/* SPDX-License-Identifier: GPL-3.0-only */
 +/* MD PERFORM: the SMK-37's controls laid out for making music from the keyboard alone (MD442, MD187 and
 + * MD888 share it). Included by main_fm1.c after the UI (ui.c) in this unity build.
@@ -518,7 +523,7 @@ index 0000000..a2a2df8
 +{
 +    char *q;
 +    if (i < 22) {
-+        q = put_s(t, i < 11 ? "909 " : "808 ");
++        q = put_s(t, i < 11 ? "DR1 " : "DR2 ");
 +        put_s(q, engine_voice_name(i < 11 ? T_909 : T_808, i < 11 ? MD_ORD909[i] : MD_ORD808[i - 11]));
 +    } else
 +        put_s(t, PART_N[i - 20]);
@@ -755,6 +760,114 @@ index 0000000..a2a2df8
 +    md_drum_hit(km, v, f);
 +}
 +
++/* -------------------------------------------- a held pad + a fader: its volume --- */
++/* Hold a pad and move any fader: the volume of that pad's instrument, whatever FX and FADER BANK say. The pads
++ * are the instruments as in the mutes: 1-11 the drums of the kit on screen (BD SD CP CH OH LT MT HT RS CR RD),
++ * 12-16 DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS (pads that play the kit: 12-16 the other kit's BD SD CP CH OH).
++ * What the press did to a step or a mute is put back, and the release leaves it alone. PATCH or BT held, or
++ * the pattern and song screens: the pad is a pattern, the faders stay themselves. */
++static uint8_t md_vol_w = 0xFF, md_vol_eng, md_vol_ref[4];
++static void md_vol_frame(void)                         /* each frame, before the faders are read */
++{
++    uint32_t pads = fm1_in.pnotes, w, i;
++    for (w = 0; w < SMK_NPAD; w++)
++        if ((pads >> SMK_WHITE_NOTE[w]) & 1u)
++            break;
++    if (w >= SMK_NPAD)
++        w = 0xFF;
++    if (w != md_vol_w) {                                /* another pad (or none): the faders' places now are the start */
++        md_vol_w = (uint8_t)w;
++        md_vol_eng = 0;
++        for (i = 0; i < 4u; i++)
++            md_vol_ref[i] = fm1_in.fader[i];
++    }
++}
++
++static void md_vol_putback(int w)                      /* the press that started the hold: undone */
++{
++    if (md_drums)
++        return;
++    if (md_mute_on) {
++        md_mute_pad(w);                                 /* (the press toggled it: again) */
++        return;
++    }
++    if (is_drum() && ui.hold_step >= 0) {
++        if (ui.hold_created) {
++            sm_flip(cur_pat()->drum[ui.part].hit[ui.sel[ui.part]], ui.hold_step);
++            mark_dirty();
++        }
++        ui.hold_created = 1;                            /* (the release: no tap-off) */
++    } else if (is_303() && ui.held_step >= 0) {
++        if (ui.step_created) {
++            cur_pat()->bass[bidx()].step[ui.held_step].flags = G_REST;
++            mark_dirty();
++        }
++        ui.step_created = 1;
++    } else if (!is_drum() && !is_303() && ui.brk_held >= 0) {
++        if (ui.hold_created) {
++            cur_pat()->brk.steps &= ~(1u << ui.brk_held);
++            mark_dirty();
++        }
++        ui.hold_created = 1;
++    }
++}
++
++static int md_pad_vol(uint32_t i, uint32_t v)          /* fader i moved to v: 1 = a held pad took it */
++{
++    int w = md_vol_w, km, dv = -1, d0;
++    pref_t r;
++    const x0x_param_t *d;
++    char t[28], num[16], unit[8], *q;
++    uint32_t n = 0, u = 0;
++    if (w == 0xFF || i >= 4u || (ui.btn & (1u << B_HOME | 1u << B_SAVE)) || ui.overlay == O_ASK)
++        return 0;
++    if (!md_mute_on && !md_drums && (ui.view == V_HOME || ui.view == V_SONG))   /* the pads are patterns there */
++        return 0;
++    if (!md_vol_eng) {
++        d0 = (int)v - (int)md_vol_ref[i];
++        if (d0 > -3 && d0 < 3)                          /* (a fader brushed: not a move) */
++            return 1;
++        md_vol_eng = 1;
++        md_vol_putback(w);
++    }
++    km = md_mute_kit();
++    if (w < 11)
++        dv = w;
++    else if (md_drums && !md_mute_on) {
++        km ^= 1;
++        dv = w - 11;
++    }
++    if (dv >= 0) {
++        int tv = km ? MD_ORD808[dv] : MD_ORD909[dv];
++        r = find_ref(km ? T_808 : T_909, tv, "Level");
++        md_name(t, km * 11 + dv);
++    } else {
++        r = PR(R_ENG, T_MIX, w - 11, MX_LEVEL);
++        put_s(t, PART_N[w - 11]);
++    }
++    d = pref_desc(r);
++    if (!d)
++        return 1;
++    pref_set(r, (int)((v * d->max + 63u) / 127u));
++    motion_touch(r);
++    ui.act_t = plat_ms();
++    pref_value(r, num, unit);
++    for (q = t; *q; q++)
++        ;
++    q = put_s(q, " VOL ");
++    while (n < 16u && num[n])
++        n++;
++    while (u < 8u && unit[u])
++        u++;
++    if ((uint32_t)(q - t) + n < sizeof t) {             /* the name (<= 7) + " VOL " + the number: fits say() */
++        q = put_s(q, num);
++        if ((uint32_t)(q - t) + u < sizeof t)
++            put_s(q, unit);
++    }
++    say(t, 0);
++    return 1;
++}
++
 +/* ---------------------------------------------------------------- the piano --- */
 +/* The keybed's 27 middle keys (F3..G5) always play the instrument on screen, never the steps (the pads are
 + * those): DRUMS 1 / 2 the kit (BD SD CP CH OH LT MT HT RS CR RD from F3 up, again from E4, with velocity),
@@ -836,6 +949,12 @@ index 0000000..a2a2df8
 +{
 +    uint32_t keys = fm1_in.knotes & ((1u << NKEYS) - 1u), ch = keys ^ md_prev_keys, k;
 +    int block = ui.overlay == O_ASK || ui.view == V_PERF || perf_testing();
++    static int8_t part = -1;
++    if (ui.part != part) {                               /* another instrument by any way (K3 too): no note left held */
++        if (part >= 0)
++            md_piano_off();
++        part = (int8_t)ui.part;
++    }
 +    md_prev_keys = keys;
 +    for (k = 0; ch && k < NKEYS; k++) {
 +        int down, vel;
@@ -1593,7 +1712,7 @@ index 4914d7c..6d757e3 100644
          for (i = 0; i < NPARTS; i++)
              proj.sound.v[T_MIX][i][MX_PAN] = 64;
 diff --git a/firmware/src/app/ui.c b/firmware/src/app/ui.c
-index 1687dec..1ab14a8 100644
+index 1687dec..0a68d08 100644
 --- a/firmware/src/app/ui.c
 +++ b/firmware/src/app/ui.c
 @@ -25,8 +25,8 @@ enum { V_HOME, V_PART, V_GEN, V_FX, V_MIX, V_GLO, V_SONG, V_PERF, V_SEQ, NVIEWS
@@ -1663,6 +1782,15 @@ index 1687dec..1ab14a8 100644
      static const char *const CHN[MX_NPARAMS] = {"LEVEL", "REV", "DLY", "PAN"};
      const x0x_param_t *d = pref_desc(r);
      static const char *const SEQN[6] = {"LENGTH", "RATE", "LENGTH", "RATE", "DIRECTION", "TRANSP"};
+@@ -523,7 +530,7 @@ static const char *pref_name(pref_t r)
+         return "B CHANCE";
+     if (r.kind == R_ENG && (r.a == T_909 || r.a == T_808) && r.b < NDRUM && ui.view == V_MIX && ui.overlay == O_LIST) {
+         static char t[24];                             /* MIX's list: whose track ("909 BD LEVEL") */
+-        put_s(put_s(put_s(put_s(t, r.a == T_909 ? "909 " : "808 "), engine_voice_name(r.a, r.b)), " "), d ? d->name : "");
++        put_s(put_s(put_s(put_s(t, r.a == T_909 ? "DR1 " : "DR2 "), engine_voice_name(r.a, r.b)), " "), d ? d->name : "");
+         return t;
+     }
+     if (r.kind == R_BRKSLOT)
 @@ -798,6 +805,10 @@ static void build_pages(void)
                       PR(R_ENG, T_303, b, BASS303_ENVMOD), PR(R_ENG, T_303, b, BASS303_DECAY));
              add_page("VOICE", PR(R_ENG, T_303, b, BASS303_ACCENT), PR(R_ENG, T_303, b, BASS303_WAVE),
@@ -1683,6 +1811,15 @@ index 1687dec..1ab14a8 100644
                       find_ref(t, v, "Dly"));
          }
          add_page("MASTER", PR(R_ENG, T_FX, 0, FX_DRIVE), PR(R_ENG, T_MST, 0, MST_COMP1), PR(R_ENG, T_MST, 0, MST_PUMP),
+@@ -1141,7 +1152,7 @@ static int help_lines(int b, const char *l[HELP_LINES])
+         break;
+     }
+     case B_ARP:
+-        L("TB-3PO: THE 303 LINE"); L("GENERATOR (303A, 303B)");
++        L("TB-3PO: THE BASS LINE"); L("GENERATOR (BASS, " MD_NAME_B ")");
+         if (gen) { L("OCT+: A NEW LINE"); L("OCT-: MUTATE IT"); }
+         L("AGAIN: THE NEXT PAGE");
+         break;
 @@ -1614,7 +1625,7 @@ static void run_action(int act, int arg)
          say("PERF TEST: 15 SECONDS", 0);
          break;
@@ -1703,6 +1840,15 @@ index 1687dec..1ab14a8 100644
              mark_dirty();
          }
          ui.step_preview = key_sounds();               /* as the drum keys */
+@@ -2321,7 +2336,7 @@ static void button_tap(int b)
+         break;
+     case B_ARP:
+         if (!is_303()) {
+-            say("TB-3PO: PICK 303A OR 303B", 0);
++            say("PICK BASS OR " MD_NAME_B " FIRST", 0);
+             break;
+         }
+         if (ui.view == V_GEN && ui.overlay == O_NONE)  /* the generator; again: its next page */
 @@ -2382,6 +2397,12 @@ static void button_tap(int b)
                  say("MUTATED", 0);
              }

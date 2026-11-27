@@ -26,12 +26,12 @@ always go back to M-VAVE's own firmware.
 Switching between MD442, MD187 and MD888 is the same: run the installer again and pick another. Your global
 settings (MIDI channels, clock and notes out, output level, key lights, autosave) stay as they are. Each firmware
 starts with its own patterns and sound; the other firmware's saved patterns are kept until you save in this one.
-MD|442 1.2 and 1.5 users keep their patterns in MD442 1.6.
+MD|442 1.2, 1.5 and 1.6 users keep their patterns in MD442 1.7.
 
 Windows or Linux: install Python 3, run `pip install mido python-rtmidi`, then
 `python3 tools/fm1_install.py md187-smk37-elite.fwsc` (or the file you want).
 
-## Playing it (all three, version 1.6)
+## Playing it (all three, version 1.7)
 The one-page cheat sheet (md-hardware-controls.pdf) has all of this on one page.
 
 | Control | What it does |
@@ -42,6 +42,7 @@ The one-page cheat sheet (md-hardware-controls.pdf) has all of this on one page.
 | REC + PLAY | what you play on the keys goes into the pattern on the nearest step |
 | FX | the faders' switch. Lit: REVERB, DELAY, DRIVE, FILTER. Off: volumes of DRUMS 1, DRUMS 2, BASS, CHORDS |
 | FADER BANK | fader 1 switches between DRUMS 1 and BREAKS (lit: BREAKS) |
+| Hold a pad + any fader | that pad's instrument volume. Pads 1 to 11: the drums of the kit on screen (BD SD CP CH OH LT MT HT RS CR RD). Pads 12 to 16: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS. The step or mute the press changed is put back |
 | KNOB BANK held + K2 / K3 / K4 | filter, resonance, decay of the instrument (BASS / CHORDS: cutoff, reso, env mod) |
 | PARA | the instrument's sound pages; on CHORDS the CHORD page picks the chord: Minor, Major, Min7, Maj7, Min9, Sus4, 5th, Off |
 | KNOB BANK tap | the pads mute (1-11 drums, 12-16 instruments); PATCH + a pad solos; PATCH + KNOB BANK unmutes all |
