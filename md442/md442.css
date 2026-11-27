@@ -310,7 +310,7 @@
 .md.phone .pscn .key.add { flex: 1 1 0; min-width: 44px; padding: 0 4px; font-size: 9px; letter-spacing: .06em; white-space: normal; line-height: 1.25; }
 @media (max-width: 340px) { .md.phone .logo { display: none; } }
 /* drum keys 7 x 2, then the 16 step keys 8 x 2, all 44 px tall */
-.md.phone .pinst { flex: none; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.md.phone .pinst { flex: none; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
 .md.phone .pinst .key { min-height: 44px; padding: 13px 1px 3px; font-size: 8px; letter-spacing: 0; line-height: 1.05; white-space: normal; overflow-wrap: normal; }
 .md.phone .pinst .key.led::before { top: 4px; width: 5px; height: 5px; margin-left: -2.5px; }
 .md.phone .pstepw { flex: none; min-height: 0; display: block; }
