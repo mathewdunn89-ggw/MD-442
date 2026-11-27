@@ -227,6 +227,7 @@ function randomScene() {
 /* ---------- state ---------- */
 const P = {}; Object.keys(DEF).forEach(k => { P[k] = DEF[k].df; });
 const S = { style: '442', preset: FIRST, dirty: false, scenes: [emptyScene()], sc: 0, chain: false, last: 16, mute: {}, kill: { LOW: false, MID: false, HI: false }, rep: { on: false, len: 1 }, sel: 'BD', view: 'one', mem: {}, mixer: false, midiOpen: false, metro: false, solo: null, keys: { open: false, target: 'BS', mode: 0, rate: 1, oct: 1, hold: false, rec: false } };
+const sg = { mode: null, k: 0, wait: false, steps: [], ev: [], prev: {}, log: [], si: 0, ei: 0, notes: new Set(), saved: null, restoreT: 0, t0: 0, ending: false };   // SONG state (see SONG below)
 let presetVals = {};                              // what double-click resets a knob to
 const scene = () => S.scenes[S.sc];
 // SCENE MIX: every scene keeps its own mutes, kills, filter, effects, mixer and sound knobs. The master volume and the tempo stay as they are.
@@ -244,7 +245,7 @@ function loadPreset(name) {
 const resetVal = k => (k in presetVals ? presetVals[k] : DEF[k].df);
 const LS = 'md442-v2', LSB = 'md442-v2-beats';
 let saveT = 0;
-const saveNow = () => { clearTimeout(saveT); storeMix(); try { localStorage.setItem(LS, JSON.stringify({ P, S: Object.assign({}, S, { rep: { on: false, len: S.rep.len } }), presetVals })); } catch (_) {} };
+const saveNow = () => { clearTimeout(saveT); if (sg.saved) return;   /* a song is playing: your own beat is already saved */ storeMix(); try { localStorage.setItem(LS, JSON.stringify({ P, S: Object.assign({}, S, { rep: { on: false, len: S.rep.len } }), presetVals })); } catch (_) {} };
 function persist() { storeMix(); clearTimeout(saveT); saveT = setTimeout(saveNow, 400); }
 addEventListener('pagehide', saveNow);   // nothing from the last moment is lost when the page closes
 const okScene = s => !!(s && s.g && fixScene(s) && Array.isArray(s.n) && s.n.length === 16);
@@ -529,6 +530,7 @@ function metroTick(idx, t) {
 function toggleMetro() { S.metro = !S.metro; drawAll(); persist(); }
 function barLine() {
   if (firstBar) { firstBar = false; return; }
+  if (sg.mode === 'play') return;                                         // the song decides the scenes and mutes
   if (pend != null) { const n = pend; pend = null; goScene(n); drawAll(); persist(); }
   else if (S.chain && S.scenes.length > 1) { goScene((S.sc + 1) % S.scenes.length); drawAll(); }
   if (mqDo) flipGroup();
@@ -540,6 +542,7 @@ function tick() {
   if (nt < 0 || nt < now - 2) nt = now + .03;                            // just started, or asleep for seconds: begin from here
   while (nt < now + ahead) {
     cur %= S.last; if (cur === 0 && !S.rep.on) { barLine(); E.bar = (E.bar || 0) + 1; }
+    if (sg.mode && !songStep(nt)) break;                                  // SONG: record this step, or play it back
     let idx = cur;
     if (S.rep.on) { const len = [4, 2, 1][S.rep.len]; if (repStart == null) { repStart = cur - (cur % len); repN = 0; } idx = (repStart + (repN++ % len)) % S.last; } else repStart = null;
     const tt = nt + shuffleDelay(idx);
@@ -569,8 +572,10 @@ function clockStop() { const outs = ckOuts(); ckStarted = false; outs.forEach(o 
 function setPlaying(on) {
   if (on === playing || (on && root.querySelector('.dlg[data-locked]'))) return;   /* nothing starts behind the sign-up dialog: not START by keyboard, not MIDI start */
   playing = on;
+  if (on && sg.restoreT) sgRestore();
   if (on) { ckStarted = false; if (rec) clearTimeout(rec.tail); boot(); apply(); E.bar = -1; cur = 0; mstep = 0; firstBar = true; nt = -1; repStart = null; queue.length = 0; clearInterval(timer); timer = setInterval(tick, 25); tick(); }
-  else { clearInterval(timer); clockStop(); midi.ext = false; queue.length = 0; head = -1; drawHead(); if (rec && !rec.busy) rec.tail = setTimeout(recStop, Math.max(1500, P['fx.vdec'] * 1050 + 300));   // let the tails ring out, then save
+  else { if (sg.mode === 'rec') songRecStop(); else if (sg.mode === 'play') songEnd();
+   clearInterval(timer); clockStop(); midi.ext = false; queue.length = 0; head = -1; drawHead(); if (rec && !rec.busy) rec.tail = setTimeout(recStop, Math.max(1500, P['fx.vdec'] * 1050 + 300));   // let the tails ring out, then save
  if (pend != null) { const n = pend; pend = null; goScene(n); } if (mqDo) flipGroup(); if (ac) { E.fb.gain.setTargetAtTime(0, ac.currentTime, .05); setTimeout(apply, 700); } }
   if (!on && S.keys.mode && held.length) arpRun();
   const st = window.MDStrobe; if (st) { if (on) st.music = 'md442'; else if (st.music === 'md442') st.music = null; }
@@ -910,6 +915,118 @@ function recStop() {
 }
 const toggleRec = () => (rec ? recStop() : recStart());
 const recKey = () => { const b = key('REC', toggleRec, 'led rec'); return live(b, () => { b.classList.toggle('on', !!rec); b.setAttribute('aria-pressed', !!rec); b.setAttribute('aria-label', rec ? 'Stop recording and save the file' : 'Record what you play to an audio file'); }); };
+/* SONG: records the whole performance, not the sound. Press ● SONG and play: every scene change, mute, kill, solo, roll,
+   knob and fader move, tempo change, pattern edit (WRITE, the pads, the grid), keyboard note and pad hit is written down
+   on the 16th-note grid (notes keep their exact timing). ▶ SONG plays it back exactly, on this machine, and puts your
+   beat back as it was when it ends. WAV plays it back and saves it as an audio file. One song is kept on this device. */
+const SONG_LS = 'md442-song';
+let song = null; try { const s = JSON.parse(localStorage.getItem(SONG_LS) || 'null'); if (s && s.v === 1 && s.len > 0 && Array.isArray(s.steps) && Array.isArray(s.ev)) song = s; } catch (_) {}
+function sgState() {
+  const o = { style: S.style, sc: S.sc, last: S.last, mute: JSON.stringify(S.mute), kill: JSON.stringify(S.kill), solo: S.solo || null, rep: S.rep.on ? S.rep.len : -1,
+    keys: JSON.stringify([S.keys.target, S.keys.mode, S.keys.rate, S.keys.oct, !!S.keys.hold]), scenes: JSON.stringify(S.scenes, (k, v) => (k === 'x' ? undefined : v)) };
+  Object.keys(DEF).forEach(k => { o['p:' + k] = P[k]; }); return o;
+}
+function sgApply(d) {
+  let p = false;
+  Object.keys(d).forEach(k => {
+    const v = d[k];
+    if (k.startsWith('p:')) { if (DEF[k.slice(2)]) { P[k.slice(2)] = v; p = true; } }
+    else if (k === 'style') { if (STYLES[v]) S.style = v; }
+    else if (k === 'sc') S.sc = v; else if (k === 'last') S.last = v; else if (k === 'solo') S.solo = v;
+    else if (k === 'mute') S.mute = JSON.parse(v); else if (k === 'kill') S.kill = JSON.parse(v);
+    else if (k === 'rep') { S.rep.on = v >= 0; if (v >= 0) S.rep.len = v; }
+    else if (k === 'keys') { const a = JSON.parse(v); Object.assign(S.keys, { target: a[0], mode: a[1], rate: a[2], oct: a[3], hold: a[4] }); }
+    else if (k === 'scenes') S.scenes = JSON.parse(v).map(fixScene);
+  });
+  S.sc = clamp(S.sc, 0, S.scenes.length - 1);
+  if ('p:sm.bank' in d || 'style' in d) preloadBank(P['sm.bank']);
+  if (p) { apply(); refreshKnobs(); }
+}
+// what ▶ SONG changes, so it can be put back
+const sgKeep = () => JSON.parse(JSON.stringify({ P, S: { style: S.style, preset: S.preset, dirty: S.dirty, scenes: S.scenes, sc: S.sc, chain: S.chain, last: S.last, mute: S.mute, kill: S.kill, solo: S.solo, rep: S.rep, keys: { target: S.keys.target, mode: S.keys.mode, rate: S.keys.rate, oct: S.keys.oct, hold: S.keys.hold } } }));
+function sgRestore() {
+  clearTimeout(sg.restoreT); sg.restoreT = 0; const w = sg.saved; sg.saved = null; if (!w) return;
+  Object.keys(DEF).forEach(k => { if (typeof w.P[k] === 'number') P[k] = w.P[k]; }); const keys = w.S.keys; delete w.S.keys; Object.assign(S, w.S); Object.assign(S.keys, keys);
+  held = []; arpPos = 0; preloadBank(P['sm.bank']); apply(); refreshKnobs(); drawAll(); drawKbd();
+}
+const sgSecs = n => { const s = Math.round(n); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+// where in the song we are right now, in steps (the scheduler runs a little ahead of what you hear)
+function sgPos() { const now = ac ? ac.currentTime : 0, L = sg.log; for (let j = L.length - 1; j >= 0; j--) if (L[j].t <= now) return Math.max(0, L[j].k + Math.min(.999, (now - L[j].t) / stepLen())); return 0; }
+function sgEv(type, a, b) { if (sg.mode !== 'rec' || sg.wait || !sg.k) return; sg.ev.push([+sgPos().toFixed(3), type, a, b == null ? 0 : b]); }
+// called by the sequencer for every 16th-note step, before it plays. false = the song is over, schedule nothing more.
+function songStep(t) {
+  if (sg.mode === 'rec') {
+    if (sg.wait) { if (cur !== 0) return true; sg.wait = false; toast('Song recording. Press ● SONG again to finish.'); }
+    if (!sg.k) sg.t0 = performance.now();
+    const st = sgState(), d = {}; let any = false; Object.keys(st).forEach(k => { if (st[k] !== sg.prev[k]) { d[k] = st[k]; any = true; } }); sg.prev = st;
+    if (any) sg.steps.push([sg.k, d]); sg.log.push({ k: sg.k, t }); if (sg.log.length > 64) sg.log.shift(); sg.k++; if (sg.k % 4 === 1) drawLite();   // the display's clock and bar
+    if (performance.now() - sg.t0 > 600000) { setTimeout(songRecStop, 0); toast('Ten minutes is the longest song. Saving it now.'); }
+    return true;
+  }
+  if (sg.mode !== 'play' || !song) return true;
+  if (sg.k >= song.len) { if (!sg.ending) { sg.ending = true; setTimeout(() => { if (sg.mode === 'play') setPlaying(false); }, Math.max(0, (t - ac.currentTime) * 1000)); } return false; }
+  let ch = false; while (sg.si < song.steps.length && song.steps[sg.si][0] <= sg.k) { sgApply(song.steps[sg.si++][1]); ch = true; }
+  while (sg.ei < song.ev.length && song.ev[sg.ei][0] < sg.k + 1) {
+    const e = song.ev[sg.ei++], at = t + Math.max(0, e[0] - sg.k) * stepLen();
+    setTimeout(() => { if (sg.mode !== 'play') return; const was = S.keys.rec; S.keys.rec = false;   // WRITE stays out of it: the notes are already in the song
+      if (e[1] === 'n') { sg.notes.add(e[2]); noteOn(e[2]); } else if (e[1] === 'f') { sg.notes.delete(e[2]); noteOff(e[2]); } else if (e[1] === 'h') midiHit(e[2], e[3]);
+      S.keys.rec = was; }, Math.max(0, (at - ac.currentTime - .01) * 1000));
+  }
+  sg.k++; if (ch) drawAll(); else if (sg.k % 4 === 1) drawLite(); return true;
+}
+function songRec() {
+  if (sg.mode === 'rec') return songRecStop();
+  if (sg.mode === 'play') songEnd();
+  boot(); if (sg.restoreT) sgRestore();
+  Object.assign(sg, { mode: 'rec', k: 0, steps: [], ev: [], prev: {}, log: [], wait: playing, t0: performance.now() });
+  if (playing) toast('Song recording starts on the next bar'); else { setPlaying(true); toast('Song recording. Press ● SONG again to finish.'); }
+  drawAll(); buzz(15);
+}
+function songRecStop() {
+  if (sg.mode !== 'rec') return; const was = sg.wait; sg.mode = null; sg.wait = false;
+  if (was || sg.k < 2) { drawAll(); return toast('Nothing was recorded. The last song is kept.'); }
+  song = { v: 1, len: sg.k, steps: sg.steps, ev: sg.ev, secs: (performance.now() - sg.t0) / 1000, bars: Math.ceil(sg.k / 16), at: Date.now(), name: S.preset || 'My song' };
+  let kept = true; try { localStorage.setItem(SONG_LS, JSON.stringify(song)); } catch (_) { kept = false; }
+  drawAll(); toast('Song recorded: ' + sgSecs(song.secs) + ', ' + song.bars + ' bars. ▶ SONG plays it, WAV saves it.' + (kept ? '' : ' (Too long to keep after you close the page.)'));
+}
+function songPlay() {
+  if (sg.mode === 'play') { setPlaying(false); return false; }
+  if (sg.mode === 'rec') songRecStop();
+  if (!song) { toast('Nothing to play yet. Press ● SONG, play your set, press ● SONG again.'); return false; }
+  if (playing) setPlaying(false);
+  boot(); if (sg.restoreT) sgRestore(); saveNow(); sg.saved = sgKeep();
+  Object.assign(sg, { mode: 'play', k: 0, si: 0, ei: 0, ending: false, t0: performance.now() }); sg.notes.clear(); pend = null; S.chain = false; held = [];
+  if (song.steps[0] && song.steps[0][0] === 0) { sgApply(song.steps[0][1]); sg.si = 1; }   // the first step's sound is set before anything plays
+  drawAll(); return true;
+}
+function songPlayKey() { if (songPlay()) setPlaying(true); }
+async function songBounce() {
+  if (sg.mode === 'play' && rec) return setPlaying(false);
+  if (sg.mode === 'play') setPlaying(false);
+  if (!songPlay()) return; if (rec) recStop();
+  await recStart(); if (!playing && sg.mode === 'play') songEnd();
+  else toast('Saving the song as a WAV: it plays through once (' + sgSecs(song.secs) + ').');
+}
+// the song stopped (it ended, or STOP): let go of its notes and put the beat back once the tails have rung out
+function songEnd() {
+  if (sg.mode !== 'play') return; sg.mode = null; sg.ending = false; const was = S.keys.rec; S.keys.rec = false; sg.notes.forEach(n => noteOff(n)); sg.notes.clear(); S.keys.rec = was; held = [];
+  clearTimeout(sg.restoreT); sg.restoreT = setTimeout(sgRestore, rec ? Math.max(1500, P['fx.vdec'] * 1050 + 300) + 400 : 300); drawAll();
+}
+function songClear() { if (sg.mode) return; song = null; try { localStorage.removeItem(SONG_LS); } catch (_) {} drawAll(); toast('Song deleted'); }
+function songLcd() {
+  if (sg.mode === 'rec') return sg.wait ? ['● SONG', 'Starts on the next bar'] : ['● SONG REC  ' + sgSecs((performance.now() - sg.t0) / 1000), 'Bar ' + (Math.floor(sg.k / 16) + 1) + ' · Scene ' + (S.sc + 1) + '/' + S.scenes.length];
+  if (sg.mode === 'play' && song) return ['▶ SONG  ' + sgSecs((performance.now() - sg.t0) / 1000) + ' / ' + sgSecs(song.secs), 'Bar ' + Math.min(song.bars, Math.floor(sg.k / 16) + 1) + '/' + song.bars + ' · Scene ' + (S.sc + 1)];
+  return null;
+}
+// the three SONG keys at the top: ● SONG records, ▶ plays the song, WAV saves it as audio
+function songKeys() {
+  const r = key('● SONG', songRec, 'led song'), p = key('▶ SONG', songPlayKey, 'led song'), w = key('WAV', songBounce, 'led song');
+  r.title = 'Record the whole performance as a song: scenes, mutes, knobs, keys. Press again to finish.'; p.title = 'Play the recorded song'; w.title = 'Play the song through once and save it as a WAV';
+  live(r, () => { const on = sg.mode === 'rec'; r.classList.toggle('on', on); r.classList.toggle('rec', on); r.textContent = on ? '■ SONG' : '● SONG'; r.setAttribute('aria-pressed', on); r.setAttribute('aria-label', on ? 'Finish recording the song' : 'Record a song'); });
+  live(p, () => { const on = sg.mode === 'play' && !rec; p.classList.toggle('on', on); p.textContent = on ? '■ SONG' : '▶ SONG'; p.disabled = !song && !on; p.setAttribute('aria-label', on ? 'Stop the song' : 'Play the song'); });
+  live(w, () => { const on = sg.mode === 'play' && !!rec; w.classList.toggle('on', on); w.disabled = !song && !on; w.setAttribute('aria-label', on ? 'Stop saving the song' : 'Save the song as a WAV'); });
+  return [r, p, w];
+}
 const metroKey = () => { const b = key('CLICK', toggleMetro, 'led'); return live(b, () => { b.classList.toggle('on', !!S.metro); b.setAttribute('aria-pressed', !!S.metro); b.setAttribute('aria-label', 'Metronome ' + (S.metro ? 'on' : 'off')); }); };
 
 /* keyboard and arpeggiator: plays the bass or the dub stab. Notes are semitones above the Key. */
@@ -932,6 +1049,7 @@ function arpRun() {                                 // keeps the arpeggio going 
 }
 function noteOn(note) {
   boot(); if (down.has(note)) return;
+  sgEv('n', note);
   if (S.keys.mode) { if (S.keys.hold && down.size === 0) { held = []; arpPos = 0; } down.add(note); if (!held.includes(note)) held.push(note); if (!playing) { if (ac.state === 'running') arpRun(); else ac.resume().then(arpRun).catch(() => {}); } }
   else {
     down.add(note); const go = () => playNote(note, ac.currentTime + .01); if (ac.state === 'running') go(); else ac.resume().then(go).catch(() => {});
@@ -950,7 +1068,7 @@ function writeNote(note, drum) {
   sc.g[k][i] = true; if (drum) {} else if (k === 'BS') sc.n[i] = note; else if (k === 'SM') sc.sl[i] = slOf(note);
   mark(); drawAll();
 }
-function noteOff(note) { if (!down.has(note)) return; down.delete(note); if (S.keys.mode && !S.keys.hold) held = held.filter(x => x !== note); drawKbd(); }
+function noteOff(note) { if (!down.has(note)) return; sgEv('f', note); down.delete(note); if (S.keys.mode && !S.keys.hold) held = held.filter(x => x !== note); drawKbd(); }
 function drawKbd() { kbdEls.forEach(({ el, n }) => { if (el.isConnected) { el.classList.toggle('on', down.has(n)); el.classList.toggle('held', held.includes(n) && !!S.keys.mode); } }); }
 function setKeys(o) { Object.assign(S.keys, o); if (!S.keys.mode || (o.hold === false)) { held = held.filter(n => down.has(n)); } if (!S.keys.mode) held = []; drawAll(); drawKbd(); persist(); }
 function buildKeys(box, count) {
@@ -1077,7 +1195,7 @@ function sceneKeys(box) {
   return box;
 }
 const chainKey = () => { const b = key('CHAIN', toggleChain, 'led'); return live(b, () => { b.classList.toggle('on', S.chain); b.setAttribute('aria-pressed', S.chain); }); };
-const lcdText = () => flashTxt ? [flashTxt[0], flashTxt[1]] : [(S.preset || 'My pattern') + (S.dirty ? ' *' : ''), 'Scene ' + (S.sc + 1) + '/' + S.scenes.length + (pend != null ? ' → ' + (pend + 1) : '') + (S.chain ? ' · chain' : '') + (S.last < 16 ? ' · ' + S.last + ' steps' : '')];
+const lcdText = () => (!flashTxt && songLcd()) || (flashTxt ? [flashTxt[0], flashTxt[1]] : [(S.preset || 'My pattern') + (S.dirty ? ' *' : ''), 'Scene ' + (S.sc + 1) + '/' + S.scenes.length + (pend != null ? ' → ' + (pend + 1) : '') + (S.chain ? ' · chain' : '') + (S.last < 16 ? ' · ' + S.last + ' steps' : '')]);
 
 /* ---------- 6. desktop console ---------- */
 let palette = null, fitEl = null, conEl = null;
@@ -1104,7 +1222,8 @@ function buildDesk() {
   const play = playKey(), fs = key('', fullScreen, 'ico');
   fs.setAttribute('aria-label', 'Full screen'); fs.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6M3 3l6.5 6.5M21 3l-6.5 6.5M3 21l6.5-6.5M21 21l-6.5-6.5"/></svg>';
   const hk = h('div', 'hk'); const sck = key('SHORTCUTS', openPalette); sck.title = MACOS ? '⌘K or ?' : 'Ctrl+K or ?';
-  hk.append(sck, themeKey(), metroKey(), recKey(), writeKey(), play, fs); hd.append(logo, lcd, hk);
+  const sgk = h('div', 'sgk'); sgk.append(...songKeys());
+  hk.append(sck, themeKey(), metroKey(), sgk, recKey(), writeKey(), play, fs); hd.append(logo, lcd, hk);
   // one section per drum: title bar picks the drum, two knobs per column
   const secs = h('div', 'row secs');
   SECT.forEach(s => {
@@ -1169,6 +1288,7 @@ const CMDS = [
   ['Sound and effects', 'Filter / reverb / echo / drive on or off', K('Alt', 'V') + '  ' + K('Alt', 'B') + '  ' + K('Alt', 'N') + '  ' + K('Alt', 'M'), () => {}],
   ['Sound and effects', 'Fine adjust a knob', K('Shift', 'drag'), () => {}], ['Sound and effects', 'Back to the pattern’s value', 'Double-click', () => {}],
   ['Recording', 'Record to a WAV file (press again to save)', K('Ctrl', 'Enter'), toggleRec],
+  ['Recording', 'Record a song: the whole set, to play back (press again to finish)', '', songRec], ['Recording', 'Play the recorded song', '', songPlayKey], ['Recording', 'Save the song as a WAV', '', songBounce],
   ['Views', 'One drum / whole pattern', 'V', () => nextView()], ['Views', 'Mixer', 'X', toggleMixer], ['Views', 'Keyboard and arp', 'C', toggleKeys], ['Views', 'Play notes (keyboard open)', 'A W S E D F T G Y H U J K', () => { if (!S.keys.open) toggleKeys(); }],
   ['Views', 'Full screen', 'P', fullScreen], ['Views', 'Close a panel', 'Esc', () => {}], ['Views', 'This list', K('Ctrl', 'K') + '  or  ?', () => {}],
   ['Rarely used', 'Light or dark look', '', toggleTheme], ['Rarely used', 'MIDI controllers', '', toggleMidi], ['Rarely used', 'MIDI learn: tie a hardware control to a knob', '', midiLearn], ['Rarely used', 'Send this beat to the keyboard', '', () => sendToKeyboard(false)], ['Rarely used', 'MIDI clock out on or off (an FM-1 or a DAW follows MD|442)', '', () => { midi.cko = !midi.cko; midiKeep(); if (midi.cko && !midi.access) midiConnect(); if (!midi.cko) clockStop(); drawAll(); toast(midi.cko ? 'Clock out on' : 'Clock out off'); }], ['Rarely used', 'Install as a desktop app', '', install]
@@ -1257,7 +1377,7 @@ function openSheet(title, fill) {
 const SHEETS = {
   patterns: ["MATHEW'S PATTERNS", b => { b.append(styleKeys('three'), presetKeys(h('div', 'keys two')), h('span', 'cap', 'MY BEATS'), beatKeys(h('div', 'keys two'))); }],
   scenes: ['SCENES', b => { const t = h('div', 'keys three'); t.append(key('+ SCENE', addScene), chainKey(), key('DELETE', delScene)); b.append(sceneKeys(h('div', 'keys four')), t, h('span', 'cap', 'LAST STEP'), lastCtl(), h('p', 'note', 'Tap the key marked + to save this pattern to the next scene, then change it there. Each scene keeps its own mutes, filter, effects and mixer too, so a scene can be a breakdown or a drop. Chain plays the scenes one after another. A change waits for the bar line.')); }],
-  master: ['MASTER', b => { const k = h('div', 'knobs1'); MASTER.forEach(([p, l]) => k.append(mkKnob(p, l))); const t = h('div', 'keys two'); t.append(metroKey(), recKey(), themeKey(), key('MIDI · DAW', () => { closeSheet(); openSheet('MIDI · DAW · SMK-37', buildMidi); })); b.append(k, t, h('p', 'note', 'CLICK is a metronome; it is never in a recording. REC records what you hear and saves a WAV when you press it again.')); }],
+  master: ['MASTER', b => { const k = h('div', 'knobs1'); MASTER.forEach(([p, l]) => k.append(mkKnob(p, l))); const t = h('div', 'keys two'); const sgt = h('div', 'keys three'); sgt.append(...songKeys()); t.append(metroKey(), recKey(), themeKey(), key('MIDI · DAW', () => { closeSheet(); openSheet('MIDI · DAW · SMK-37', buildMidi); })); b.append(k, h('span', 'cap', 'SONG'), sgt, t, h('p', 'note', '● SONG records your whole set (scenes, mutes, knobs, keys) and ▶ SONG plays it back; WAV saves it as audio. CLICK is a metronome; it is never in a recording. REC records what you hear and saves a WAV when you press it again.')); }],
   mixer: ['MIXER', b => { const k = h('div', 'knobs1 mix'); SOUND.forEach(v => { const box = mkKnob('lvl.' + v, SHORT[v]), m = key('M', () => toggleMute(v), 'sw'); m.setAttribute('aria-label', 'Mute ' + NAME[v]); box.append(live(m, () => { m.classList.toggle('on', !S.mute[v]); m.textContent = S.mute[v] ? 'MUTED' : 'ON'; })); k.append(box); }); b.append(k); }],
   fx: ['EFFECTS', b => { const k = h('div', 'knobs1'); FXK.forEach(([p, l]) => k.append(fxKnob(p, l))); FXMORE.forEach(([p, l]) => k.append(mkKnob(p, l))); const r = h('div', 'repw'); r.append(holdKey(), repSeg()); b.append(k, r, h('span', 'cap', 'KILL'), killKeys(), h('span', 'cap', 'OUTPUT'), meter()); }],
   keys: ['KEYBOARD · ARP', b => { buildKeys(b, 13); }],
@@ -1420,7 +1540,7 @@ const MIDI_DEF = { cc: { '1:20': 'bd.decay', '1:21': 'sd.snappy', '1:22': 'ch.de
 const midiMap = () => (Object.keys(midi.cc).length || Object.keys(midi.note).length ? midi : MIDI_DEF);
 try { const m = JSON.parse(localStorage.getItem(MIDI_LS) || '{}'); if (m && m.cc) midi.cc = m.cc; if (m && m.note) midi.note = m.note; if (m && m.cko) midi.cko = true; if (m && Array.isArray(m.pads) && m.pads.length) midi.pads = m.pads; if (m && m.lights === false) midi.lights = false; } catch (_) {}
 const midiKeep = () => { try { localStorage.setItem(MIDI_LS, JSON.stringify({ cc: midi.cc, note: midi.note, cko: !!midi.cko, pads: midi.pads, lights: midi.lights !== false })); } catch (_) {} };
-function midiHit(k, v) { if (!SOUND.includes(k) || off(k)) return; boot(); const g = .35 + .65 * (v / 127), go = () => voice(E, k, ac.currentTime + .005, 0, g); if (ac.state === 'running') go(); else ac.resume().then(go).catch(() => {}); flashKey(k); if (writing()) writeNote(0, k); }
+function midiHit(k, v) { if (!SOUND.includes(k)) return; sgEv('h', k, v); if (off(k)) return; boot(); const g = .35 + .65 * (v / 127), go = () => voice(E, k, ac.currentTime + .005, 0, g); if (ac.state === 'running') go(); else ac.resume().then(go).catch(() => {}); flashKey(k); if (writing()) writeNote(0, k); }
 // started by the keyboard or a DAW: follow it, and send it nothing back (no second Start, no clock of our own)
 function follow() { if (playing) return; boot(); midi.ext = true; setPlaying(true); if (!playing) midi.ext = false; }
 function onMidi(e) {

@@ -121,3 +121,8 @@
 .md .key.wr { white-space: nowrap; }
 .md .key.wr.on { background: #c21818; color: #fff; border-color: #ff3b3b; box-shadow: 0 0 0 1px #ff3b3b, 0 0 14px rgba(255,59,59,.45); }
 .md .key.wr.on::before { background: #fff; box-shadow: 0 0 6px #fff; }
+/* SONG keys at the top: ● SONG records the whole set, ▶ SONG plays it back, WAV saves it */
+.md.desk .hk .sgk { display: flex; gap: 4px; align-items: stretch; padding: 0 6px; border-left: 1px solid rgba(127,127,127,.25); border-right: 1px solid rgba(127,127,127,.25); }
+.md.desk .hk .sgk .key { min-width: 74px; }
+.md.desk .hk .sgk .key:disabled { opacity: .4; }
+.md .key.song.on:not(.rec) { color: #e8a317; }
