@@ -68,12 +68,12 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <p><button class="go" id="go">Install</button></p>
 <progress id="bar" max="100" value="0"></progress>
 <div id="status"></div><div id="log"></div>
-<p class="small"><b>New in 1.7:</b> hold a pad and move a fader for that instrument's volume, and two fixes. As in 1.6, the keys always play the instrument on screen, the pads are the steps, &lt; and &gt; pick the instrument (DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS), and FX switches the faders between effects and volumes. <a href="#manual">How to play it is further down this page</a> (<a href="fw/1.7/md-hardware-controls.pdf">PDF</a>). 1.7 has not been tested on a keyboard yet; 1.6 and 1.5 are below if you want one back.</p>
+<p class="small"><b>New in 1.8:</b> ARP is an arpeggiator for the keys, LEAD is a new instrument, the keys and chords stay in the key of your bass line, and the DRIVE and FILTER faders are off at the bottom. The keys always play the instrument on screen, the pads are the steps, &lt; and &gt; pick the instrument (DRUMS 1, DRUMS 2, BASS, CHORDS, LEAD, BREAKS), and FX switches the faders between effects and volumes. <a href="#manual">How to play it is further down this page</a> (<a href="fw/1.8/md-hardware-controls.pdf">PDF</a>). You can also put <a href="loops.html">your own loops on the keyboard</a>. 1.8 has not been tested on a keyboard yet; 1.7 and 1.5 are below if you want one back.</p>
 </div>
 
-<details><summary>Go back to version 1.6 or 1.5</summary>
+<details><summary>Go back to version 1.7 or 1.5</summary>
 <p class="small">Pick your keyboard and MD-Module at the top, then:</p>
-<p><button class="sec" id="goprev">Install 1.6</button> <span class="small">The version before: the same layout, without hold a pad + fader.</span></p>
+<p><button class="sec" id="goprev">Install 1.7</button> <span class="small">The version before: the same layout, without the arpeggiator, LEAD and in key.</span></p>
 <p><button class="sec" id="goold">Install 1.5</button> <span class="small">The stock key layout: keys and pads are both steps.</span></p>
 </details>
 
@@ -88,8 +88,8 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 </details>
 
 <section class="man" id="manual">
-<div class="logo" style="font-size:24px;margin:34px 0 4px">HOW TO PLAY <span>1.7</span></div>
-<p class="sub" style="margin-bottom:10px">The actual mapping of the MD-Modules (version 1.7) on the SMK-37 Elite and Pro. All three play the same way. <a href="fw/1.7/md-hardware-controls.pdf">One-page PDF to print</a>.</p>
+<div class="logo" style="font-size:24px;margin:34px 0 4px">HOW TO PLAY <span>1.8</span></div>
+<p class="sub" style="margin-bottom:10px">The actual mapping of the MD-Modules (version 1.8) on the SMK-37 Elite and Pro. All three play the same way. <a href="fw/1.8/md-hardware-controls.pdf">One-page PDF to print</a>.</p>
 <p class="toc"><a href="#m-idea">The idea</a><a href="#m-keys">Keys</a><a href="#m-pads">Pads</a><a href="#m-buttons">Buttons</a><a href="#m-knobs">Knobs</a><a href="#m-faders">Faders</a><a href="#m-rec">Record</a><a href="#m-perf">Build-ups</a><a href="#m-mute">Mutes and patterns</a><a href="#m-app">With the app</a><a href="#m-stock">Module or M-VAVE</a></p>
 
 <div class="card" id="m-idea"><h3>The idea in four lines</h3>
@@ -104,9 +104,10 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <span style="background:#a83232">DRUMS 2<small>808 kit</small></span>
 <span style="background:#23874a">BASS<small>303 bass</small></span>
 <span style="background:#3560c0">CHORDS<small>one key, a chord</small></span>
+<span style="background:#1a7f8c">LEAD<small>single notes</small></span>
 <span style="background:#7340b8">BREAKS<small>loops and hits</small></span>
 </div>
-<p class="small">The five instruments, in the order <kbd>&lt;</kbd> <kbd>&gt;</kbd> steps through them. The keys, the pads, the sound knobs and the mod wheel all follow the one on screen.</p>
+<p class="small">The six instruments, in the order <kbd>&lt;</kbd> <kbd>&gt;</kbd> steps through them. The keys, the pads, the sound knobs and the mod wheel all follow the one on screen.</p>
 </div>
 
 <div class="card" id="m-keys"><h3>Keys</h3>
@@ -114,8 +115,10 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <tr><td>On DRUMS 1 / DRUMS 2</td><td>Each key is a drum. From F3 going up: kick, snare, clap, closed hat, open hat, low tom, mid tom, high tom, rim, crash, ride (DRUMS 2: cymbal, cowbell). The same eleven repeat from E4. Hit harder for louder.</td></tr>
 <tr><td>On BASS</td><td>Notes. Hold one key and press another and it slides to it.</td></tr>
 <tr><td>On CHORDS</td><td>One key plays a whole chord, an octave above the bass.</td></tr>
+<tr><td>On LEAD</td><td>Single notes on the chord sound, for a lead line. LEAD and CHORDS are one voice, so one of them sounds at a time.</td></tr>
+<tr><td>In key</td><td>On BASS, CHORDS and LEAD the keys follow the key of your bass line, so playing over a pattern stays in tune. <kbd>PATCH</kbd> + <kbd>SCALE</kbd> turns that off or on.</td></tr>
 <tr><td>On BREAKS</td><td>Slices 1 to 8 of the loop, from F3 up (MD187: stabs and vocal hits, MD888: trance stabs and hits).</td></tr>
-<tr><td><kbd>OCT-</kbd> <kbd>OCT+</kbd></td><td>On BASS and CHORDS: the keys' octave. On the drums and breaks: the next or previous 16 steps on the pads.</td></tr>
+<tr><td><kbd>OCT-</kbd> <kbd>OCT+</kbd></td><td>On BASS, CHORDS and LEAD: the keys' octave. On the drums and breaks: the next or previous 16 steps on the pads.</td></tr>
 <tr><td>Accent</td><td>Hit the key hard, or hold <kbd>CHORD</kbd> while you play.</td></tr>
 <tr><td>Pitch wheel</td><td>Bends BASS or CHORDS.</td></tr>
 <tr><td>Mod wheel</td><td>BASS / CHORDS: opens the filter. Drums / breaks: a high-pass riser on the one on screen.</td></tr>
@@ -146,7 +149,8 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <tr><td><kbd>PARA</kbd></td><td>The instrument's sound pages. Press again for the next page.</td></tr>
 <tr><td><kbd>SEQ</kbd></td><td>The instrument's sequencer page: length, speed, direction.</td></tr>
 <tr><td><kbd>NOTE REPEAT</kbd></td><td>The mixer screen: level, pan, reverb and delay for each part and each drum.</td></tr>
-<tr><td><kbd>ARP</kbd></td><td>On BASS or CHORDS: the line generator. <kbd>OCT+</kbd> writes a new line, <kbd>OCT-</kbd> changes it a little.</td></tr>
+<tr><td><kbd>ARP</kbd></td><td>On BASS, CHORDS or LEAD: an arpeggiator. Hold one key and it runs up the octaves; hold more and they run upwards, in time with the pattern. Its notes are not recorded.</td></tr>
+<tr><td><kbd>PATCH</kbd> + <kbd>ARP</kbd></td><td>The line generator. <kbd>OCT+</kbd> writes a new line, <kbd>OCT-</kbd> changes it a little.</td></tr>
 <tr><td><kbd>CHORD</kbd></td><td>Hold while playing: accent.</td></tr>
 <tr><td><kbd>SCALE</kbd></td><td>Shows the screen as a list. In a question: yes.</td></tr>
 <tr><td><kbd>GLOBE</kbd></td><td>Settings: MIDI, clock, output. Yours are kept through every update.</td></tr>
@@ -169,7 +173,7 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 
 <div class="card" id="m-faders"><h3>Faders</h3>
 <table>
-<tr><td><kbd>FX</kbd> lit</td><td>1 REVERB &middot; 2 DELAY &middot; 3 DRIVE &middot; 4 FILTER (middle off, down low-pass, up high-pass).</td></tr>
+<tr><td><kbd>FX</kbd> lit</td><td>1 REVERB &middot; 2 DELAY &middot; 3 DRIVE (bottom: off) &middot; 4 FILTER (bottom: off, up: a high-pass sweep).</td></tr>
 <tr><td><kbd>FX</kbd> off</td><td>1 DRUMS 1 &middot; 2 DRUMS 2 &middot; 3 BASS &middot; 4 CHORDS volume.</td></tr>
 <tr><td><kbd>FADER BANK</kbd> lit</td><td>Fader 1 is BREAKS volume instead of DRUMS 1.</td></tr>
 <tr><td>Hold a pad + any fader</td><td>That pad's instrument volume. Pads 1 to 11: the drums of the kit on screen (kick, snare, clap, closed hat, open hat, toms, rim, crash, ride). Pads 12 to 16: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS. The step or mute the press changed is put back.</td></tr>
@@ -224,7 +228,7 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <tr><td>What you give up meanwhile</td><td>M-VAVE's controller features: its own arp, chord, scale and note repeat modes, Bluetooth, and working as a plain MIDI controller for a DAW or for the MD|442 app's pads and keys.</td></tr>
 <tr><td>Swapping</td><td>A few minutes either way, as often as you like: another module at the top of this page, or <a href="#restore">M-VAVE's own firmware back</a>. Your module settings are kept.</td></tr>
 </table>
-<p class="small" style="margin-top:8px">1.7 has not been tested on a real keyboard yet. If something here does not match what the keyboard does, the keyboard is wrong, not you: go back to 1.6 or 1.5 above and say what you pressed.</p></div>
+<p class="small" style="margin-top:8px">1.8 has not been tested on a real keyboard yet. If something here does not match what the keyboard does, the keyboard is wrong, not you: go back to 1.7 or 1.5 above and say what you pressed.</p></div>
 </section>
 <p class="small" style="margin-top:22px">Uses the same USB-MIDI update as M-UPGRADE (X0X's fm1ota.js, GPL-3.0, Leo Kuroshita / Hügelton Instruments; SMK-37 port by genkigenki). MD firmware source: <a href="https://github.com/mathewdunn89-ggw/MD-MODULE">github.com/mathewdunn89-ggw/MD-MODULE</a>. M-VAVE, SMK-37 and FM-1 are trademarks of their owners. No warranty.</p>
 </main>
@@ -496,8 +500,8 @@ const pick = (group, val) => document.querySelectorAll(`[data-${group}]`).forEac
 function refresh() {
   pick("kb", kb); pick("fw", fw);
   $("stocklink").textContent = "Download " + STOCK[kb][0]; $("stocklink").href = STOCK[kb][1];
-  $("go").textContent = "Install " + fw.toUpperCase() + " 1.7";
-  $("goprev").textContent = "Install " + fw.toUpperCase() + " 1.6";
+  $("go").textContent = "Install " + fw.toUpperCase() + " 1.8";
+  $("goprev").textContent = "Install " + fw.toUpperCase() + " 1.7";
   $("goold").textContent = "Install " + fw.toUpperCase() + " 1.5";
 }
 document.querySelectorAll("[data-kb]").forEach((b) => b.onclick = () => { if (!busy) { kb = b.dataset.kb; refresh(); } });
@@ -568,8 +572,8 @@ const install = async (dir, ver) => {
     await write(p);
   } catch (e) { if (!busy) say("Could not start: " + e.message); }
 };
-$("go").onclick = () => install("fw/1.7/", "1.7");
-$("goprev").onclick = () => install("fw/1.6/", "1.6");
+$("go").onclick = () => install("fw/1.8/", "1.8");
+$("goprev").onclick = () => install("fw/1.7/", "1.7");
 $("goold").onclick = () => install("fw/", "1.5");
 let stockPkg = null;
 $("stockfile").onchange = async (e) => {
