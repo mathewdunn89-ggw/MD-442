@@ -73,7 +73,8 @@ One console, three sounds. Switch under the logo, or open a machine by its own l
 | --- | --- | --- | --- |
 | **Play it** | [music.nestgroup.space/md442](https://music.nestgroup.space/md442/) | [music.nestgroup.space/md187](https://music.nestgroup.space/md187/) | [music.nestgroup.space/md888](https://music.nestgroup.space/md888/) |
 | **Desktop app** | [Mac](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/desktop/md442-mac.dmg) · [Windows](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/desktop/md442-windows.exe) | [Mac](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/desktop/md187-mac.dmg) · [Windows](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/desktop/md187-windows.exe) | [Mac](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/desktop/md888-mac.dmg) · [Windows](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/desktop/md888-windows.exe) |
-| **Keyboard firmware 1.7** | [Elite](https://music.nestgroup.space/md442/fw/1.7/md442-smk37-elite.fwsc) · [Pro](https://music.nestgroup.space/md442/fw/1.7/md442-smk37-pro.fwsc) · [FM-1](https://music.nestgroup.space/md442/fw/1.7/md442-fm1.fwsc) | [Elite](https://music.nestgroup.space/md442/fw/1.7/md187-smk37-elite.fwsc) · [Pro](https://music.nestgroup.space/md442/fw/1.7/md187-smk37-pro.fwsc) · [FM-1](https://music.nestgroup.space/md442/fw/1.7/md187-fm1.fwsc) | [Elite](https://music.nestgroup.space/md442/fw/1.7/md888-smk37-elite.fwsc) · [Pro](https://music.nestgroup.space/md442/fw/1.7/md888-smk37-pro.fwsc) · [FM-1](https://music.nestgroup.space/md442/fw/1.7/md888-fm1.fwsc) |
+| **Keyboard firmware 1.8** | [Elite](https://music.nestgroup.space/md442/fw/1.8/md442-smk37-elite.fwsc) · [Pro](https://music.nestgroup.space/md442/fw/1.8/md442-smk37-pro.fwsc) · [FM-1](https://music.nestgroup.space/md442/fw/1.8/md442-fm1.fwsc) | [Elite](https://music.nestgroup.space/md442/fw/1.8/md187-smk37-elite.fwsc) · [Pro](https://music.nestgroup.space/md442/fw/1.8/md187-smk37-pro.fwsc) · [FM-1](https://music.nestgroup.space/md442/fw/1.8/md187-fm1.fwsc) | [Elite](https://music.nestgroup.space/md442/fw/1.8/md888-smk37-elite.fwsc) · [Pro](https://music.nestgroup.space/md442/fw/1.8/md888-smk37-pro.fwsc) · [FM-1](https://music.nestgroup.space/md442/fw/1.8/md888-fm1.fwsc) |
+| Previous firmware 1.7 (fallback) | [Elite](https://music.nestgroup.space/md442/fw/1.7/md442-smk37-elite.fwsc) · [Pro](https://music.nestgroup.space/md442/fw/1.7/md442-smk37-pro.fwsc) · [FM-1](https://music.nestgroup.space/md442/fw/1.7/md442-fm1.fwsc) | [Elite](https://music.nestgroup.space/md442/fw/1.7/md187-smk37-elite.fwsc) · [Pro](https://music.nestgroup.space/md442/fw/1.7/md187-smk37-pro.fwsc) · [FM-1](https://music.nestgroup.space/md442/fw/1.7/md187-fm1.fwsc) | [Elite](https://music.nestgroup.space/md442/fw/1.7/md888-smk37-elite.fwsc) · [Pro](https://music.nestgroup.space/md442/fw/1.7/md888-smk37-pro.fwsc) · [FM-1](https://music.nestgroup.space/md442/fw/1.7/md888-fm1.fwsc) |
 | **Sample pack** | No loops of its own | [MD187-sample-pack.zip](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/sample-packs/MD187-sample-pack.zip) | [MD888-sample-pack.zip](https://github.com/mathewdunn89-ggw/MD-MODULE/releases/download/sample-packs/MD888-sample-pack.zip) |
 
 The phone app and the plugin carry all three machines in one download.
@@ -188,14 +189,16 @@ Full guides: [`variants/INSTALL.md`](variants/INSTALL.md) (all three firmwares) 
 
 ## Controls and keyboard mapping
 
-The short version for the SMK-37 Elite. The whole map, plus the computer keyboard and the plugin's MIDI notes,
+The short version for the SMK-37 Elite on firmware 1.8. The whole map, plus the computer keyboard and the plugin's MIDI notes,
 is in [`docs/keyboard-mapping.md`](docs/keyboard-mapping.md), and there is a one-page
 [cheat sheet (PDF)](variants/md-hardware-controls.pdf).
 
 | Control | What it does |
 | --- | --- |
-| **< / >** | Pick the instrument: DRUMS 1 (909), DRUMS 2 (808), BASS, CHORDS, BREAKS |
-| **Keys** (F3 to G5) | Always play the instrument on screen |
+| **< / >** | Pick the instrument: DRUMS 1 (909), DRUMS 2 (808), BASS, CHORDS, LEAD, BREAKS |
+| **Keys** (F3 to G5) | Always play the instrument on screen. BASS, CHORDS and LEAD stay in the key of the bass line |
+| **ARP** | Arpeggiator for the keys on BASS, CHORDS and LEAD, in time with the pattern |
+| **PATCH + SCALE** | IN KEY on / off |
 | **Pads 1 to 16** | The 16 steps: tap on, tap off |
 | **REC + PLAY** | What you play goes into the pattern on the nearest step |
 | **FX** | Switches the faders. Lit: reverb, delay, drive, filter. Off: volumes |
