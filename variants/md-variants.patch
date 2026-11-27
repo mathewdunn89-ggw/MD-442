@@ -61,7 +61,7 @@ index 4ecc946..5512e4f 100644
          pattern_t *pt;
          uint32_t r, bpm, st;
 diff --git a/firmware/src/app/engine.c b/firmware/src/app/engine.c
-index baf5e5d..b70cc1f 100644
+index baf5e5d..3ecb785 100644
 --- a/firmware/src/app/engine.c
 +++ b/firmware/src/app/engine.c
 @@ -26,7 +26,13 @@ volatile uint8_t eng_hit[NKIT][NDRUM];
@@ -78,7 +78,25 @@ index baf5e5d..b70cc1f 100644
  static drum808_t d808 POOL;
  static bass303_t b303[NBASS] POOL;
  static breaks_t brk POOL;
-@@ -285,6 +291,38 @@ void engine_sound_defaults(sound_t *s)
+@@ -91,7 +97,7 @@ static void guard_apply(void)
+ /* mixer: per part Level, Rev send, Dly send (a drum machine's add to its voices' own sends) */
+ static const x0x_param_t MIX_P[MX_NPARAMS] = {{"LEVEL", 127, 100, 0}, {"REV", 127, 0, 0}, {"DLY", 127, 0, 0},
+                                                {"PAN", 127, 64, 0}};
+-static const char *const PART_NAMES[NPARTS] = {"909", "808", "303 A", "303 B", "BREAK"};
++static const char *const PART_NAMES[NPARTS] = {"DRUMS 1", "DRUMS 2", "BASS", MD_NAME_B, "BREAKS"};
+ static float mix_level[NPARTS], mix_rev[NPARTS], mix_dly[NPARTS];
+ /* pan: a balance law. Centre is full level on both sides (a centred mix is the mono one exactly);
+  * turning toward a side fades the other out along a quarter cosine, the near side stays at 1 */
+@@ -163,7 +169,7 @@ const char *engine_voice_name(int t, int v)
+     switch (t) {
+     case T_909: return (v >= 0 && v <= DR_NUM) ? N909[v] : "";
+     case T_808: return (v >= 0 && v <= D8_NUM) ? N808[v] : "";
+-    case T_303: return v ? "303 B" : "303 A";
++    case T_303: return v ? MD_NAME_B : "BASS";
+     case T_MIX: return (v >= 0 && v < NPARTS) ? PART_NAMES[v] : "";
+     case T_BRK: return "BREAK";
+     case T_FX: return "FX";
+@@ -285,7 +291,84 @@ void engine_sound_defaults(sound_t *s)
      s->v[T_MST][0][MST_RELEASE] = 58;                /* 100 ms: it breathes with the beat */
      s->v[T_MST][0][MST_PUMP] = 21;                   /* 4 dB of 909-keyed pump */
      s->v[T_MST][0][MST_COMP1] = 95;                  /* the one-knob COMP's nearest to the squash above */
@@ -115,9 +133,55 @@ index baf5e5d..b70cc1f 100644
 +    s->v[T_MST][0][MST_MAKEUP] = 90;
 +#endif
      s->v[T_FX][1][0] = (uint8_t)(16 + s->v[T_FX][0][FX_DL_WEAR] * 111 / 127);   /* TAPE (ui.c R_TAPE): on, its wear */
++    engine_md_instruments(s, 1);
++}
++
++/* MD: BASS (303 A) and CHORDS (303 B) as instruments to play. CHORDS: four saws a chord, a soft filter that
++ * opens with the accent, a long decay, in the reverb and the delay (a dub-techno / house stab, as MD|442's own
++ * dub stab). BASS (MD|442): a round square-wave bass, a little drive, no squelch until the knobs ask for it.
++ * Marked in a slot no knob uses (MD_INST_SLOT), so a project saved before CHORDS gets them once on load. */
++void engine_md_instruments(sound_t *s, int bass)
++{
++#if BOARD_SMK37
++    int i;
++    uint8_t *c = s->v[T_303][1];
++    for (i = 0; i < bass303_nparams(); i++)
++        c[i] = (uint8_t)bass303_param(i)->def;
++    c[BASS303_WAVE] = 0;
++    c[BASS303_CUTOFF] = 60;  c[BASS303_RESO] = 40;   c[BASS303_ENVMOD] = 52; c[BASS303_DECAY] = 88;
++    c[BASS303_ACCENT] = 60;  c[BASS303_VOLUME] = 120; c[BASS303_DRIVE] = 0;  c[BASS303_DRVTYPE] = 1;
++    c[BASS303_CHORD] = BASS303_CH_MIN7;
++    s->v[T_MIX][PART_303B][MX_LEVEL] = 88;
++    s->v[T_MIX][PART_303B][MX_REV] = 52;
++    s->v[T_MIX][PART_303B][MX_DLY] = 72;
++#if defined(MD_VARIANT) && MD_VARIANT == 187
++    c[BASS303_CHORD] = BASS303_CH_MIN9;              /* MD|187: a jazzy minor 9, mellow, short room */
++    c[BASS303_CUTOFF] = 46;  c[BASS303_RESO] = 20;   c[BASS303_ENVMOD] = 30; c[BASS303_DECAY] = 100;
++    s->v[T_MIX][PART_303B][MX_REV] = 30;
++    s->v[T_MIX][PART_303B][MX_DLY] = 20;
++#elif defined(MD_VARIANT) && MD_VARIANT == 888
++    c[BASS303_CHORD] = BASS303_CH_MIN;             /* MD|888: a dark minor stab, driven */
++    c[BASS303_CUTOFF] = 66;  c[BASS303_RESO] = 70;   c[BASS303_DECAY] = 60;
++    c[BASS303_DRIVE] = 40;   c[BASS303_DRVTYPE] = 1;
++#else
++    if (bass) {                                      /* MD|442: BASS, round */
++        uint8_t *b = s->v[T_303][0];
++        b[BASS303_WAVE] = 1;
++        b[BASS303_CUTOFF] = 34;  b[BASS303_RESO] = 52;  b[BASS303_ENVMOD] = 46; b[BASS303_DECAY] = 56;
++        b[BASS303_ACCENT] = 70;  b[BASS303_DRIVE] = 30; b[BASS303_DRVTYPE] = 1; b[BASS303_VOLUME] = 127;
++        b[BASS303_CHORD] = BASS303_CH_OFF;
++        s->v[T_MIX][PART_303A][MX_LEVEL] = 96;
++        s->v[T_MIX][PART_303A][MX_DLY] = 20;
++        s->v[T_MIX][PART_303A][MX_REV] = 0;
++    }
++#endif
++#endif
++    (void)bass;
++    s->v[T_303][1][MD_INST_SLOT] = MD_INST_MARK;
  }
  
-@@ -614,6 +652,10 @@ static void core2_job(uint32_t arg)
+ void engine_sound_centre_drum_pans(sound_t *s)
+@@ -614,6 +697,10 @@ static void core2_job(uint32_t arg)
      if (!brk_hold) {
          brk_silent_now = breaks_silent(&brk);             /* the render writes zeros: nothing to mix */
          breaks_render(&brk, kbuf, (int)n);
@@ -128,19 +192,102 @@ index baf5e5d..b70cc1f 100644
      }
      if (timed)
          PROF_ADD(PR_BRK, pt);
+diff --git a/firmware/src/app/engine.h b/firmware/src/app/engine.h
+index 04df01a..241f839 100644
+--- a/firmware/src/app/engine.h
++++ b/firmware/src/app/engine.h
+@@ -67,6 +67,17 @@ void engine_usb_full(int on);          /* 1: engine_render at full level, engine
+ void engine_volume(int32_t *out_lr, uint32_t n);   /* ISR, after engine_render (and the USB tap) */
+ void engine_apply_sound(const sound_t *s);                  /* queue every value (load, init) */
+ void engine_sound_defaults(sound_t *s);                     /* each engine's power-on values */
++/* MD: BASS and CHORDS' factory sound (bass: BASS's too); the mark says a project has them */
++#if BOARD_SMK37
++#define MD_NAME_B "CHORDS"             /* 303 B: the chord instrument (the FM-1: a second bass, no room for chords) */
++#define MD_NAME_BS "CHRD"
++#else
++#define MD_NAME_B "BASS 2"
++#define MD_NAME_BS "BAS2"
++#endif
++#define MD_INST_SLOT (NPARAMS_MAX - 1)   /* sound.v[T_303][1][MD_INST_SLOT]: no knob uses it */
++#define MD_INST_MARK 0xC5u
++void engine_md_instruments(sound_t *s, int bass);
+ void engine_sound_centre_drum_pans(sound_t *s);             /* every drum voice's PAN (its last pot) to centre */
+ void engine_drum(int kit, int voice, float vel);            /* play now (keys) */
+ void engine_bass_on(int part, int note, int accent, int slide);
 diff --git a/firmware/src/app/main_fm1.c b/firmware/src/app/main_fm1.c
-index 0e44bf0..e5b7b8e 100644
+index 0e44bf0..67d4f7b 100644
 --- a/firmware/src/app/main_fm1.c
 +++ b/firmware/src/app/main_fm1.c
-@@ -198,7 +198,7 @@ static void smk_faders(void)
-                                            {"BREAK LEVEL", "REV RETURN", "DLY RETURN", "FILTER"}};
-     static uint8_t last[4] = {0xFF, 0xFF, 0xFF, 0xFF}, held;
-     uint32_t i, down = (fm1_in.buttons >> SMK_BTN_FADER_BANK) & 1u;
+@@ -188,23 +188,28 @@ static void smk_pads(void)
+     padled_flush();
+ }
+ 
+-/* The four faders, by FADER BANK (its LED lit on bank B): A = the levels of 909, 808, 303 A, 303 B; B = the
+- * BREAK level, the reverb and delay returns, the master FILTER (middle off, low-pass left, high-pass right).
+- * They set the same values as the knobs (saved with the project; a knob move while REC runs records motion).
+- * A fader takes over only once it moves (also after a bank change), so nothing jumps. */
++/* The four faders. MD: by FX (its LED lit): REVERB, DELAY, DRIVE (the master's), FILTER (the master's: middle
++ * off, low-pass left, high-pass right); else the volumes of DRUMS 1 (FADER BANK, its LED lit: BREAKS),
++ * DRUMS 2, BASS, CHORDS. They set the same values as the knobs (saved with the project; a move while REC runs
++ * records motion). A fader takes over only once it moves (also after a switch), so nothing jumps. */
+ static void smk_faders(void)
+ {
+-    static const char *const NAME[2][4] = {{"909 LEVEL", "808 LEVEL", "303 A LEVEL", "303 B LEVEL"},
+-                                           {"BREAK LEVEL", "REV RETURN", "DLY RETURN", "FILTER"}};
+-    static uint8_t last[4] = {0xFF, 0xFF, 0xFF, 0xFF}, held;
+-    uint32_t i, down = (fm1_in.buttons >> SMK_BTN_FADER_BANK) & 1u;
 -    if (down && !held) {                                /* FADER BANK: the other bank, each fader waits to move */
-+    if (down && !held && !((fm1_in.buttons >> SMK_BTN_KNOB_BANK) & 1u)) {   /* FADER BANK: the other bank (KNOB BANK + it: md_perform.c) */
++    static const char *const NAME[3][4] = {{"DRUMS 1", "DRUMS 2", "BASS", "CHORDS"},
++                                           {"BREAKS", "DRUMS 2", "BASS", "CHORDS"},
++                                           {"REVERB", "DELAY", "DRIVE", "FILTER"}};
++    static uint8_t last[4] = {0xFF, 0xFF, 0xFF, 0xFF}, held, mode = 0xFF;
++    uint32_t i, down = (fm1_in.buttons >> SMK_BTN_FADER_BANK) & 1u, m;
++    if (down && !held && !((fm1_in.buttons >> SMK_BTN_KNOB_BANK) & 1u)) {   /* FADER BANK: fader 1 (KNOB BANK + it: md_perform.c) */
          smk_fbank ^= 1u;
++        say(md_fxf ? "FX IS ON: FADERS = EFFECTS" : smk_fbank ? "FADER 1: BREAKS" : "FADER 1: DRUMS 1", 0);
++    }
++    held = (uint8_t)down;
++    m = md_fxf ? 2u : smk_fbank;
++    if (m != mode) {                                     /* switched: each fader waits for a move */
          for (i = 0; i < 4u; i++)
              last[i] = 0xFF;
+-        say(smk_fbank ? "FADERS: BRK REV DLY FILTER" : "FADERS: 909 808 303A 303B", 0);   /* (say: 27 chars) */
++        mode = (uint8_t)m;
+     }
+-    held = (uint8_t)down;
+     for (i = 0; i < 4u; i++) {
+         uint32_t v = fm1_in.fader[i];
+         pref_t r;
+@@ -218,16 +223,11 @@ static void smk_faders(void)
+         if (v == last[i])
+             continue;
+         last[i] = (uint8_t)v;
+-        if (!smk_fbank)
+-            r = PR(R_ENG, T_MIX, i, MX_LEVEL);
+-        else if (i == 0)
+-            r = PR(R_ENG, T_MIX, PART_BRK, MX_LEVEL);
+-        else if (i == 1)
+-            r = PR(R_ENG, T_FX, 0, FX_RV_LEVEL);
+-        else if (i == 2)
+-            r = PR(R_ENG, T_FX, 0, FX_DL_LEVEL);
++        if (m == 2u)
++            r = i == 0 ? PR(R_ENG, T_FX, 0, FX_RV_LEVEL) : i == 1 ? PR(R_ENG, T_FX, 0, FX_DL_LEVEL)
++              : i == 2 ? PR(R_ENG, T_FX, 0, FX_DRIVE) : PR(R_ENG, T_MST, 0, MST_DJF);
+         else
+-            r = PR(R_ENG, T_MST, 0, MST_DJF);
++            r = PR(R_ENG, T_MIX, i == 0 && m ? PART_BRK : i, MX_LEVEL);
+         d = pref_desc(r);
+         if (!d)
+             continue;
+@@ -235,7 +235,7 @@ static void smk_faders(void)
+         motion_touch(r);
+         ui.act_t = plat_ms();                            /* (the autosave waits for quiet) */
+         pref_value(r, num, unit);
+-        q = put_s(put_s(t, NAME[smk_fbank][i]), " ");
++        q = put_s(put_s(t, NAME[m][i]), " ");
+         while (n < 16u && num[n])
+             n++;
+         if (n < 8u)                                      /* NAME (<= 11) + " " + num (< 8) + unit (< 8): fits say() */
 @@ -249,6 +249,7 @@ static void smk_faders(void)
   * has reached. On a 303 (the part on screen) they play its sound without changing what is saved: pitch = its
   * TUNE (about +-1.5 semitones), mod = its CUTOFF opened from the saved value up to the top. Released (or
@@ -157,7 +304,23 @@ index 0e44bf0..e5b7b8e 100644
      if (part != (is_303() ? bidx() : -1)) {          /* another part: the last 303 sounds as saved again */
          if (part >= 0 && tune_now >= 0)
              engine_set(T_303, part, BASS303_TUNE, proj.sound.v[T_303][part][BASS303_TUNE]);
-@@ -339,21 +341,33 @@ static void smk_arrows(void)
+@@ -315,13 +317,14 @@ static void smk_wheels(void)
+ 
+ /* < and >: one detent of SELECT back / forward (the page, a list's row: what SELECT does there; not with HOME held,
+  * where SELECT is the tempo), as on the other SMK-37 Pro ports. Not if HARDWARE CALIBRATION gave them an FM-1 label. */
++static int md_arrows_take(void);
+ static void smk_arrows(void)
+ {
+     static uint32_t prev;
+     uint32_t now = fm1_in.buttons & (1u << SMK_BTN_LEFT | 1u << SMK_BTN_RIGHT), id, i;
+     uint32_t pressed = now & ~prev;
+     prev = now;
+-    if (!pressed || (plat_buttons() & (1u << B_HOME)))
++    if (!pressed || (plat_buttons() & (1u << B_HOME)) || md_arrows_take())   /* MD: there, the instrument */
+         return;
+     for (id = SMK_BTN_LEFT; id <= SMK_BTN_RIGHT; id++) {
+         if (!((pressed >> id) & 1u))
+@@ -339,21 +342,33 @@ static void smk_arrows(void)
  /* every frame, after ui_frame; the wheels also between frames. The 10 outer keys (C3..E3, G#5..C6) have no
   * X0X role: their events are dropped. */
  /* pads as a step grid (steps, patterns: 1-8 top row) unless they play notes (a 303's REC keyboard) */
@@ -165,8 +328,9 @@ index 0e44bf0..e5b7b8e 100644
  static void smk_grid(void)
  {
 -    smk_pad_grid = (uint8_t)(ui.view == V_HOME || ui.view == V_SONG || (ui.btn & (1u << B_HOME | 1u << B_SAVE)) ||
-+    smk_pad_grid = (uint8_t)(md_pads_muting_now() || ui.view == V_HOME || ui.view == V_SONG || (ui.btn & (1u << B_HOME | 1u << B_SAVE)) ||
-                              !(is_303() && ui.rec));
+-                             !(is_303() && ui.rec));
++    (void)md_pads_muting_now;
++    smk_pad_grid = 1;                                /* MD: the pads are always the steps (the keybed plays) */
  }
  
 +#include "md_perform.c"                          /* MD|442 PERFORM: the performance layout */
@@ -195,7 +359,7 @@ index 0e44bf0..e5b7b8e 100644
  }
  #endif
  
-@@ -442,7 +456,7 @@ static void safe_main(void)
+@@ -442,7 +457,7 @@ static void safe_main(void)
          if ((fm1_in.buttons & play) && fm1_ms - t0 > 500u) {
              bootguard.failed = 0;                   /* try X0X again, from scratch */
              bootguard.pending = 0;
@@ -204,7 +368,7 @@ index 0e44bf0..e5b7b8e 100644
              usb_detach();
              fm1_delay_ms(30);
              fm1_reboot();
-@@ -478,9 +492,9 @@ static void fm1_main(void)
+@@ -478,9 +493,9 @@ static void fm1_main(void)
          }
      }
      lcd_init();
@@ -218,13 +382,29 @@ index 0e44bf0..e5b7b8e 100644
      draw_text_box(0, 154, 240, &FONT_XS, "ON X0X (GPL-3.0)", C_DIM, 1);
  #endif
 diff --git a/firmware/src/app/md442_presets.h b/firmware/src/app/md442_presets.h
-index 9bbe9f6..6ac144b 100644
+index 9bbe9f6..c4c807c 100644
 --- a/firmware/src/app/md442_presets.h
 +++ b/firmware/src/app/md442_presets.h
-@@ -54,3 +54,51 @@ static void md442_load_preset(pattern_t *p, const md442_preset_t *m)
+@@ -53,4 +53,67 @@ static void md442_load_preset(pattern_t *p, const md442_preset_t *m)
+         }
      }
      p->swing = (uint8_t)(m->swing * 132 / 100 > 100 ? 100 : m->swing * 132 / 100);   /* MD|442 shuffle 50 + swing * .33 % */
- }
++#if BOARD_SMK37
++    {   /* MD: CHORDS (303 B, a minor 7th a key) plays MD|442's dub stab where it had one: Deep House's
++         * off-beats, Dub Techno's delayed stab, an octave over the bass */
++        static const uint16_t STAB[MD442_NPRESETS] = {0, 0, 0, 0, 0x4444, 0, 0x4408};
++        int k = (int)(m - MD442_PRESETS);
++        bpart_t *c = &p->bass[1];
++        if (k >= 0 && k < MD442_NPRESETS && STAB[k]) {
++            c->len = 16;
++            for (i = 0; i < 16; i++) {
++                c->step[i].note = (uint8_t)(m->root_midi + 12);
++                c->step[i].flags = (STAB[k] >> i) & 1u ? (uint8_t)(G_NOTE | (i == 3 ? BS_ACCENT : 0)) : G_REST;
++            }
++        }
++    }
++#endif
++}
 +
 +/* MD|187 (hip-hop) and MD|888 (hard techno): their own factory patterns 1-8 (md_variant_presets.h) */
 +#if defined(MD_VARIANT) && MD_VARIANT != 442
@@ -271,39 +451,34 @@ index 9bbe9f6..6ac144b 100644
 +        }
 +    }
 +    p->swing = m->swing;
-+}
+ }
 +#endif
 diff --git a/firmware/src/app/md_perform.c b/firmware/src/app/md_perform.c
 new file mode 100644
-index 0000000..9874bb9
+index 0000000..a2a2df8
 --- /dev/null
 +++ b/firmware/src/app/md_perform.c
-@@ -0,0 +1,709 @@
+@@ -0,0 +1,857 @@
 +/* SPDX-License-Identifier: GPL-3.0-only */
-+/* MD PERFORM: the SMK-37's controls laid out for building beats and mixing them live from the keyboard alone
-+ * (MD442, MD187 and MD888 share it). Included by main_fm1.c after the UI (ui.c) in this unity build.
++/* MD PERFORM: the SMK-37's controls laid out for making music from the keyboard alone (MD442, MD187 and
++ * MD888 share it). Included by main_fm1.c after the UI (ui.c) in this unity build.
 + *
-+ * Built like the live boxes it learns from: one thing selected and every hand control on it (TR-8S, Push),
-+ * mutes and solos one touch away (Elektron's mute mode, Maschine's SHIFT solo), performance moves that are
-+ * held and let go (TR scatter, Maschine Perform FX, a DJ mixer's filter and echo), and a return that waits
-+ * for the one so a drop always lands on time.
-+ *
-+ *   SELECT    black keys or OCTAVE- / +: the instrument (909's 11 tracks, 808's, 303A, 303B, BREAK);
-+ *             PATCH + OCTAVE- / +: the part
-+ *   SOUND     K2 FILTER (left low-pass, right high-pass, rests at the middle), K3 RESONANCE, K4 DECAY
-+ *             (a 303: CUTOFF, RESO, ENV MOD; the BREAK: PITCH); K5..K8 the page on screen; K1 MASTER
-+ *   BUILD     pads: the selected instrument's 16 steps; REC + keys or pads: record live
++ *   KEYS      the 27 middle keys always play the instrument on screen (never the steps): DRUMS 1 / 2 the kit,
++ *             BASS and CHORDS notes (OCTAVE- / + the octave), BREAKS the slices; REC while playing records them
++ *   PADS      the instrument's 16 steps (tap on / off); BASS / CHORDS: a pad held + a key = that step's note
++ *   < / >     the instrument: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS
++ *   FX        the faders: lit = REVERB, DELAY, DRIVE, FILTER; off = the volumes (DRUMS 1 / BREAKS by FADER BANK,
++ *             DRUMS 2, BASS, CHORDS)
++ *   SOUND     KNOB BANK held: K2 FILTER (left low-pass, right high-pass), K3 RESONANCE, K4 DECAY (BASS / CHORDS:
++ *             CUTOFF, RESO, ENV MOD); else the knobs are X0X's own (stock)
 + *   SCENES    PATCH + < / >: the pattern before / after, at the bar; PATCH + a pad: that pattern
 + *   MUTE      KNOB BANK tap: mute pads (1-11 tracks, 12-16 parts), hold: while held; PATCH + a pad: solo;
 + *             PATCH + KNOB BANK: unmute all
-+ *   DRUMS     PATCH + FADER BANK: the pads play the kit (velocity; REC records to the nearest step)
-+ *   LEFT END  C3 REPEAT 1/2, C#3 1/4, D3 1/8, D#3 1/16 (hold; the fastest held wins), E3 FILL (a roll on the
-+ *             instrument, 8ths, then 16ths, then 32nds, getting louder)
-+ *   RIGHT END G#5 ECHO THROW, A5 KILL LOW (kicks + bass out), A#5 WASH (reverb), B5 RISER (high-pass sweep up),
-+ *             C6 DROP (all out); the throws ring out; KILL LOW, RISER and DROP come back on the next one.
-+ *             PATCH + ECHO / WASH: every part, not only the one on screen
-+ *   mod wheel on a drum or the BREAK: a high-pass riser on that instrument; on a 303 its cutoff
-+ * In a list, a question or GLO, K2..K4 are SELECT, ALGORITHM and PRESETS again. */
++ *   LEFT END  C3 REPEAT 1/2, C#3 1/4, D3 1/8, D#3 1/16 (hold), E3 FILL (a roll, faster and louder)
++ *   RIGHT END G#5 ECHO THROW, A5 KILL LOW, A#5 WASH, B5 RISER, C6 DROP; KILL LOW, RISER and DROP come back
++ *             on the next one. PATCH + ECHO / WASH: every part
++ *   mod wheel on a drum or the BREAK: a high-pass riser on it; on BASS / CHORDS their cutoff
++ * In a list, a question or GLO, K2..K4 and < / > are X0X's own again. */
 +
 +#include "../dsp/drum808.h"
 +#include "../dsp/md_filter.h"
@@ -349,9 +524,11 @@ index 0000000..9874bb9
 +        put_s(t, PART_N[i - 20]);
 +}
 +
++static void md_piano_off(void);
 +static void md_select(int i)
 +{
 +    char t[28];
++    md_piano_off();
 +    i = (i % MDI_N + MDI_N) % MDI_N;
 +    if (i < 22) {
 +        int km = i < 11 ? PART_909 : PART_808;
@@ -543,13 +720,8 @@ index 0000000..9874bb9
 +/* --------------------------------------------------------------- drum pads --- */
 +static uint8_t md_drums;                               /* PATCH + FADER BANK: the pads play the kit */
 +static uint16_t md_drum_lit;                           /* pads held */
-+static void md_drum_pad(int w, int vel)                /* pads 1-11: the kit on screen, 12-16: the other's BD SD CP CH OH */
++static void md_drum_hit(int km, int v, float f)
 +{
-+    int km = md_mute_kit(), v;
-+    float f = (float)(vel < 1 ? 1 : vel) / 127.0f;
-+    if (w >= 11)
-+        km ^= 1;
-+    v = km ? MD_ORD808[w < 11 ? w : w - 11] : MD_ORD909[w < 11 ? w : w - 11];
 +    engine_drum(km, v, f);
 +    ui.act_t = plat_ms();
 +    if (km == ui.part && ui.sel[km] != v) {             /* the pad played is the one the knobs shape */
@@ -571,6 +743,145 @@ index 0000000..9874bb9
 +            sm_set(d->accent, s);
 +        mark_dirty();
 +    }
++}
++
++static void md_drum_pad(int w, int vel)                /* pads 1-11: the kit on screen, 12-16: the other's BD SD CP CH OH */
++{
++    int km = md_mute_kit(), v;
++    float f = (float)(vel < 1 ? 1 : vel) / 127.0f;
++    if (w >= 11)
++        km ^= 1;
++    v = km ? MD_ORD808[w < 11 ? w : w - 11] : MD_ORD909[w < 11 ? w : w - 11];
++    md_drum_hit(km, v, f);
++}
++
++/* ---------------------------------------------------------------- the piano --- */
++/* The keybed's 27 middle keys (F3..G5) always play the instrument on screen, never the steps (the pads are
++ * those): DRUMS 1 / 2 the kit (BD SD CP CH OH LT MT HT RS CR RD from F3 up, again from E4, with velocity),
++ * BASS and CHORDS notes (OCTAVE- / + the octave; CHORDS sounds an octave up; the newest key held wins, BASS
++ * slides between held keys), BREAKS the slices 1-8. REC while playing: what is played goes into the pattern
++ * at the nearest step. A pad held on BASS / CHORDS + a key: that step's note. A new pad step takes the note
++ * last played. */
++static uint32_t md_prev_keys;
++static uint8_t md_stack[NBASS][8], md_nstack[NBASS];   /* the keys held on each 303, oldest first */
++
++static int md_key_note(int b, int k)
++{
++    int n = 41 + k + 12 * ui.oct + (b ? 12 : 0);
++    return n < 0 ? 0 : n > 127 ? 127 : n;
++}
++
++static void md_bass_rec(int b, int n, int acc)
++{
++    int t = TRK_BASS0 + b, s = eng_step[t];
++    bpart_t *bp = &pat_of(PART_303A + b)->bass[b];
++    uint32_t L = seq_step_q8(&seq, bp->rate & 3);
++    if (seq.t[t].to_next != 0xFFFFFFFFu && seq.t[t].to_next < L / 2u) {   /* late half: the next step */
++        uint32_t l = fm1__lock();
++        s = seq_next_step(&seq, t, s);
++        fm1__unlock(l);
++    }
++    if (s < 0 || s >= NSTEPS)
++        return;
++    bp->step[s].note = (uint8_t)clamp(n - (bp->transpose - 24), 0, 127);
++    bp->step[s].flags = (uint8_t)(G_NOTE | (acc ? BS_ACCENT : 0));
++    mark_dirty();
++}
++
++static void md_bass_key(int b, int k, int down, int vel)
++{
++    int n = md_key_note(b, k), i, j;
++    if (down) {
++        int acc = vel >= 112 || (ui.btn & (1u << B_ENV)) != 0;
++        if (ui.btn & (1u << B_ENV))
++            ui.btn_used |= 1u << B_ENV;
++        if (md_nstack[b] == sizeof md_stack[b])        /* (full: the oldest goes) */
++            for (md_nstack[b]--, i = 0; i < md_nstack[b]; i++)
++                md_stack[b][i] = md_stack[b][i + 1];
++        engine_bass_on(b, n, acc, b == 0 && md_nstack[b] > 0);   /* BASS slides legato; CHORDS restrikes */
++        md_stack[b][md_nstack[b]++] = (uint8_t)n;
++        md_last_note[b] = (uint8_t)n;
++        if (ui.part == PART_303A + b && steps_view() && ui.held_step >= 0) {   /* a pad held: its note */
++            bpart_t *bp = &cur_pat()->bass[b];
++            bp->step[ui.held_step].note = (uint8_t)clamp(n - (bp->transpose - 24), 0, 127);
++            ui.step_edited = 1;                          /* (its release keeps the step) */
++            mark_dirty();
++        } else if (ui.rec && seq.playing)
++            md_bass_rec(b, n, acc);
++        return;
++    }
++    for (i = j = 0; i < md_nstack[b]; i++)              /* released: off the stack */
++        if (md_stack[b][i] != n)
++            md_stack[b][j++] = md_stack[b][i];
++    if (j == md_nstack[b])
++        return;
++    md_nstack[b] = (uint8_t)j;
++    if (!j)
++        engine_bass_off(b);
++    else if (b == 0)
++        engine_bass_on(b, md_stack[b][j - 1], 0, 1);     /* BASS: back to the key still held */
++}
++
++static void md_piano_off(void)                          /* another instrument: nothing left ringing */
++{
++    int b;
++    for (b = 0; b < NBASS; b++)
++        if (md_nstack[b]) {
++            md_nstack[b] = 0;
++            engine_bass_off(b);
++        }
++}
++
++static void md_piano(void)
++{
++    uint32_t keys = fm1_in.knotes & ((1u << NKEYS) - 1u), ch = keys ^ md_prev_keys, k;
++    int block = ui.overlay == O_ASK || ui.view == V_PERF || perf_testing();
++    md_prev_keys = keys;
++    for (k = 0; ch && k < NKEYS; k++) {
++        int down, vel;
++        if (!((ch >> k) & 1u))
++            continue;
++        down = (int)((keys >> k) & 1u);
++        vel = fm1_in.key_vel[SMK_KEY_F3 + k];
++        if (block && down)
++            continue;
++        if (is_303())
++            md_bass_key(bidx(), (int)k, down, vel);
++        else if (is_drum()) {
++            if (down) {
++                int km = ui.part, v = km ? MD_ORD808[k % 11] : MD_ORD909[k % 11];
++                if (ui.btn & (1u << B_ENV))
++                    ui.btn_used |= 1u << B_ENV;
++                md_drum_hit(km, v, (ui.btn & (1u << B_ENV)) ? 1.0f : (float)(vel < 1 ? 1 : vel) / 127.0f);
++            }
++        } else
++            engine_brk_live((int)(k % 8), down);
++        if (down)
++            ui.act_t = plat_ms();
++    }
++}
++
++/* < / >: the instrument before / after (DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS); in a list, a question, GLO,
++ * PERF or the song they are SELECT again (main_fm1.c smk_arrows) */
++static int md_arrows_take(void)
++{
++    return ui.overlay == O_NONE && ui.view != V_GLO && ui.view != V_PERF && ui.view != V_SONG &&
++           !((plat_buttons() >> B_HOME) & 1u);
++}
++static void md_part(int p)
++{
++    p = (p % NPARTS + NPARTS) % NPARTS;
++    md_piano_off();
++    ui.part = (uint8_t)p;
++    if (ui.view == V_GEN && !is_303())
++        set_view(V_PART);
++    else if (ui.view == V_HOME || ui.view == V_FX)
++        set_view(V_PART);
++    ui.outline_ok = 0;
++    if (ui.view == V_MIX)
++        ui.mixsel = ui.part;
++    build_pages();
++    say(PART_N[p], is_drum() ? ": KEYS PLAY THE KIT" : is_303() ? ": KEYS PLAY NOTES" : ": KEYS PLAY SLICES");
 +}
 +
 +static void md_drum_leds(void)
@@ -885,6 +1196,23 @@ index 0000000..9874bb9
 +            md_mute_used = 1;
 +            md_select(md_inst() + (r == FM1_BTN_OCT_UP ? 1 : -1));
 +        }
++    /* < / >: the instrument */
++    for (r = SMK_BTN_LEFT; r <= SMK_BTN_RIGHT; r++)
++        if ((pressed >> r) & 1u && !home && md_arrows_take()) {
++            ui.act_t = plat_ms();
++            md_part(ui.part + (r == SMK_BTN_RIGHT ? 1 : -1));
++        }
++    /* FX: the faders' switch. On (lit): REVERB, DELAY, DRIVE, FILTER, and the screen shows the effects;
++     * off: the parts' volumes, and the screen goes back to the instrument */
++    if ((pressed >> panel.btn[B_FX]) & 1u) {
++        md_fxf ^= 1u;
++        ui.act_t = plat_ms();
++        if (ui.overlay == O_NONE && ui.view != V_GLO)
++            set_view(md_fxf ? V_FX : V_PART);
++        say(md_fxf ? "FX ON: FADERS = EFFECTS" : "FX OFF: FADERS = VOLUMES", 0);
++    }
++    md_fx_lit = md_fxf;
++    md_piano();
 +    /* PATCH + < / >: the pattern before / after (all parts, cued to the bar) */
 +    for (r = SMK_BTN_LEFT; r <= SMK_BTN_RIGHT; r++) {
 +        if ((pressed >> r) & 1u && home) {
@@ -1116,10 +1444,10 @@ index 0000000..600c744
 +      0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 +};
 diff --git a/firmware/src/app/plat_fm1.c b/firmware/src/app/plat_fm1.c
-index 9f5432e..37d0a77 100644
+index 9f5432e..673539c 100644
 --- a/firmware/src/app/plat_fm1.c
 +++ b/firmware/src/app/plat_fm1.c
-@@ -4,21 +4,51 @@
+@@ -4,21 +4,56 @@
  
  uint32_t plat_ms(void) { return fm1_ms; }
  
@@ -1129,6 +1457,7 @@ index 9f5432e..37d0a77 100644
 + * OCTAVE- / + pressed with KNOB BANK held;
 + * md_pads_muting: the pads mute (the UI does not get them) */
 +static volatile uint8_t md_nav = 1, md_pads_muting, md_mute_lit, md_pads_home;
++static uint8_t md_fxf, md_fx_lit;      /* FX: the faders are the effects (main_fm1.c smk_faders); its LED */
 +static uint32_t md_hide, md_seen;
 +#endif
  uint32_t plat_buttons(void)
@@ -1143,6 +1472,7 @@ index 9f5432e..37d0a77 100644
 +        md_hide &= ar | oc;
 +        md_seen = ar | oc;
 +        raw &= ~md_hide;
++        raw &= ~(1u << panel.btn[B_FX]);          /* FX: the faders' switch (md_perform.c md_fx_faders) */
 +    }
 +#endif
      for (i = 0; i < NB; i++)
@@ -1155,8 +1485,11 @@ index 9f5432e..37d0a77 100644
 +uint32_t plat_keys(void)
 +{
 +#if BOARD_SMK37
-+    if (md_pads_muting && !(md_pads_home && ((fm1_in.buttons >> panel.btn[B_HOME]) & 1u)))   /* MD PERFORM: the pads are its */
-+        return fm1_in.knotes & ((1u << NKEYS) - 1u);
++    /* MD: the keybed is a piano, always (md_perform.c md_piano): the UI sees only the pads, as the steps
++     * (white keys); none while the pads mute or play the kit (PATCH + a pad there: still that pattern) */
++    if (md_pads_muting && !(md_pads_home && ((fm1_in.buttons >> panel.btn[B_HOME]) & 1u)))
++        return 0;
++    return fm1_in.pnotes & ((1u << NKEYS) - 1u);
 +#endif
 +    return fm1_in.notes & ((1u << NKEYS) - 1u);
 +}
@@ -1172,16 +1505,17 @@ index 9f5432e..37d0a77 100644
      return fm1_enc_take(panel.enc[role]) * panel.dir[role];
  }
  
-@@ -56,6 +86,7 @@ void plat_leds(uint32_t buttons, uint32_t keys)
+@@ -56,6 +91,8 @@ void plat_leds(uint32_t buttons, uint32_t keys)
          if ((buttons >> i) & 1u)
              nl[panel.btn[i]] = 1;
      nl[SMK_BTN_FADER_BANK] = smk_fbank != 0;
 +    nl[SMK_BTN_KNOB_BANK] = md_mute_lit;   /* MD PERFORM: lit while the pads mute */
++    nl[panel.btn[B_FX]] = md_fx_lit;      /* MD: lit while the faders are the effects */
      for (i = 0; i < SMK_NLED; i++)
          fm1_led[i] = nl[i];
      smk_keys_lit = keys;
 diff --git a/firmware/src/app/project.c b/firmware/src/app/project.c
-index 4914d7c..322a5c7 100644
+index 4914d7c..6d757e3 100644
 --- a/firmware/src/app/project.c
 +++ b/firmware/src/app/project.c
 @@ -16,6 +16,7 @@
@@ -1249,11 +1583,46 @@ index 4914d7c..322a5c7 100644
      sound_ok = load_obj(OBJ_SOUND, &proj.sound, sizeof proj.sound) == 0;
      if (!sound_ok)
          bad = 1;
+@@ -453,6 +480,8 @@ int project_load(void)
+         sound_bd_sends(T_909, 8);                     /* (first: the pans' own fixes below see the new place) */
+     if (sound_ok && proj.set.snd_rev < 4)             /* the 808 BD's, the same */
+         sound_bd_sends(T_808, 7);
++    if (sound_ok && proj.sound.v[T_303][1][MD_INST_SLOT] != MD_INST_MARK)
++        engine_md_instruments(&proj.sound, 1);        /* MD: saved before CHORDS: BASS and CHORDS, once (settings untouched) */
+     if (proj.set.stereo < 1)                          /* saved mono: no pans there (zeros = hard left) */
+         for (i = 0; i < NPARTS; i++)
+             proj.sound.v[T_MIX][i][MX_PAN] = 64;
 diff --git a/firmware/src/app/ui.c b/firmware/src/app/ui.c
-index 1687dec..1c4bc1f 100644
+index 1687dec..1ab14a8 100644
 --- a/firmware/src/app/ui.c
 +++ b/firmware/src/app/ui.c
-@@ -208,7 +208,7 @@ static const x0x_param_t SEQ_P[NSQ] = {
+@@ -25,8 +25,8 @@ enum { V_HOME, V_PART, V_GEN, V_FX, V_MIX, V_GLO, V_SONG, V_PERF, V_SEQ, NVIEWS
+ static const char *const VIEW_N[NVIEWS] = {"HOME", "", "TB-3PO", "FX", "MIX", "GLOBAL", "SONG", "PERF", "SEQ"};
+ static const uint16_t PART_COL[NPARTS] = {RGB(255, 150, 40), RGB(255, 72, 64), RGB(130, 240, 90), RGB(70, 205, 255),
+                                           RGB(214, 120, 255)};
+-static const char *const PART_N[NPARTS] = {"909", "808", "303A", "303B", "BREAK"};
+-static const char *const PART_S[NPARTS] = {"909", "808", "303A", "303B", "BRK"};   /* 4 chars: lane labels */
++static const char *const PART_N[NPARTS] = {"DRUMS 1", "DRUMS 2", "BASS", MD_NAME_B, "BREAKS"};   /* MD: plain names */
++static const char *const PART_S[NPARTS] = {"DR1", "DR2", "BASS", MD_NAME_BS, "BRK"};   /* 4 chars: lane labels */
+ 
+ /* overlays drawn over the main area */
+ enum { O_NONE, O_LIST, O_ASK };
+@@ -125,7 +125,14 @@ static song_t *song(void) { return &proj.arr.song; }
+ static int is_303(void) { return ui.part == PART_303A || ui.part == PART_303B; }
+ static int is_drum(void) { return ui.part == PART_909 || ui.part == PART_808; }
+ static int bidx(void) { return ui.part == PART_303B ? 1 : 0; }
++#if BOARD_SMK37
++static uint8_t md_last_note[NBASS];    /* MD: the note last played on the keys, per 303 (0: none) */
++#define MD_PIANO 1                     /* MD: the keybed is always a piano (md_perform.c md_piano); the pads are the steps */
++static int kbd_on(void) { return 0; }
++#else
++#define MD_PIANO 0
+ static int kbd_on(void) { return is_303() && (ui.rec || ui.freeplay[bidx()]); }   /* the keys a keyboard */
++#endif
+ static uint8_t kbd_held_note[NBASS];
+ static int held_note_of(const bpart_t *bp, int s);
+ 
+@@ -208,7 +215,7 @@ static const x0x_param_t SEQ_P[NSQ] = {
  };
  static const x0x_param_t ACT_P[] = {
      {"", 0, 0, 0}, {"SAVE PROJECT", 0, 0, 0}, {"CLEAR THIS PART", 0, 0, 0}, {"CLEAR PATTERN", 0, 0, 0},
@@ -1262,7 +1631,59 @@ index 1687dec..1c4bc1f 100644
      {"DELETE BAR", 0, 0, 0}, {"CLEAR SONG", 0, 0, 0}, {"PERFORMANCE", 0, 0, 0}, {"RUN PERF TEST", 0, 0, 0},
  };
  static const x0x_param_t STALLS_P = {"STALLS", 1, 0, ONOFF_N};
-@@ -1614,7 +1614,7 @@ static void run_action(int act, int arg)
+@@ -224,8 +231,8 @@ static const x0x_param_t SREP_P = {"REPEAT", 7, 0, 0};    /* the bar plays 1-8 t
+ static const char *const BATT_N[] = {"EMPTY", "1/3", "2/3", "FULL", "USB POWER", "..."};
+ static const x0x_param_t BATT_P = {"BATTERY", 5, 0, BATT_N};   /* read only (plat_battery) */
+ static const x0x_param_t SONG_P[] = {
+-    {"909", NPAT - 1, 0, 0}, {"808", NPAT - 1, 0, 0}, {"303A", NPAT - 1, 0, 0}, {"303B", NPAT - 1, 0, 0},
+-    {"BREAK", NPAT - 1, 0, 0},
++    {"DRUMS1", NPAT - 1, 0, 0}, {"DRUMS2", NPAT - 1, 0, 0}, {"BASS", NPAT - 1, 0, 0}, {MD_NAME_B, NPAT - 1, 0, 0},
++    {"BREAKS", NPAT - 1, 0, 0},
+     {"LENGTH", NSONG, 0, 0},
+ };
+ 
+@@ -486,13 +493,13 @@ static int in_pattern(pref_t r)
+ /* a knob's label: mixer refs name their part */
+ static const char *pref_name(pref_t r)
+ {
+-    static const char *const MIXN[NPARTS][MX_NPARAMS] = {{"909", "909 RV", "909 DL", "909 PAN"},
+-                                                         {"808", "808 RV", "808 DL", "808 PAN"},
+-                                                         {"303 A", "A REV", "A DLY", "A PAN"},
+-                                                         {"303 B", "B REV", "B DLY", "B PAN"},
+-                                                         {"BREAK", "BRK RV", "BRK DL", "BRK PAN"}};
+-    static const char *const PATN[6][2] = {{"909 LEN", "808 LEN"}, {"909 RATE", "808 RATE"}, {"A LEN", "B LEN"},
+-                                           {"A RATE", "B RATE"}, {"A DIR", "B DIR"}, {"A TRANSP", "B TRANSP"}};
++    static const char *const MIXN[NPARTS][MX_NPARAMS] = {{"DRUMS1", "DR1 RV", "DR1 DL", "DR1 PAN"},
++                                                         {"DRUMS2", "DR2 RV", "DR2 DL", "DR2 PAN"},
++                                                         {"BASS", "BAS RV", "BAS DL", "BAS PAN"},
++                                                         {MD_NAME_B, "B2 RV", "B2 DL", "B2 PAN"},
++                                                         {"BREAKS", "BRK RV", "BRK DL", "BRK PAN"}};
++    static const char *const PATN[6][2] = {{"DR1 LEN", "DR2 LEN"}, {"DR1 RATE", "DR2 RATE"}, {"BAS LEN", "CHD LEN"},
++                                           {"BAS RATE", "CHD RATE"}, {"BAS DIR", "CHD DIR"}, {"BAS TRNS", "CHD TRNS"}};
+     static const char *const CHN[MX_NPARAMS] = {"LEVEL", "REV", "DLY", "PAN"};
+     const x0x_param_t *d = pref_desc(r);
+     static const char *const SEQN[6] = {"LENGTH", "RATE", "LENGTH", "RATE", "DIRECTION", "TRANSP"};
+@@ -798,6 +805,10 @@ static void build_pages(void)
+                      PR(R_ENG, T_303, b, BASS303_ENVMOD), PR(R_ENG, T_303, b, BASS303_DECAY));
+             add_page("VOICE", PR(R_ENG, T_303, b, BASS303_ACCENT), PR(R_ENG, T_303, b, BASS303_WAVE),
+                      PR(R_ENG, T_303, b, BASS303_DRIVE), PR(R_ENG, T_303, b, BASS303_SLIDE));
++#if BOARD_SMK37
++            add_page("CHORD", PR(R_ENG, T_303, b, BASS303_CHORD), PR(R_ENG, T_303, b, BASS303_WAVE),
++                     PR(R_ENG, T_303, b, BASS303_DECAY), PR(R_ENG, T_303, b, BASS303_VOLUME));   /* MD: one key, a chord */
++#endif
+             more(PR(R_ENG, T_303, b, BASS303_TUNE));
+             more(PR(R_ENG, T_303, b, BASS303_VOLUME));
+             more(PR(R_ENG, T_303, b, BASS303_DRVTYPE));
+@@ -831,7 +842,7 @@ static void build_pages(void)
+                  PR(R_ENG, T_MIX, ui.mixsel, MX_REV), PR(R_ENG, T_MIX, ui.mixsel, MX_DLY));
+         for (p = 0; p < NKIT; p++) {                    /* each drum machine's tracks: LEVEL, PAN, REV, DLY */
+             int t = p ? T_808 : T_909, v = ui.sel[p];
+-            add_page(p ? "808 MIX" : "909 MIX", find_ref(t, v, "Level"), find_ref(t, v, "Pan"), find_ref(t, v, "Rev"),
++            add_page(p ? "DR2 MIX" : "DR1 MIX", find_ref(t, v, "Level"), find_ref(t, v, "Pan"), find_ref(t, v, "Rev"),
+                      find_ref(t, v, "Dly"));
+         }
+         add_page("MASTER", PR(R_ENG, T_FX, 0, FX_DRIVE), PR(R_ENG, T_MST, 0, MST_COMP1), PR(R_ENG, T_MST, 0, MST_PUMP),
+@@ -1614,7 +1625,7 @@ static void run_action(int act, int arg)
          say("PERF TEST: 15 SECONDS", 0);
          break;
      case ACT_ABOUT:
@@ -1271,6 +1692,50 @@ index 1687dec..1c4bc1f 100644
          q = put_s(put_i(q, project_mem_pct()), "%  CPU ");
          put_s(put_i(q, (int)plat_cpu_pct()), "%");
          say(t, 0);
+@@ -1996,6 +2007,10 @@ static void bass_step_key(int white, int down)
+         ui.step_created = bstep_gate(&bp->step[s]) == G_REST;
+         if (ui.step_created) {
+             bp->step[s].flags = G_NOTE;
++#if MD_PIANO
++            if (md_last_note[b])                      /* MD: a new step takes the note last played on the keys */
++                bp->step[s].note = (uint8_t)clamp(md_last_note[b] - (bp->transpose - 24), 0, 127);
++#endif
+             mark_dirty();
+         }
+         ui.step_preview = key_sounds();               /* as the drum keys */
+@@ -2382,6 +2397,12 @@ static void button_tap(int b)
+                 say("MUTATED", 0);
+             }
+             mark_dirty();
++        } else if (MD_PIANO && is_303() && ui.view != V_HOME && ui.view != V_SONG && !(steps_view() && ui.held_step >= 0)) {
++            char t[12];                               /* MD: OCT is the piano's octave, everywhere */
++            ui.oct = (int8_t)(ui.oct + (up ? 1 : -1));
++            ui.oct = ui.oct < -2 ? -2 : ui.oct > 3 ? 3 : ui.oct;
++            put_i(put_s(t, "KEYS OCTAVE "), ui.oct);
++            say(t, 0);
+         } else if (kbd_on() && steps_view()) {        /* the keyboard's octave */
+             if (ui.btn & (1u << B_LFO)) {                 /* LFO + OCT: a tie; ENV + OCT: a rest */
+                 ui.btn_used |= 1u << B_LFO;
+@@ -2487,7 +2508,7 @@ static void input(void)
+                 ui.mixsel = ui.part;
+                 build_pages();
+                 for (k = 0; k < pg.n; k++)
+-                    if (is_drum() ? pg.title[k][0] == PART_N[ui.part][0] && pg.title[k][4] == 'M' : !k)
++                    if (is_drum() ? pg.title[k][2] == '1' + ui.part && pg.title[k][4] == 'M' : !k)
+                         *page_of(V_MIX) = (uint8_t)k;
+             }
+         }
+@@ -3724,6 +3745,10 @@ static uint16_t footer_text(const char **a, const char **b, const char **c)
+         *a = ui.gen_stale[bidx()] ? "OCT+: NEW LINE *" : "OCT+: NEW LINE";
+         *b = "OCT-: MUTATE";
+         return ui.gen_stale[bidx()] ? C_WHITE : C_AMB;
++    } else if (MD_PIANO) {                            /* MD: keys play, pads are the steps */
++        *a = is_drum() ? "KEYS PLAY DRUMS" : is_303() ? "KEYS PLAY" : "KEYS PLAY SLICES";
++        *b = "PADS: STEPS";
++        *c = "< >: INSTRUMENT";
+     } else if (is_drum()) {
+         *a = "BLACK: TRACK";
+         *b = "WHITE: STEP";
 diff --git a/firmware/src/app/undo.c b/firmware/src/app/undo.c
 index e151e42..a8d779c 100644
 --- a/firmware/src/app/undo.c
@@ -1288,6 +1753,120 @@ index e151e42..a8d779c 100644
  #define UNDO_MAX 32
  #define UNDO_GAP 8u                    /* unchanged bytes between changes cheaper to keep than a new run */
  
+diff --git a/firmware/src/dsp/bass303.c b/firmware/src/dsp/bass303.c
+index 5ec78e8..b02cb11 100644
+--- a/firmware/src/dsp/bass303.c
++++ b/firmware/src/dsp/bass303.c
+@@ -15,6 +15,13 @@
+ 
+ static const char *const wave_names[] = { "Saw", "Sqr" };
+ static const char *const drv_names[] = { "Off", "Soft", "RAT" };
++#if BOARD_SMK37
++static const char *const chord_names[] = { "Off", "Minor", "Major", "Min7", "Maj7", "Min9", "Sus4", "5th" };
++/* the chord's notes above the root, in semitones (0: none), and a small detune each (wide, not out of tune) */
++static const int8_t chord_iv[BASS303_CH_N][3] = {
++    {0, 0, 0}, {3, 7, 12}, {4, 7, 12}, {3, 7, 10}, {4, 7, 11}, {3, 10, 14}, {5, 7, 12}, {7, 12, 0}};
++static const float chord_det[3] = {1.0021f, 0.9983f, 1.0029f};
++#endif
+ 
+ /* defaults are schwung-303's (every knob at 0.5, Devilfish values stock), except Volume,
+  * lowered from 0.8 so the nominal peak is ~0.5 */
+@@ -31,6 +38,9 @@ static const x0x_param_t params[BASS303_NPARAMS] = {
+     { "DrvTyp", 2, 1, drv_names },
+     { "Slide", 127, 21, 0 },         /* 2 .. 360 ms (Devilfish); 21 = 61 ms, stock is 60 */
+     { "AccDec", 127, 7, 0 },         /* 30 .. 3000 ms (Devilfish); 7 = 194 ms, stock is 200 */
++#if BOARD_SMK37
++    { "Chord", BASS303_CH_N - 1, 0, chord_names },   /* MD: Off = the 303 */
++#endif
+ };
+ 
+ int bass303_nparams(void) { return BASS303_NPARAMS; }
+@@ -199,6 +209,19 @@ void bass303_set(bass303_t *b, int i, int v)
+         b->s_inv = 1.0f / b->s_gain;
+         rat_coeffs(b);
+         break;
++#if BOARD_SMK37
++    case BASS303_CHORD: {
++        int k;
++        b->nch = 0;
++        for (k = 0; k < 3; k++)
++            if (chord_iv[v][k]) {
++                b->ch_r[b->nch] = fm_exp2f((float)chord_iv[v][k] * (1.0f / 12.0f)) * chord_det[k];
++                b->nch++;
++            }
++        b->ch_g = b->nch == 3 ? 0.5f : b->nch == 2 ? 0.6f : 1.0f;   /* about the 303's own loudness */
++        break;
++    }
++#endif
+     case BASS303_DRVTYPE:
+         if (v != b->drv_type) {                                /* drive.h set_model: fresh state */
+             b->s_pre.z1 = b->s_pre.z2 = b->s_post.z1 = b->s_post.z2 = 0.0f;
+@@ -531,6 +554,11 @@ static void run(bass303_t *b, float *out, int n)
+     const float sq_dc = b->sq_dc, sq_h2 = 0.5f * b->sq_h;
+     const float out_gain = b->amp_scaler;
+     const int square = b->wave;
++#if BOARD_SMK37
++    const int nch = b->nch;
++    const float ch_g = b->ch_g, *ch_r = b->ch_r;
++    float *ch_ph = b->ch_ph;
++#endif
+     float os[BASS303_OS];
+ 
+     for (i = 0; i < n; i += m) {
+@@ -618,6 +646,21 @@ static void run(bass303_t *b, float *out, int n)
+                     phase += inc;
+                     if (phase >= 1.0f)
+                         phase -= 1.0f;
++#if BOARD_SMK37
++                    if (nch) {                                  /* MD CHORDS: the other saws */
++                        int c;
++                        for (c = 0; c < nch; c++) {
++                            float ci = inc * ch_r[c], cp = ch_ph[c];
++                            t = cp + 0.5f;
++                            if (t >= 1.0f)
++                                t -= 1.0f;
++                            s -= t + t - 1.0f - blep(t, ci);
++                            cp += ci;
++                            ch_ph[c] = cp >= 1.0f ? cp - 1.0f : cp;
++                        }
++                        s *= ch_g;
++                    }
++#endif
+ 
+                     ym = hp1_b0 * (s - hp1x) + hp1_a1 * hp1y;
+                     hp1x = s;
+diff --git a/firmware/src/dsp/bass303.h b/firmware/src/dsp/bass303.h
+index 22d6457..c1ba532 100644
+--- a/firmware/src/dsp/bass303.h
++++ b/firmware/src/dsp/bass303.h
+@@ -68,9 +68,16 @@ enum {
+     BASS303_CUTOFF, BASS303_RESO, BASS303_ENVMOD, BASS303_DECAY,     /* page 1 */
+     BASS303_ACCENT, BASS303_WAVE, BASS303_TUNE, BASS303_VOLUME,      /* page 2 */
+     BASS303_DRIVE, BASS303_DRVTYPE, BASS303_SLIDE, BASS303_ACCDEC,   /* page 3 */
++#if BOARD_SMK37
++    BASS303_CHORD,                                                   /* MD: one key, a whole chord (the FM-1: no room) */
++#endif
+     BASS303_NPARAMS
+ };
+ enum { BASS303_DRV_OFF, BASS303_DRV_SOFT, BASS303_DRV_RAT };
++/* MD CHORDS: up to three more saws on the note (paraphonic: one filter, one envelope, as a string
++ * machine or a dub-techno stab), a little detuned so it is wide. Off: the 303, exactly as before */
++enum { BASS303_CH_OFF, BASS303_CH_MIN, BASS303_CH_MAJ, BASS303_CH_MIN7, BASS303_CH_MAJ7, BASS303_CH_MIN9,
++       BASS303_CH_SUS4, BASS303_CH_5TH, BASS303_CH_N };
+ 
+ typedef struct { float b0, b1, b2, a1, a2, z1, z2; } bass303_bq_t;     /* TDF-II biquad */
+ typedef struct { float x1, x2, y1, y2; } bass303_df1_t;                /* DF-I state */
+@@ -120,6 +127,10 @@ typedef struct bass303 {
+     float c_inc, c_b0, c_k, c_g2, c_a;
+     float osc_freq, slew_y;
+     float phase;             /* oscillator phase in turns, 0..1 */
++#if BOARD_SMK37
++    int nch;                 /* MD CHORDS: extra saws, 0..3 */
++    float ch_r[3], ch_ph[3], ch_g;   /* their frequency ratios, phases; the sum's gain */
++#endif
+     float env_c, env_y;      /* main (filter) decay envelope */
+     float rc1_y, rc2_y;
+     float accent_gain;
 diff --git a/firmware/src/dsp/drum808.c b/firmware/src/dsp/drum808.c
 index 5ff572d..f2f967f 100644
 --- a/firmware/src/dsp/drum808.c

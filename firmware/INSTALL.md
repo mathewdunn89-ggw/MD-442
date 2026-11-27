@@ -10,14 +10,14 @@ Peak Warehouse, Berlin Roll, Electro, Acid Jack, Deep House, Breakbeat, Dub Tech
 | M-VAVE SMK-37 Pro (also Starrykey 37 Play) | md442-smk37-pro.fwsc |
 | M-VAVE FM-1 | md442-fm1.fwsc |
 
-## Version 1.5
-- M-VAVE's updater (M-UPGRADE) can always see the keyboard. The firmware's identity is the short shape M-UPGRADE 3.11
-  accepts (SMK-37 Elite_915); 1.2 to 1.4 used a longer one that it refused.
-- Every stock button and knob, the MIDI settings and the update combo (hold OCTAVE- and OCTAVE+ for 5 seconds) work
-  as before. Your saved patterns and global settings are kept.
-- New, on controls that did nothing before: KNOB BANK (tap: mute pads; hold: K2-K4 shape the selected instrument;
-  with OCTAVE- / +: the instrument), the 10 end keys of the keybed (beat repeat, fill, echo, kill low, wash, riser,
-  drop), PATCH + < / > (the pattern). See md442-controls.pdf.
+## Version 1.6
+- The keys always play the instrument on screen (drums, bass, chords or break slices) and never turn steps on or off.
+  The 16 pads are the steps. < / > pick the instrument: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS.
+- CHORDS is new: one key plays a whole chord (Minor, Major, Min7, Maj7, Min9, Sus4, 5th). Deep House and Dub Techno
+  play MD|442's dub stab on it. BASS starts as a round bass.
+- FX switches the faders: lit = reverb, delay, drive, filter; off = the volumes. REC + PLAY records what you play.
+- Your saved patterns and global settings are kept. The update combo (hold OCTAVE- and OCTAVE+ for 5 seconds) and
+  M-UPGRADE restore work as before (identity SMK-37 Elite_916). See md442-controls.pdf.
 - MD187 (90s hip-hop) and MD888 (hard techno) are on the same download page.
 
 ## Before you install
@@ -40,7 +40,7 @@ Peak Warehouse, Berlin Roll, Electro, Acid Jack, Deep House, Breakbeat, Dub Tech
 ## Play
 - PLAY starts pattern 1 (Peak Warehouse, 142 BPM).
 - Change pattern: hold HOME (on the SMK-37: PATCH) and press white key / pad 1-7.
-- Steps: the white keys on the FM-1, the 16 pads on the SMK-37.
+- Steps: the white keys on the FM-1, the 16 pads on the SMK-37 (its keys play the instrument).
 
 ## Use it with the MD|442 app (web, Mac, Windows, Android)
 The app and the keyboard work together over USB. In the app:
