@@ -14,6 +14,7 @@ Object.keys(VPRESETS).forEach(name => {
   const p = VPRESETS[name], P = {};
   Object.entries(VSOUND[p.k || p.s]).forEach(([k, v]) => { P[k.replace(/\.SM$/, '.BRK')] = v; });   // the sampler is the plugin's BREAK row
   if (p.bpm) P.bpm = p.bpm; P.shuffle = Math.round(50 + p.sw / 4);
+  Object.entries(p.v || {}).forEach(([k, v]) => { P[k.replace(/\.SM$/, '.BRK')] = v; });   // this pattern's own kick, bass and instrument settings on top of the machine's kit
   P['brk.kit'] = p.bk < 4 ? 1 : 2; P['brk.slot'] = p.bk % 4; P['brk.level'] = p.lv; P['brk.complex'] = p.cx;
   const rows = {}; KEYS.forEach(k => { rows[k] = (p.g[k] || '.'.repeat(16)); }); if (p.ac) rows.AC = p.ac;
   const root = p.root || (p.s === '888' ? 45 : 38); P.key = ((root - 28) % 12 + 12) % 12; const oct = 12 * Math.floor((root - 28) / 12);
