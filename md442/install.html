@@ -54,7 +54,14 @@ body.busy .opt{pointer-events:none;opacity:.6}
 <progress id="bar" max="100" value="0"></progress>
 <div id="status"></div><div id="log"></div>
 <p class="small">Switching between MD442, MD187 and MD888 works the same way: pick another one and install. Your settings are kept.</p>
+<p class="small"><b>New in 1.6:</b> the keys always play the instrument on screen, the pads are the steps, &lt; and &gt; pick the instrument (DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS), and FX switches the faders between effects and volumes. <a href="fw/1.6/md-hardware-controls.pdf">One-page controls sheet (PDF)</a>. 1.6 has not been tested on a keyboard yet; 1.5 is below if you want it back.</p>
 </div>
+
+<details><summary>Go back to version 1.5</summary>
+<p class="small">The version before: stock key layout (keys and pads are both steps). Pick your keyboard and firmware at the top, then:</p>
+<p><button class="sec" id="goold">Install 1.5</button></p>
+</details>
+
 
 <details><summary>Restore M-VAVE's own firmware</summary>
 <p class="small">To go back to M-VAVE's firmware, or if the install says the keyboard's M-VAVE firmware is too old.</p>
@@ -334,7 +341,8 @@ const pick = (group, val) => document.querySelectorAll(`[data-${group}]`).forEac
 function refresh() {
   pick("kb", kb); pick("fw", fw);
   $("stocklink").textContent = "Download " + STOCK[kb][0]; $("stocklink").href = STOCK[kb][1];
-  $("go").textContent = "Install " + fw.toUpperCase() + " 1.5";
+  $("go").textContent = "Install " + fw.toUpperCase() + " 1.6";
+  $("goold").textContent = "Install " + fw.toUpperCase() + " 1.5";
 }
 document.querySelectorAll("[data-kb]").forEach((b) => b.onclick = () => { if (!busy) { kb = b.dataset.kb; refresh(); } });
 document.querySelectorAll("[data-fw]").forEach((b) => b.onclick = () => { if (!busy) { fw = b.dataset.fw; refresh(); } });
@@ -392,18 +400,20 @@ async function write(p) {
   }
   busy = false; document.body.classList.remove("busy"); $("go").disabled = false; $("stockgo").disabled = !stockPkg;
 }
-$("go").onclick = async () => {
+const install = async (dir, ver) => {
   if (busy) return;
   const name = fw + "-" + KB[kb] + ".fwsc";
-  say("Loading " + fw.toUpperCase() + " 1.5 ...");
+  say("Loading " + fw.toUpperCase() + " " + ver + " ...");
   try {
-    const r = await fetch("fw/" + name, { cache: "no-store" });
+    const r = await fetch(dir + name, { cache: "no-store" });
     if (!r.ok) throw new Error(name + ": HTTP " + r.status);
-    const p = take(new Uint8Array(await r.arrayBuffer()), fw.toUpperCase() + " 1.5");
+    const p = take(new Uint8Array(await r.arrayBuffer()), fw.toUpperCase() + " " + ver);
     if (!p.md) throw new Error(name + " is not an MD firmware");
     await write(p);
   } catch (e) { if (!busy) say("Could not start: " + e.message); }
 };
+$("go").onclick = () => install("fw/1.6/", "1.6");
+$("goold").onclick = () => install("fw/", "1.5");
 let stockPkg = null;
 $("stockfile").onchange = async (e) => {
   stockPkg = null; $("stockgo").disabled = true;
