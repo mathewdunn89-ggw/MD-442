@@ -1389,8 +1389,8 @@ function clockTick(t) { midi.lastCk = performance.now(); const c = midi.ck; c.pu
 const MIDI_DEF = { cc: { '1:20': 'bd.decay', '1:21': 'sd.snappy', '1:22': 'ch.decay', '1:23': 'hh.tone', '1:24': 'bs.cutoff', '1:25': 'bs.reso', '1:26': 'bs.acid', '1:27': 'st.tone', '1:28': 'fx.filter', '1:29': 'fx.verb', '1:30': 'fx.efb', '1:31': 'vol',
   '1:40': 'lvl.BD', '1:41': 'lvl.SD', '1:42': 'lvl.CP', '1:43': 'lvl.CH', '1:44': 'lvl.OH', '1:45': 'lvl.BS', '1:46': 'lvl.ST', '1:47': 'fx.drive', '1:48': 'shuffle', '1:49': 'fx.space', '1:50': 'accent', '1:51': 'fx.etime' }, note: { '10:62': 'BS', '10:63': 'ST' } };
 const midiMap = () => (Object.keys(midi.cc).length || Object.keys(midi.note).length ? midi : MIDI_DEF);
-try { const m = JSON.parse(localStorage.getItem(MIDI_LS) || '{}'); if (m && m.cc) midi.cc = m.cc; if (m && m.note) midi.note = m.note; if (m && m.cko) midi.cko = true; } catch (_) {}
-const midiKeep = () => { try { localStorage.setItem(MIDI_LS, JSON.stringify({ cc: midi.cc, note: midi.note, cko: !!midi.cko })); } catch (_) {} };
+try { const m = JSON.parse(localStorage.getItem(MIDI_LS) || '{}'); if (m && m.cc) midi.cc = m.cc; if (m && m.note) midi.note = m.note; if (m && m.cko) midi.cko = true; if (m && Array.isArray(m.pads) && m.pads.length) midi.pads = m.pads; if (m && m.lights === false) midi.lights = false; } catch (_) {}
+const midiKeep = () => { try { localStorage.setItem(MIDI_LS, JSON.stringify({ cc: midi.cc, note: midi.note, cko: !!midi.cko, pads: midi.pads, lights: midi.lights !== false })); } catch (_) {} };
 function midiHit(k, v) { if (!SOUND.includes(k) || off(k)) return; boot(); const g = .35 + .65 * (v / 127), go = () => voice(E, k, ac.currentTime + .005, 0, g); if (ac.state === 'running') go(); else ac.resume().then(go).catch(() => {}); flashKey(k); }
 function onMidi(e) {
   const d = e.data; if (!d || !d.length) return; const st = d[0];
@@ -1401,11 +1401,13 @@ function onMidi(e) {
   const type = st & 0xF0, ch = (st & 15) + 1, a = d[1], b = d[2] || 0;
   if (type === 0x90 && b > 0) {
     const id = ch + ':' + a; midi.last = 'note ' + a + ' ch ' + ch;
+    if (padLearnTake(id)) return;
     if (midi.learn && midi.armA) { midi.note[id] = midi.armA; midiKeep(); toast('Pad (note ' + a + ') now does: ' + actName(midi.armA)); midi.armA = null; drawAll(); return; }
     if (midi.learn && midi.armD) { midi.note[id] = midi.armD; midiKeep(); toast('Pad (note ' + a + ') now plays ' + NAME[midi.armD]); midi.armD = null; drawAll(); return; }
+    if (padStep(id)) return;                                              // SEQ view: the Elite's pads are the selected drum's 16 steps
     const k = midiMap().note[id] || (ch === 10 ? GM[a] : null);
     if (isAct(k)) doAct(k); else if (k) midiHit(k, b); else { boot(); noteOn(clamp(a - 40, 0, 36)); }        // everything else is the keyboard: E below middle C's octave is the root
-  } else if (type === 0x80 || (type === 0x90 && b === 0)) { noteOff(clamp(a - 40, 0, 36)); }
+  } else if (type === 0x80 || (type === 0x90 && b === 0)) { padUp(ch + ':' + a); noteOff(clamp(a - 40, 0, 36)); }
   else if (type === 0xB0) {
     const id = ch + ':' + a; midi.last = 'CC ' + a + ' ch ' + ch;
     if (midi.learn && midi.armA && b > 63) { midi.cc[id] = midi.armA; midiKeep(); toast('Button (CC ' + a + ') now does: ' + actName(midi.armA)); midi.armA = null; drawAll(); return; }
@@ -1413,6 +1415,54 @@ function onMidi(e) {
     const k = midiMap().cc[id]; if (isAct(k)) { const hi = b > 63; if (hi && !midi.ccHi[id]) doAct(k); midi.ccHi[id] = hi; return; } if (k && DEF[k]) { midi.busy = true; set(k, toVal(k, b / 127)); midi.busy = false; }
   }
 }
+/* ELITE FOLLOWS THE SCREEN. The laptop is the main surface; the SMK-37 Elite (stock M-VAVE firmware, nothing on it is changed)
+   follows whatever view is open:
+   - KEYS open: keys play the bass, stab or sampler, pads play the drums (as before).
+   - Sequencer (KEYS closed): pads 1-16 are the selected drum's 16 steps. Tap a pad to turn its step on or off, like a step on
+     screen. Keys still play the instrument. Pick another drum on screen (or with a learned < >) and the pads follow it.
+   Pad lights: only plain note-on / note-off messages go back, only to an output named SMK-37 / M-VAVE, on the pad's own note and
+   channel. No SysEx, no CC, no settings. If the stock firmware ignores them nothing happens; turn PAD LIGHTS off in the MIDI panel. */
+const PADS_DEF = Array.from({ length: 16 }, (_, i) => '10:' + (36 + i));      // the setup guide's stock layout: 16 pads, channel 10, notes 36-51
+const padIds = () => (midi.pads && midi.pads.length ? midi.pads : PADS_DEF);
+const eliteMode = () => (S.keys.open ? 'keys' : 'seq');
+const eliteOuts = () => (midi.access ? [...midi.access.outputs.values()].filter(o => /smk|m-?vave/i.test(o.name || '')) : []);
+function padStep(id) {
+  if (midi.learn || eliteMode() !== 'seq') return false;
+  if (isAct(midiMap().note[id])) return false;                               // a pad learned as PLAY, a scene or a mute keeps doing that
+  const i = padIds().indexOf(id); if (i < 0 || i > 15) return false;
+  boot(); setStep(S.sel, i, !scene().g[S.sel][i], true); elite.force = true; return true;
+}
+function padUp(id) { if (padIds().includes(id)) { clearTimeout(elite.upT); elite.upT = setTimeout(() => { elite.force = true; }, 40); } }   // the pad's own light goes out on release: put ours back
+function padLearn() {
+  if (midi.padLearn) { midi.padLearn = null; drawAll(); return toast('Pad setup cancelled. Pads use ' + (midi.pads ? 'your saved order' : 'channel 10, notes 36-51') + '.'); }
+  if (!midi.access) midiConnect(); midi.padLearn = []; drawAll(); toast('PADS: hit the Elite\'s pads 1 to 16 in order (switch pad bank half way if you need to).');
+}
+function padLearnTake(id) {
+  const L = midi.padLearn; if (!L) return false; if (!L.includes(id)) L.push(id);
+  if (L.length >= 16) { midi.pads = L.slice(0, 16); midi.padLearn = null; midiKeep(); elite.force = true; toast('Pads saved: in the sequencer they are steps 1 to 16'); }
+  else lcdFlash('SMK-37 pads', 'Pad ' + (L.length + 1) + ' of 16');
+  drawAll(); return true;
+}
+const elite = { lit: {}, mode: '', sel: '', force: true, upT: 0 };
+function eliteSend(outs, id, on) { const [c, n] = id.split(':').map(Number); if (!(c >= 1 && c <= 16 && n >= 0 && n < 128)) return; const m = on ? [0x8F + c, n, 127] : [0x8F + c, n, 0]; outs.forEach(o => { try { o.send(m); } catch (_) {} }); }
+function eliteDark(outs) { Object.keys(elite.lit).forEach(id => { if (elite.lit[id]) eliteSend(outs, id, false); }); elite.lit = {}; }
+function eliteTick() {
+  if (!midi.access || !midi.names.length) return;
+  const mode = eliteMode(), outs = midi.lights === false ? [] : eliteOuts();
+  if (mode !== elite.mode || S.sel !== elite.sel) {
+    if (elite.mode && mode !== elite.mode) lcdFlash('SMK-37', mode === 'seq' ? 'Pads: ' + SHORT[S.sel] + ' steps' : 'Pads play drums');
+    elite.mode = mode; elite.sel = S.sel; elite.force = true; drawLite();
+  }
+  if (!outs.length) return;
+  if (mode !== 'seq') { if (elite.force) { eliteDark(outs); elite.force = false; } return; }
+  const g = scene().g[S.sel], ids = padIds(), want = {};
+  for (let i = 0; i < 16 && i < ids.length; i++) { const on = !!g[i], ph = playing && i === head && i < S.last; want[ids[i]] = ph ? !on : on; }   // the step that is playing flips, so the run is visible
+  Object.keys(want).forEach(id => { if (elite.force || !!elite.lit[id] !== want[id]) { eliteSend(outs, id, want[id]); elite.lit[id] = want[id]; } });
+  Object.keys(elite.lit).forEach(id => { if (!(id in want)) { if (elite.lit[id]) eliteSend(outs, id, false); delete elite.lit[id]; } });
+  elite.force = false;
+}
+setInterval(eliteTick, 30);
+function togglePadLights() { midi.lights = midi.lights === false; midiKeep(); if (midi.lights === false) eliteDark(eliteOuts()); else elite.force = true; drawAll(); toast(midi.lights !== false ? 'Pad lights on: the Elite shows the steps (if its firmware lights pads from MIDI)' : 'Pad lights off: nothing is sent back to the Elite'); }
 function midiScan() { const acc = midi.access; if (!acc) return; midi.names = []; acc.inputs.forEach(inp => { inp.onmidimessage = onMidi; midi.names.push(inp.name || 'MIDI device'); }); midi.on = true; drawAll(); }
 async function midiConnect() {
   if (!navigator.requestMIDIAccess) { toast(NOMIDI); return false; }
@@ -1428,6 +1478,7 @@ const GUIDE = [
   ['SMK-37', [
     'Plug the SMK-37 in with USB, press CONNECT above and allow MIDI. Chrome or Edge work best.',
     'Keys play the bass, or the stab (choose in KEYS). Pads play the drums when they send on MIDI channel 10: 36 kick, 38 snare, 39 clap, 42 and 46 hats.',
+    'The Elite follows the screen. KEYS open: keys play the instrument, pads play the drums. KEYS closed (the sequencer): pads 1-16 are the selected drum\'s steps, tap to turn them on or off, and they light when the firmware lights pads from MIDI. Pads not on channel 10, notes 36-51? Press SET PADS and hit them 1 to 16.',
     'To set the pads that way, open the M-VAVE editor, set the pads to channel 10 and notes 36 to 51, send it to the keyboard, then close the editor.',
     'Running MD|442 firmware 1.1 on the keyboard? Press SEND TO KEYBOARD to copy this beat\'s scenes onto it (patterns 9 to 16). Saving a beat sends it again automatically.',
     'Or press LEARN, touch anything here (a knob, a drum, a scene, MUTE or MUTE GROUP) and press the pad or turn the knob. Mappings stay on this device.',
@@ -1536,14 +1587,15 @@ async function sendToKeyboard(quiet) {
   if (!quiet) toast('No MD|442 keyboard answered. Connect it by USB and check it runs MD|442 firmware 1.1 or newer.');
 }
 function buildMidi(box) {
-  const stat = h('p', 'mstat'), row = h('div', 'kctl'), list = h('div', 'mlist'), lk = key('LEARN', midiLearn, 'led'), ck = key('CLEAR MAPPINGS', () => { midi.cc = {}; midi.note = {}; midiKeep(); drawAll(); toast('MIDI mappings cleared'); }), con = key('CONNECT', midiConnect), sk = key('SEND TO KEYBOARD', () => sendToKeyboard(false)), lv = key('LIVE', kbLive, 'led'), cko = key('CLOCK OUT', () => { midi.cko = !midi.cko; midiKeep(); if (midi.cko && !midi.access) midiConnect(); if (!midi.cko) clockStop(); drawAll(); toast(midi.cko ? 'Clock out on: MIDI devices follow MD|442\'s tempo, start and stop' : 'Clock out off'); }, 'led');
+  const stat = h('p', 'mstat'), row = h('div', 'kctl'), list = h('div', 'mlist'), lk = key('LEARN', midiLearn, 'led'), ck = key('CLEAR MAPPINGS', () => { midi.cc = {}; midi.note = {}; midiKeep(); drawAll(); toast('MIDI mappings cleared'); }), con = key('CONNECT', midiConnect), sk = key('SEND TO KEYBOARD', () => sendToKeyboard(false)), pk = key('SET PADS', padLearn, 'led'), pl = key('PAD LIGHTS', togglePadLights, 'led'), lv = key('LIVE', kbLive, 'led'), cko = key('CLOCK OUT', () => { midi.cko = !midi.cko; midiKeep(); if (midi.cko && !midi.access) midiConnect(); if (!midi.cko) clockStop(); drawAll(); toast(midi.cko ? 'Clock out on: MIDI devices follow MD|442\'s tempo, start and stop' : 'Clock out off'); }, 'led');
   live(cko, () => { cko.classList.toggle('on', !!midi.cko); cko.setAttribute('aria-pressed', !!midi.cko); });
   const dp = key('◀ DRUM', () => { if (!learnAct('prev')) stepDrum(-1); }), dn = key('DRUM ▶', () => { if (!learnAct('next')) stepDrum(1); });
   live(lv, () => { lv.classList.toggle('on', !!(kbx.live && kbx.out)); lv.setAttribute('aria-pressed', !!(kbx.live && kbx.out)); });
-  row.append(con, lk, ck, cko, sk, lv, dp, dn); box.append(stat, row, list, guide(), h('p', 'note', 'Pads on MIDI channel 10 play the drums with the standard drum notes (36 kick, 38 snare, 39 clap, 42 and 46 hats…). Keys play the bass or the stab, whichever the keyboard panel is set to. LEARN ties any hardware knob, fader, pad or button to anything on screen: a drum, a knob, ▶ PLAY, ◀ DRUM / DRUM ▶, MUTE or a scene. Press LEARN, click it on screen, then press the control. Start, stop, continue and the tempo (MIDI clock) from a controller or a DAW are followed. LIVE (on once a keyboard with MD|442 firmware 1.2 has answered SEND TO KEYBOARD) keeps the keyboard on the scene you are editing, with the same mutes. CLOCK OUT does the opposite: an FM-1, an SMK-37 with MD|442 firmware, Maschine or Ableton follow MD|442\'s tempo, start and stop.'));
+  live(pk, () => { pk.classList.toggle('on', !!midi.padLearn); pk.textContent = midi.padLearn ? 'PADS ' + midi.padLearn.length + '/16 · CANCEL' : 'SET PADS'; }); live(pl, () => { pl.classList.toggle('on', midi.lights !== false); pl.setAttribute('aria-pressed', midi.lights !== false); });
+  row.append(con, lk, ck, cko, pk, pl, sk, lv, dp, dn); box.append(stat, row, list, guide(), h('p', 'note', 'Pads on MIDI channel 10 play the drums with the standard drum notes (36 kick, 38 snare, 39 clap, 42 and 46 hats…). Keys play the bass or the stab, whichever the keyboard panel is set to. LEARN ties any hardware knob, fader, pad or button to anything on screen: a drum, a knob, ▶ PLAY, ◀ DRUM / DRUM ▶, MUTE or a scene. Press LEARN, click it on screen, then press the control. Start, stop, continue and the tempo (MIDI clock) from a controller or a DAW are followed. LIVE (on once a keyboard with MD|442 firmware 1.2 has answered SEND TO KEYBOARD) keeps the keyboard on the scene you are editing, with the same mutes. CLOCK OUT does the opposite: an FM-1, an SMK-37 with MD|442 firmware, Maschine or Ableton follow MD|442\'s tempo, start and stop.'));
   live(lk, () => { lk.classList.toggle('on', midi.learn); lk.setAttribute('aria-pressed', midi.learn); });
   live(stat, () => {
-    stat.textContent = !navigator.requestMIDIAccess ? NOMIDI : !midi.access ? 'Press CONNECT and allow MIDI.' : (midi.names.length ? 'Connected: ' + midi.names.join(', ') : 'MIDI is on. No controller found yet.') + (midi.learn ? (midi.armP ? ' · LEARN: now move a hardware control for ' + DEF[midi.armP].lb : midi.armD ? ' · LEARN: now hit a pad for ' + NAME[midi.armD] : midi.armA ? ' · LEARN: now press a pad for ' + actName(midi.armA) : ' · LEARN: touch a knob, drum, scene or MUTE on screen') + (midi.synced ? ' · following MIDI clock' : '') : '') + (midi.last ? ' · last: ' + midi.last : '');
+    stat.textContent = !navigator.requestMIDIAccess ? NOMIDI : !midi.access ? 'Press CONNECT and allow MIDI.' : (midi.names.length ? 'Connected: ' + midi.names.join(', ') : 'MIDI is on. No controller found yet.') + (midi.learn ? (midi.armP ? ' · LEARN: now move a hardware control for ' + DEF[midi.armP].lb : midi.armD ? ' · LEARN: now hit a pad for ' + NAME[midi.armD] : midi.armA ? ' · LEARN: now press a pad for ' + actName(midi.armA) : ' · LEARN: touch a knob, drum, scene or MUTE on screen') + (midi.synced ? ' · following MIDI clock' : '') : '') + (midi.access && midi.names.length ? (eliteMode() === 'seq' ? ' · Elite pads: ' + NAME[S.sel] + ' steps 1-16' : ' · Elite pads: play the drums') : '') + (midi.last ? ' · last: ' + midi.last : '');
     const sig = JSON.stringify([midi.cc, midi.note]); if (list._sig === sig) return; list._sig = sig; list.textContent = '';
     Object.entries(midi.cc).forEach(([id, k]) => { if (isAct(k)) { const b = key('CC ' + id.split(':')[1] + ' → ' + actName(k) + '  ✕', () => { delete midi.cc[id]; midiKeep(); drawAll(); }); list.append(b); return; } if (!DEF[k]) return; const b = key('CC ' + id.split(':')[1] + ' → ' + DEF[k].lb + '  ✕', () => { delete midi.cc[id]; midiKeep(); drawAll(); }); b.setAttribute('aria-label', 'Remove mapping of control ' + id.split(':')[1] + ' to ' + DEF[k].lb); list.append(b); });
     Object.entries(midi.note).forEach(([id, k]) => { const b = key('NOTE ' + id.split(':')[1] + ' → ' + actName(k) + '  ✕', () => { delete midi.note[id]; midiKeep(); drawAll(); }); list.append(b); });
