@@ -1,4 +1,4 @@
-name: MD|442 desktop apps (Mac and Windows)
+name: MD desktop apps (MD-442, MD-187, MD-888 for Mac and Windows)
 on:
   push:
     paths: ['desktop/**', '.github/workflows/desktop.yml']
@@ -10,10 +10,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { os: macos-latest, cmd: 'dist:mac', file: md442-mac.dmg }
-          - { os: windows-latest, cmd: 'dist:win', file: md442-windows.exe }
-    runs-on: ${{ matrix.os }}
+        style: ['442', '187', '888']
+        target:
+          - { os: macos-latest, cmd: 'dist:mac', ext: 'mac.dmg' }
+          - { os: windows-latest, cmd: 'dist:win', ext: 'windows.exe' }
+    runs-on: ${{ matrix.target.os }}
     defaults: { run: { working-directory: desktop, shell: bash } }
     steps:
       - uses: actions/checkout@v4
@@ -24,10 +25,11 @@ jobs:
         run: |
           node fetch-web.js
           cp web/app/icon-512.png build/icon.png
-      - run: npm run ${{ matrix.cmd }}
+          node variant.js ${{ matrix.style }}
+      - run: npm run ${{ matrix.target.cmd }}
         env: { CSC_IDENTITY_AUTO_DISCOVERY: 'false' }
       - uses: actions/upload-artifact@v4
-        with: { name: '${{ matrix.file }}', path: 'desktop/dist/${{ matrix.file }}', if-no-files-found: error }
+        with: { name: 'md${{ matrix.style }}-${{ matrix.target.ext }}', path: 'desktop/dist/md${{ matrix.style }}-${{ matrix.target.ext }}', if-no-files-found: error }
   release:
     needs: build
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
@@ -41,5 +43,5 @@ jobs:
         run: |
           ls -la out
           gh release view desktop >/dev/null 2>&1 || gh release create desktop --title "MD|442 desktop apps" --notes-file desktop/INSTALL.md --latest=false
-          gh release upload desktop out/md442-mac.dmg out/md442-windows.exe --clobber
-          gh release edit desktop --notes-file desktop/INSTALL.md --title "MD|442 desktop apps (build ${GITHUB_RUN_NUMBER})"
+          gh release upload desktop out/md*-mac.dmg out/md*-windows.exe --clobber
+          gh release edit desktop --notes-file desktop/INSTALL.md --title "MD desktop apps: MD-442, MD-187, MD-888 (build ${GITHUB_RUN_NUMBER})"

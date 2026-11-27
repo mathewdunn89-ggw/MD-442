@@ -4,6 +4,8 @@ const { app, BrowserWindow, protocol, net, session, shell, Menu } = require('ele
 const path = require('path'), url = require('url'), fs = require('fs');
 const SITE = 'https://music.nestgroup.space';
 const WEB = path.join(__dirname, 'web');
+// Which machine this app is: MD-442, MD-187 or MD-888 (written by variant.js at build time).
+let STYLE = { id: '442', name: 'MD-442' }; try { STYLE = JSON.parse(fs.readFileSync(path.join(__dirname, 'style.json'), 'utf8')); } catch (_) {}
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'md442', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
 
@@ -23,10 +25,11 @@ function serve() {
 function createWindow() {
   const win = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1000, minHeight: 640,
-    backgroundColor: '#0a0a0a', title: 'MD-442', autoHideMenuBar: true,
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, backgroundThrottling: false }
+    backgroundColor: '#0a0a0a', title: STYLE.name, autoHideMenuBar: true,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, backgroundThrottling: false, additionalArguments: ['--md-style=' + STYLE.id] }
   });
   win.loadURL('md442://app/md442/');
+  win.on('page-title-updated', e => { e.preventDefault(); win.setTitle(STYLE.name); });
   // Links to other pages open in the normal browser.
   win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
   win.webContents.on('will-navigate', (e, to) => { if (!to.startsWith('md442://')) { e.preventDefault(); shell.openExternal(to); } });
@@ -38,11 +41,11 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(ok.has(perm)));
   session.defaultSession.setPermissionCheckHandler((wc, perm) => ok.has(perm));
   serve();
-  // Beats (.md442.json) and MIDI clips (.mid) save to Documents/MD-442/Beats, the same folder as the plugin.
+  // Beats (.md442.json) and MIDI clips (.mid) save to Documents/MD-442/Beats (MD-187, MD-888 for those apps).
   session.defaultSession.on('will-download', (e, item) => {
     const name = item.getFilename();
     if (!/\.(md442\.json|mid)$/i.test(name)) return;
-    const dir = path.join(app.getPath('documents'), 'MD-442', 'Beats');
+    const dir = path.join(app.getPath('documents'), STYLE.name, 'Beats');
     fs.mkdirSync(dir, { recursive: true });
     let file = path.join(dir, name), n = 2;
     while (fs.existsSync(file)) file = path.join(dir, name.replace(/(\.md442\.json|\.mid)$/i, ` ${n++}$1`));
