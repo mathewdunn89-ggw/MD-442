@@ -42,6 +42,7 @@ The one-page cheat sheet (md-hardware-controls.pdf) has all of this on one page.
 | REC + PLAY | what you play on the keys goes into the pattern on the nearest step |
 | FX | the faders' switch. Lit: REVERB, DELAY, DRIVE, FILTER. Off: volumes of DRUMS 1, DRUMS 2, BASS, CHORDS |
 | FADER BANK | fader 1 switches between DRUMS 1 and BREAKS (lit: BREAKS) |
+| Hold a pad + any fader (1.7) | that pad's instrument volume. Pads 1 to 11: the drums of the kit on screen (BD SD CP CH OH LT MT HT RS CR RD). Pads 12 to 16: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS. The step or mute the press changed is put back |
 | KNOB BANK held + K2 / K3 / K4 | filter, resonance, decay of the instrument (BASS / CHORDS: cutoff, reso, env mod) |
 | PARA | the instrument's sound pages; on CHORDS the CHORD page picks the chord: Minor, Major, Min7, Maj7, Min9, Sus4, 5th, Off |
 | KNOB BANK tap | the pads mute (1-11 drums, 12-16 instruments); PATCH + a pad solos; PATCH + KNOB BANK unmutes all |
