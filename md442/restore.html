@@ -1,36 +1,73 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MD|442 keyboard firmware: restore or install</title>
+<title>MD|442 firmware installer</title>
 <style>
-body{font:16px/1.5 -apple-system,system-ui,sans-serif;background:#0d0f0e;color:#e8efe9;max-width:640px;margin:32px auto;padding:0 18px}
-h1{font-size:22px;margin:0 0 6px}ol{padding-left:20px}li{margin:8px 0}a{color:#3dff7a}
-button{font:inherit;font-weight:600;background:#3dff7a;color:#000;border:0;border-radius:8px;padding:12px 18px;cursor:pointer}
-button:disabled{opacity:.35;cursor:default}progress{width:100%;height:14px}
-#status{font-weight:600;margin:14px 0;min-height:1.5em}#log{font:12px/1.4 ui-monospace,monospace;color:#8a958c;white-space:pre-wrap;max-height:200px;overflow:auto}
-.small{font-size:13px;color:#8a958c}
-</style></head><body>
-<h1>Restore M-VAVE firmware, or install MD|442</h1>
-<p class="small">For an SMK-37 Elite / Pro or FM-1 running MD|442 (or stuck in its update mode). Use Chrome. Nothing to install.</p>
-<h2 style="font-size:17px">A. Install MD firmware 1.5 (SMK-37 Elite)</h2>
-<p class="small">Works on a keyboard running M-VAVE 016 or any MD firmware. Pick one, then press Write to the keyboard below.</p>
-<p><button data-fw="fw/md442-smk37-elite.fwsc" style="background:#3dff7a">MD442 1.5</button>
-<button data-fw="fw/md187-smk37-elite.fwsc" style="background:#ffd23d">MD187 1.5</button>
-<button data-fw="fw/md888-smk37-elite.fwsc" style="background:#ff6b3d">MD888 1.5</button></p>
-<h2 style="font-size:17px">B. Or restore M-VAVE's own firmware</h2>
+:root{--g:#3dff7a;--bg:#0b0d0c;--card:#141816;--line:#26302a;--dim:#8a958c;--fg:#e8efe9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 -apple-system,system-ui,"Segoe UI",sans-serif}
+main{max-width:720px;margin:0 auto;padding:36px 20px 60px}
+.logo{font:800 34px/1 ui-monospace,Menlo,monospace;letter-spacing:2px;color:var(--g)}.logo span{color:var(--fg)}
+.sub{color:var(--dim);margin:6px 0 26px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 20px 18px;margin:0 0 16px}
+h2{font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin:0 0 12px;font-weight:700}
+.n{display:inline-block;width:22px;height:22px;border-radius:50%;background:var(--g);color:#000;text-align:center;font:700 13px/22px system-ui;margin-right:8px}
+.opts{display:flex;gap:10px;flex-wrap:wrap}
+.opt{flex:1 1 150px;background:#0f1311;border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--fg);font:inherit;text-align:left;cursor:pointer}
+.opt b{display:block;font-size:16px}.opt small{color:var(--dim);font-size:12.5px}
+.opt.on{border-color:var(--g);box-shadow:0 0 0 1px var(--g) inset}
+ol{margin:0;padding-left:20px}li{margin:6px 0}
+.go{width:100%;font:700 18px system-ui;background:var(--g);color:#000;border:0;border-radius:12px;padding:16px;cursor:pointer;margin-top:4px}
+.go:disabled{opacity:.35;cursor:default}
+progress{width:100%;height:12px;margin-top:14px;accent-color:var(--g)}
+#status{font-weight:600;margin:12px 0 4px;min-height:1.5em}
+#log{font:11.5px/1.4 ui-monospace,Menlo,monospace;color:#5f6b62;white-space:pre-wrap;max-height:120px;overflow:auto}
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 20px}
+summary{cursor:pointer;font-weight:700}a{color:var(--g)}
+.sec{background:transparent;color:var(--g);border:1.5px solid var(--g);border-radius:10px;font:600 15px system-ui;padding:10px 16px;cursor:pointer}
+.sec:disabled{opacity:.35}.small{font-size:13px;color:var(--dim)}
+body.busy .opt{pointer-events:none;opacity:.6}
+</style></head><body><main>
+<div class="logo">MD<span>|</span>442</div>
+<p class="sub">Keyboard firmware installer. Runs in Chrome, nothing to install. Works on Mac and Windows.</p>
+
+<div class="card"><h2><span class="n">1</span>Your keyboard</h2>
+<div class="opts">
+<button class="opt" data-kb="elite"><b>SMK-37 Elite</b><small>M-VAVE</small></button>
+<button class="opt" data-kb="pro"><b>SMK-37 Pro</b><small>also Starrykey 37 Play</small></button>
+<button class="opt" data-kb="fm1"><b>FM-1</b><small>M-VAVE</small></button>
+</div></div>
+
+<div class="card"><h2><span class="n">2</span>Firmware</h2>
+<div class="opts">
+<button class="opt" data-fw="md442"><b>MD442</b><small>Techno and house, 142 BPM</small></button>
+<button class="opt" data-fw="md187"><b>MD187</b><small>90s hip-hop and boom-bap, 96 BPM</small></button>
+<button class="opt" data-fw="md888"><b>MD888</b><small>Hard techno, 155 BPM</small></button>
+</div></div>
+
+<div class="card"><h2><span class="n">3</span>Install</h2>
 <ol>
-<li>Quit M-UPGRADE, other Chrome tabs with MD|442, the MD|442 app and any DAW. Plug the keyboard straight into the computer.</li>
-<li>Download M-VAVE's file for your keyboard: <a href="https://yms-file-store.oss-cn-hongkong.aliyuncs.com/software/firmware/SMK-37Elite/SMK-37%20Elite_016.fwsc">SMK-37 Elite_016</a> ·
-<a href="https://yms-file-store.oss-cn-hongkong.aliyuncs.com/software/firmware/SMK-37Pro/SMK-37%20Pro_016.fwsc">SMK-37 Pro_016</a> ·
-<a href="https://yms-file-store.oss-cn-hongkong.aliyuncs.com/software/firmware/FM-1.fwsc">FM-1 V15</a></li>
-<li>Choose that file: <input type="file" id="file" accept=".fwsc"></li>
+<li>Quit M-UPGRADE, the MD|442 app, other MD|442 tabs and any DAW. Only one app can talk to the keyboard at a time.</li>
+<li>Plug the keyboard straight into the computer with a USB data cable (no hub) and switch it on.</li>
+<li>Press the button below. When Chrome asks, choose <b>Allow</b> for MIDI.</li>
+<li>Keep the cable in until it says <b>Done</b>. It takes a few minutes, and the keyboard restarts by itself.</li>
 </ol>
-<p class="small">Then: quit other MIDI apps, plug the keyboard straight in, press the button, allow MIDI when Chrome asks, and keep the cable in until it says Done (a few minutes).</p>
-<p><button id="go" disabled>Write to the keyboard</button></p>
+<p><button class="go" id="go">Install</button></p>
 <progress id="bar" max="100" value="0"></progress>
-<div id="status"></div>
-<div id="log"></div>
-<p class="small">Uses the same USB-MIDI update as M-UPGRADE (X0X's fm1ota.js, GPL-3.0, Leo Kuroshita / Hügelton Instruments). No warranty.</p>
+<div id="status"></div><div id="log"></div>
+<p class="small">Switching between MD442, MD187 and MD888 works the same way: pick another one and install. Your settings are kept.</p>
+</div>
+
+<details><summary>Restore M-VAVE's own firmware</summary>
+<p class="small">To go back to M-VAVE's firmware, or if the install says the keyboard's M-VAVE firmware is too old.</p>
+<ol>
+<li><a id="stocklink" href="#">Download</a> (M-VAVE's official file).</li>
+<li>Choose that file: <input type="file" id="stockfile" accept=".fwsc"></li>
+<li><button class="sec" id="stockgo" disabled>Restore</button> and keep the cable in until it says Done.</li>
+</ol>
+</details>
+<p class="small" style="margin-top:22px">Uses the same USB-MIDI update as M-UPGRADE (X0X's fm1ota.js, GPL-3.0, Leo Kuroshita / Hügelton Instruments; SMK-37 port by genkigenki). MD firmware source: <a href="https://github.com/mathewdunn89-ggw/MD-442">github.com/mathewdunn89-ggw/MD-442</a>. M-VAVE, SMK-37 and FM-1 are trademarks of their owners. No warranty.</p>
+</main>
 <script type="module">
+
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
 //
@@ -286,70 +323,98 @@ function damage(img) {
 function deinterleave(raw) { const n = blockCount(raw); const img = logical(raw, n); if (n !== BLOCKS && damage(img)) { const alt = logical(raw, BLOCKS); if (!damage(alt)) return alt; } return img; }
 const MARK = new TextEncoder().encode("FELUCCA-LOADER-1");
 function hasMark(raw) { outer: for (let i = 0; i + MARK.length <= raw.length; i++) { for (let j = 0; j < MARK.length; j++) if (raw[i + j] !== MARK[j]) continue outer; return true; } return false; }
-let pkg = null, busy = false;
-if (!navigator.requestMIDIAccess) say("This browser has no Web MIDI. Open this page in Google Chrome.");
-$("file").addEventListener("change", async (e) => {
-  const f = e.target.files && e.target.files[0]; if (!f) return;
-  take(new Uint8Array(await f.arrayBuffer()), f.name);
-});
-document.querySelectorAll("[data-fw]").forEach((btn) => btn.addEventListener("click", async () => {
-  pkg = null; $("go").disabled = true; say("Loading " + btn.textContent + " ...");
-  try { const r = await fetch(btn.dataset.fw, { cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); take(new Uint8Array(await r.arrayBuffer()), btn.textContent); }
-  catch (err) { say("Could not load " + btn.textContent + ": " + err.message); }
-}));
+
+const KB = { elite: "smk37-elite", pro: "smk37-pro", fm1: "fm1" };
+const STOCK = {
+  elite: ["SMK-37 Elite_016", "https://yms-file-store.oss-cn-hongkong.aliyuncs.com/software/firmware/SMK-37Elite/SMK-37%20Elite_016.fwsc"],
+  pro: ["SMK-37 Pro_016", "https://yms-file-store.oss-cn-hongkong.aliyuncs.com/software/firmware/SMK-37Pro/SMK-37%20Pro_016.fwsc"],
+  fm1: ["FM-1 V15", "https://yms-file-store.oss-cn-hongkong.aliyuncs.com/software/firmware/FM-1.fwsc"] };
+let kb = "elite", fw = "md442", pkg = null, busy = false;
+const pick = (group, val) => document.querySelectorAll(`[data-${group}]`).forEach((b) => b.classList.toggle("on", b.dataset[group] === val));
+function refresh() {
+  pick("kb", kb); pick("fw", fw);
+  $("stocklink").textContent = "Download " + STOCK[kb][0]; $("stocklink").href = STOCK[kb][1];
+  $("go").textContent = "Install " + fw.toUpperCase() + " 1.5";
+}
+document.querySelectorAll("[data-kb]").forEach((b) => b.onclick = () => { if (!busy) { kb = b.dataset.kb; refresh(); } });
+document.querySelectorAll("[data-fw]").forEach((b) => b.onclick = () => { if (!busy) { fw = b.dataset.fw; refresh(); } });
+refresh();
+if (!navigator.requestMIDIAccess) { say("This browser can't talk to the keyboard. Open this page in Google Chrome (or Edge) on a Mac or PC."); $("go").disabled = true; }
+
 function take(raw, label) {
-  pkg = null; $("go").disabled = true;
   let product = "";
   try { product = productOf(raw); } catch (_) {}
-  if (!/^[^_]+_\d+$/.test(product)) { say("That isn't an M-VAVE firmware file (it says " + JSON.stringify(product) + ")."); return; }
-  const md = hasMark(raw);
-  const img = deinterleave(raw), d = damage(img);
-  if (d) { say("This file looks damaged (" + d + "). Download it again."); return; }
-  pkg = { img, product, md }; $("go").disabled = busy;
-  say("Ready: " + (md ? label + " (" + product + ")" : "M-VAVE " + product) + ". Press Write to the keyboard.");
+  if (!/^[^_]+_\d+$/.test(product)) throw new Error("that isn't a keyboard firmware file");
+  const md = hasMark(raw), img = deinterleave(raw), d = damage(img);
+  if (d) throw new Error("the file looks damaged (" + d + "): download it again");
+  return { img, product, md, label };
 }
-$("go").addEventListener("click", async () => {
-  if (!pkg || busy) return;
+async function write(p) {
   let midi;
-  try { midi = await navigator.requestMIDIAccess({ sysex: true }); } catch (_) { say("Chrome did not allow MIDI. Click the icon in the address bar, allow MIDI, and press again."); return; }
-  busy = true; $("go").disabled = true;
-  const total = pkg.img.length;
+  try { midi = await navigator.requestMIDIAccess({ sysex: true }); }
+  catch (_) { say("Chrome did not allow MIDI. Click the icon at the left of the address bar, allow MIDI, reload and try again."); return; }
+  busy = true; document.body.classList.add("busy"); $("go").disabled = $("stockgo").disabled = true;
+  $("bar").value = 0; $("log").textContent = "";
+  const reads = Math.ceil(p.img.length / 512);
   const step = (k, a) => {
     log(k + " " + (a ?? ""));
-    if (k === "start") say("Starting the update on " + a + " ...");
-    if (k === "verify") say("Checking (" + a + " reads) ...");
-    if (k === "loader") say("Switching to update mode ...");
-    if (k === "write") { say("Writing ... keep the cable in."); if (typeof a === "number") $("bar").value = Math.min(99, a * 100 / Math.max(1, Math.ceil(total / 512))); }
-    if (k === "reboot") say("Restarting ...");
+    if (k === "start") say("Found " + a + ". Starting ...");
+    if (k === "verify") { say("Checking the file on the keyboard (" + a + ") ..."); $("bar").value = Math.min(5, a / 10); }
+    if (k === "loader") { say("Switching the keyboard to update mode ..."); $("bar").value = 6; }
+    if (k === "write") { say("Writing " + p.label + " ... keep the cable in."); if (typeof a === "number") $("bar").value = 6 + Math.min(93, a * 93 / reads); }
+    if (k === "reboot") { say("Restarting the keyboard ..."); $("bar").value = 99; }
     if (k === "done") { $("bar").value = 100; say("Done. The keyboard runs " + a + "."); }
   };
   try {
     const up = new Updater(midi, log);
     const ota = await up.find((id) => /^ota-/i.test(id.model));
-    if (pkg.md) {
-      const dev = ota || await up.find(null);
-      if (dev) {
-        const smk = /SMK-37|MKE-P37|STARRYKEY/i.test(dev.id.model);
-        if ((ota && dev.id.version < 900) || (!ota && smk && dev.id.version < 16)) {
-          dev.link.close();
-          throw new Error("the keyboard runs M-VAVE " + dev.id.text + ", which can't take MD|442 yet. Restore M-VAVE 016 first (choose M-VAVE's file), then install this");
-        }
-        if (!ota) dev.link.close();
+    const dev = ota || await up.find(null);
+    if (!dev) throw Object.assign(new Error(""), { code: "notfound" });
+    log("keyboard: " + dev.id.text);
+    if (p.md) {
+      const smk = /SMK-37|MKE-P37|STARRYKEY/i.test(dev.id.model);
+      if ((ota && dev.id.version < 900) || (!ota && smk && dev.id.version < 16)) {
+        dev.link.close();
+        throw new Error("the keyboard runs M-VAVE " + dev.id.text.replace(/^ota-/, "") + ", which is too old for MD firmware. Use \"Restore M-VAVE firmware\" below with the 016 file first, then install again");
       }
     }
+    dev.link.close();
     if (ota) {
-      log("in update mode: " + ota.id.text); ota.link.close();
-      if (await up.resume(pkg.img, step, pkg.product)) { $("bar").value = 100; say("Done. Switch the keyboard off and on if it hasn't restarted."); }
-      else say("It stopped. Unplug, plug back in and press the button again.");
-    } else {
-      await up.install(pkg.img, pkg.product, step);
-    }
+      if (await up.resume(p.img, step, p.product)) { $("bar").value = 100; say("Done. If the keyboard hasn't restarted, switch it off and on."); }
+      else say("It stopped. Unplug the keyboard for 5 seconds, plug it back in and press the button again.");
+    } else await up.install(p.img, p.product, step);
   } catch (e) {
     if (e && e.code === "mismatch") { $("bar").value = 100; say("Done. The keyboard reports " + e.detail + "."); }
-    else if (e && e.code === "notfound") say("Keyboard not found. Quit other MIDI apps, unplug it for 10 seconds, plug it back in and press again.");
+    else if (e && e.code === "notfound") say("Keyboard not found. Quit M-UPGRADE, the MD|442 app, other Chrome tabs and any DAW, plug the keyboard straight in (no hub) and press again.");
+    else if (e && e.code === "model") say("That's the wrong keyboard: " + e.message + ". Pick your keyboard at the top.");
     else say("Stopped: " + (e && e.message) + ". Pressing the button again is safe.");
     log(String(e && e.stack || e));
   }
-  busy = false; $("go").disabled = !pkg;
-});
+  busy = false; document.body.classList.remove("busy"); $("go").disabled = false; $("stockgo").disabled = !stockPkg;
+}
+$("go").onclick = async () => {
+  if (busy) return;
+  const name = fw + "-" + KB[kb] + ".fwsc";
+  say("Loading " + fw.toUpperCase() + " 1.5 ...");
+  try {
+    const r = await fetch("fw/" + name, { cache: "no-store" });
+    if (!r.ok) throw new Error(name + ": HTTP " + r.status);
+    const p = take(new Uint8Array(await r.arrayBuffer()), fw.toUpperCase() + " 1.5");
+    if (!p.md) throw new Error(name + " is not an MD firmware");
+    await write(p);
+  } catch (e) { if (!busy) say("Could not start: " + e.message); }
+};
+let stockPkg = null;
+$("stockfile").onchange = async (e) => {
+  stockPkg = null; $("stockgo").disabled = true;
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  try {
+    const p = take(new Uint8Array(await f.arrayBuffer()), "M-VAVE firmware");
+    if (p.md) throw new Error("that's an MD file, not M-VAVE's own. Use the install button above for MD firmware");
+    stockPkg = p; $("stockgo").disabled = busy;
+    say("Ready to restore M-VAVE " + p.product + ". Press Restore.");
+  } catch (err) { say("Can't use that file: " + err.message + "."); }
+};
+$("stockgo").onclick = () => { if (stockPkg && !busy) write(stockPkg); };
+window.addEventListener("beforeunload", (e) => { if (busy) { e.preventDefault(); e.returnValue = "The keyboard is being written."; } });
 </script></body></html>

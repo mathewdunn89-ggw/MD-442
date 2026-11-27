@@ -1430,7 +1430,7 @@ const GUIDE = [
     'Or press LEARN, touch anything here (a knob, a drum, a scene, MUTE or MUTE GROUP) and press the pad or turn the knob. Mappings stay on this device.',
     'Sync with an M-VAVE FM-1 (or any box with MIDI in): plug it in with USB, press CONNECT, then CLOCK OUT. It follows MD|442\'s tempo, start and stop. To have MD|442 follow the FM-1 instead, leave CLOCK OUT off and let the FM-1 send clock.',
     'Windows lets only one app use the keyboard at a time. Close the M-VAVE editor and your DAW first, or the SMK-37 will not appear here.',
-    ['Want MD|442 inside the keyboard itself? Get the firmware', '/md442/download/#firmware']]],
+    ['Want MD|442 inside the keyboard itself? Install the firmware', '/md442/install.html']]],
   ['ABLETON', [
     'Mac: open Audio MIDI Setup, Window, Show MIDI Studio, double-click IAC Driver and tick "Device is online". Windows: install the free loopMIDI and add a port.',
     'In Live: Settings, Link Tempo MIDI. Under MIDI Ports, set Sync to On for the IAC Driver (or loopMIDI) output.',
