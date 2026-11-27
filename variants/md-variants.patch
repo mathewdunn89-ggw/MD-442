@@ -1619,7 +1619,7 @@ index 1f131f0..baf2847 100644
              st_erase(s);
              ST_IDLE();
 diff --git a/tools/build.py b/tools/build.py
-index f469297..250fdff 100755
+index f469297..51d0c13 100755
 --- a/tools/build.py
 +++ b/tools/build.py
 @@ -63,7 +63,7 @@ SDK_SHA256 = {
@@ -1642,6 +1642,22 @@ index f469297..250fdff 100755
      if BOARD == "smk37":            # SMK store owner (storage.c st_owner_check): X0X's own family, untagged data cleared
          fam = os.environ.get("FELUCCA_DATA_FAMILY", "X0X")
          if not re.fullmatch(r"[A-Z0-9]{1,7}", fam):
+@@ -433,6 +437,15 @@ def main():
+         if not m:
+             raise SystemExit(f"--release {a.release}: use X.Y[.Z][-suffix], up to two digits each")
+         PRODUCT = BOARD_PREFIX[BOARD] + "%02d%02d%02d" % (int(m[1]), int(m[2]), int(m[3] or 0))
++        if os.environ.get("X0X_ID3") == "1":
++            # MD Hardware: three digits after the underscore, the shape of the stock "_016" and the dev "_900".
++            # M-UPGRADE 3.11 refuses a longer number ("Invalid device identity"), which locks the keyboard out
++            # of M-Vave's own restore. 9 + major + minor, one digit each (1.5 -> _915).
++            if int(m[1]) > 9 or int(m[2]) > 9 or m[3]:
++                raise SystemExit("X0X_ID3: X.Y with one digit each")
++            PRODUCT = BOARD_PREFIX[BOARD] + "%d%d" % (int(m[1]), int(m[2]))
++        if not re.fullmatch(r"[^_]+_\d+", PRODUCT):
++            raise SystemExit(f"identity {PRODUCT!r}: model, underscore, digits")
+         VERSION = a.release.upper() if "BETA" in a.release.upper() else a.release.upper() + " BETA"
+         name = f"{stem}-{a.release}.fwsc"
+     fm1pkg_make.SDK = a.sdk
 diff --git a/tools/md_gen_presets.py b/tools/md_gen_presets.py
 new file mode 100644
 index 0000000..32e4885

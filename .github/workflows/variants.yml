@@ -40,7 +40,7 @@ jobs:
           for V in 442 187 888; do
             FAM=X0X   # one store family for all three (their projects carry MD_SET_ID): the global settings survive a switch
             if [ $V = 442 ]; then BANK=; else BANK="$PWD/build/md$V"; python3 tools/md_gen_samples.py $V "$BANK"; fi
-            export MD_VARIANT=$V FELUCCA_DATA_FAMILY=$FAM X0X_BREAK_BANK="$BANK"
+            export X0X_ID3=1 MD_VARIANT=$V FELUCCA_DATA_FAMILY=$FAM X0X_BREAK_BANK="$BANK"
             BOARD=smk37 MODEL=elite ./build.sh --release 1.5 > ../out/build-md$V-elite.log 2>&1 || { tail -60 ../out/build-md$V-elite.log; exit 1; }
             tail -4 ../out/build-md$V-elite.log
             cp "$(ls -t build/*.fwsc | head -1)" ../out/md$V-smk37-elite.fwsc
@@ -70,6 +70,19 @@ jobs:
         env: { GH_TOKEN: '${{ github.token }}' }
         run: |
           for f in md442-smk37-elite md187-smk37-elite md888-smk37-elite; do test -f "out/$f.fwsc" || { echo "::error::$f was not built"; exit 1; }; done
+          # M-UPGRADE 3.11 takes only a 3-digit identity number (the stock "_016"): anything else locks out M-Vave's restore
+          python3 - <<'PY'
+          import glob, re, sys
+          sys.path.insert(0, "firmware/tools")
+          import fm1_install as f
+          bad = 0
+          for p in sorted(glob.glob("out/*.fwsc")):
+              ident, _ = f.load_package(p, False)
+              ok = re.fullmatch(r"(SMK-37 (Pro|Elite)|FM-1)_9\d\d", ident) is not None
+              print(p, ident, "ok" if ok else "REFUSED BY M-UPGRADE")
+              bad |= not ok
+          sys.exit(1 if bad else 0)
+          PY
           if [ "${{ github.event.inputs.publish }}" = yes ]; then
             gh release create "md-hardware-${GITHUB_RUN_NUMBER}" out/*.fwsc out/md-hardware.zip --target "$GITHUB_SHA" \
               --title "MD Hardware firmwares (MD442, MD187, MD888) build ${GITHUB_RUN_NUMBER}" --notes-file variants/INSTALL.md --latest=false
