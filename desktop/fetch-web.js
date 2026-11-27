@@ -23,4 +23,9 @@ async function get(rel) {
     }
   }
 }
-(async () => { while (queue.length) await get(queue.shift()); })().catch(e => { console.error(e); process.exit(1); });
+// Files the app loads from JavaScript (the MD187/MD888 sample banks) are listed in the service worker's CORE list.
+async function fromServiceWorker() {
+  const res = await fetch(new URL('sw.js', BASE)); if (!res.ok) return;
+  for (const m of (await res.text()).matchAll(/'\.\/((?:samples)\/[^']+)'/g)) queue.push(m[1]);
+}
+(async () => { await fromServiceWorker(); while (queue.length) await get(queue.shift()); })().catch(e => { console.error(e); process.exit(1); });
