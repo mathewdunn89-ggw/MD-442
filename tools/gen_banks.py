@@ -117,7 +117,7 @@ def b187(out):
     for s in (7, 15): place(br, GS, at(s), .35)
     for s in range(16): place(br, hat(dec=.03 if s % 4 != 2 else .09), at(s), .38 if s % 2 == 0 else .22)
     br = filt(br, 'high', 70) * .7 + br * .3   # less sub than a kick on its own: the break sits on top of MD|187's kick instead of doubling it
-    write(f'{out}/md187/BOOMBP.wav', room(crush(br), .35, .12))
+    write(f'{out}/md187/BOOMBP.wav', room(crush(br), .2, .03))
     # DRUMS: 8 one-shots, one per slice: kick, deep kick, snare, crack snare, closed hat, open hat, shaker, rim
     dr = np.zeros(int(SR * L)); sl = L / 8
     for j, x in enumerate([K, K2, S, snare(f=230, tone=.8, snap=.7, dec=.11, crack=1.4), hat(dec=.035), hat(dec=.18, sec=.3), shaker(), rim()]):
@@ -129,14 +129,14 @@ def b187(out):
           rhodes([E + 14, E + 17, E + 21, E + 24]), rhodes([E + 19, E + 22, E + 26, E + 29]), rhodes([E + 12, E + 19, E + 22, E + 26], dec=.8), rhodes([E + 10, E + 14, E + 17, E + 21])]
     sb = np.zeros(int(SR * L))
     for j, x in enumerate(ch): place(sb, x[:int(sl * SR)], j * sl)
-    write(f'{out}/md187/STABS.wav', room(crush(sb, 32000, 12), .6, .14, 9000))
+    write(f'{out}/md187/STABS.wav', room(crush(sb, 32000, 12), .25, .04, 9000))
     # VOX: synthesised vowel shouts ("hey", "ho", "uh", "yeah"...), slice 8 is a scratch
     V = [((730, 1090, 2440), 170, .25), ((570, 840, 2410), 150, .4), ((300, 870, 2240), 140, -.2), ((660, 1700, 2400), 190, .3),
          ((270, 2290, 3010), 210, .15), ((640, 1190, 2390), 130, -.3), ((490, 1350, 1690), 165, .2)]
     vb = np.zeros(int(SR * L))
     for j, (fm, f0, gl) in enumerate(V): place(vb, vowel(f0, fm, sec=.3, dec=.13, glide=gl), j * sl)
     place(vb, scratch(vowel(160, (700, 1200, 2600), .3, .2)), 7 * sl, 1.6)
-    write(f'{out}/md187/VOX.wav', room(crush(filt(vb, 'high', 220), 32000, 12), .4, .12))
+    write(f'{out}/md187/VOX.wav', room(crush(filt(vb, 'high', 220), 32000, 12), .2, .03))
 
 def b888(out):
     bpm = 155; L = bar(bpm); st = L / 16; sl = L / 8
