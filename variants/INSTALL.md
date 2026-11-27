@@ -26,50 +26,47 @@ always go back to M-VAVE's own firmware.
 Switching between MD442, MD187 and MD888 is the same: run the installer again and pick another. Your global
 settings (MIDI channels, clock and notes out, output level, key lights, autosave) stay as they are. Each firmware
 starts with its own patterns and sound; the other firmware's saved patterns are kept until you save in this one.
-MD|442 1.2 users keep their patterns in MD442 1.5.
+MD|442 1.2 and 1.5 users keep their patterns in MD442 1.6.
 
 Windows or Linux: install Python 3, run `pip install mido python-rtmidi`, then
 `python3 tools/fm1_install.py md187-smk37-elite.fwsc` (or the file you want).
 
-## PERFORM controls (all three, version 1.5)
-Every stock X0X button, knob, MIDI setting and the update combo work exactly as in MD|442 1.2. The new moves
-use only controls that did nothing before: KNOB BANK, the 10 end keys of the keybed, PATCH + < / >, and the mod
-wheel on drums. PATCH is SHIFT. The one-page cheat sheet (md-hardware-controls.pdf) shows them on a picture of the Elite.
+## Playing it (all three, version 1.6)
+The one-page cheat sheet (md-hardware-controls.pdf) has all of this on one page.
 
-**Build a beat**
 | Control | What it does |
 | --- | --- |
-| black keys, or KNOB BANK + OCTAVE- / OCTAVE+ | pick the instrument (909's 11 tracks, the 808's, 303A, 303B, BREAK) |
-| pads (or white keys) | the instrument's 16 steps: tap on, tap off, hold for that step's sound; OCTAVE- / + the bars (stock) |
-| SEQ REC + keys or pads | record live |
-| KNOB BANK + FADER BANK | DRUM PADS: pads 1-11 play the kit on screen, 12-16 the other kit's BD SD CP CH OH, with velocity; with REC they record to the nearest step. Again: back to steps |
-| KNOB BANK held + K2 / K3 / K4 | the instrument's FILTER (left low-pass, right high-pass, rests at OFF), RESONANCE, DECAY (303: cutoff, reso, env mod; BREAK: pitch) |
-| K2 / K3 / K4 alone | X0X's SELECT, ALGORITHM, PRESETS (stock); PATCH + them: tempo / part / pattern |
-
-**Mix it live**
-| Control | What it does |
-| --- | --- |
-| faders | A: 909, 808, 303A, 303B levels. FADER BANK: break level, reverb, delay, master filter |
-| KNOB BANK | tap: MUTE pads (lit; 1-11 tracks, 12-16 parts), tap again to leave. Hold + pads: mute while held |
-| PATCH + a pad (in MUTE) | solo that track or part; again to unsolo |
-| PATCH + KNOB BANK | unmute everything |
+| < / > | pick the instrument: DRUMS 1 (909), DRUMS 2 (808), BASS, CHORDS, BREAKS. The screen shows its name |
+| keys (F3 to G5) | always play the instrument on screen, never the steps. Drums: BD SD CP CH OH LT MT HT RS CR RD from F3, again from E4. BASS and CHORDS: notes (OCTAVE- / + the octave). BREAKS: slices 1-8 |
+| pads | the instrument's 16 steps: tap on, tap off. BASS / CHORDS: a new step takes the note you last played; hold a pad + press a key to set that step's note |
+| REC + PLAY | what you play on the keys goes into the pattern on the nearest step |
+| FX | the faders' switch. Lit: REVERB, DELAY, DRIVE, FILTER. Off: volumes of DRUMS 1, DRUMS 2, BASS, CHORDS |
+| FADER BANK | fader 1 switches between DRUMS 1 and BREAKS (lit: BREAKS) |
+| KNOB BANK held + K2 / K3 / K4 | filter, resonance, decay of the instrument (BASS / CHORDS: cutoff, reso, env mod) |
+| PARA | the instrument's sound pages; on CHORDS the CHORD page picks the chord: Minor, Major, Min7, Maj7, Min9, Sus4, 5th, Off |
+| KNOB BANK tap | the pads mute (1-11 drums, 12-16 instruments); PATCH + a pad solos; PATCH + KNOB BANK unmutes all |
 | PATCH + < / >, PATCH + pad | the pattern before / after, or that pattern, at the end of the bar |
+| hold CHORD while playing | accent (or hit the key hard) |
+
+**CHORDS** is new: one key plays a whole chord through one filter, like a dub-techno or house stab. It starts as
+a minor 7th on MD442 (MD442's Deep House and Dub Techno patterns play its stab), a minor 9th on MD187 and a dark
+minor stab on MD888. **BASS** on MD442 starts as a round bass; turn up the resonance and env mod for acid.
+A project saved with 1.5 gets the new BASS and CHORDS sound once, the first time 1.6 loads it. Its patterns stay.
 
 **Build-ups and breakdowns: the 10 end keys of the keybed (hold to play)**
 | Key | What it does |
 | --- | --- |
-| C3, C#3, D3, D#3 | BEAT REPEAT 1/2, 1/4, 1/8, 1/16 bar; the fastest held wins; let go and it is back in time |
-| E3 | FILL: a roll on the selected drum (the snare if none), 8ths, 16ths from the next bar, then 32nds, getting louder |
-| G#5 | ECHO THROW: the part on screen into the delay; the echoes ring for a bar after you let go |
-| A5 | KILL LOW: kicks and both 303s out; back on the next one |
-| A#5 | WASH: reverb on the part on screen (PATCH + ECHO or WASH: every part) |
-| B5 | RISER: master high-pass sweeps up over 4 bars and the reverb swells; back on the next one |
+| C3, C#3, D3, D#3 | BEAT REPEAT 1/2, 1/4, 1/8, 1/16 bar; let go and it is back in time |
+| E3 | FILL: a roll on the drum on screen, faster and louder each bar |
+| G#5 | ECHO THROW: the instrument into the delay; the echoes ring for a bar after you let go |
+| A5 | KILL LOW: kicks and bass out; back on the next one |
+| A#5 | WASH: reverb on the instrument (PATCH + ECHO or WASH: every part) |
+| B5 | RISER: master high-pass sweeps up over 4 bars; back on the next one |
 | C6 | DROP: everything out, tails ring; back on the next one |
 
-The mod wheel is a high-pass riser on the selected drum or the BREAK (on a 303 it opens the cutoff). With the BREAK
-selected the black keys play its 8 slices live (MD187 stabs and vocal hits, MD888 trance stabs and hits).
-The filters start at OFF each time the keyboard starts. Holding OCTAVE- and OCTAVE+ together for 5 seconds puts
-the keyboard in update mode (as in 1.2), so M-UPGRADE can always reach it.
+Unchanged from stock: holding OCTAVE- and OCTAVE+ together for 5 seconds puts the keyboard in update mode, so
+M-UPGRADE can always reach it; GLOBE opens the settings; your global settings are kept through every update.
+With the app over USB the Elite sends and follows play / stop and MIDI clock; unplugged it runs on its own.
 
 ## Go back to the stock firmware
 Install M-VAVE's own package for your model with M-VAVE's updater (M-UPGRADE).
