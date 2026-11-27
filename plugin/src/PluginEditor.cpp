@@ -7,7 +7,8 @@ static constexpr int ROWS = NUM_KEYS + 1, BREAK = NUM_KEYS;   // the 14 rows of 
 static juce::String pidOf(const std::string& k) { return juce::String(k).replace(".", "_"); }
 
 // ------------------------------------------------------------------ look
-MD442Look::MD442Look() {
+MD442Look::MD442Look() { refresh(); }
+void MD442Look::refresh() {
     setColour(juce::TextButton::buttonColourId, ui::cell); setColour(juce::TextButton::buttonOnColourId, ui::accent);
     setColour(juce::TextButton::textColourOffId, ui::text); setColour(juce::TextButton::textColourOnId, juce::Colours::black);
     setColour(juce::ComboBox::backgroundColourId, ui::cell); setColour(juce::ComboBox::textColourId, ui::text); setColour(juce::ComboBox::outlineColourId, ui::cell);
@@ -246,7 +247,52 @@ MD442Editor::MD442Editor(MD442Processor& p) : AudioProcessorEditor(&p), proc(p) 
     addAndMakeVisible(toastLbl); toastLbl.setColour(juce::Label::backgroundColourId, ui::accent); toastLbl.setColour(juce::Label::textColourId, juce::Colours::black);
     toastLbl.setJustificationType(juce::Justification::centred); toastLbl.setFont(juce::FontOptions(13.f, juce::Font::bold)); toastLbl.setVisible(false);
     setResizable(true, true); setResizeLimits(980, 620, 1800, 1100); setSize(1120, 690);
-    rebuildVoiceKnobs(); refreshTop(); startTimerHz(30);
+    setWantsKeyboardFocus(true);
+    rebuildVoiceKnobs(); refreshTop(); applyStyle((int)std::lround(proc.engine.pv("brk.kit"))); startTimerHz(30);
+}
+// the keys go to the editor, not to whichever button was clicked last (SPACE on a focused button would press that button)
+void MD442Editor::keysToEditor() {
+    std::function<void(juce::Component*)> walk = [&](juce::Component* c) { for (auto* ch : c->getChildren()) { ch->setWantsKeyboardFocus(false); walk(ch); } };
+    walk(this);
+}
+void MD442Editor::applyStyle(int st) {
+    st = juce::jlimit(0, 2, st); if (st == style) return; style = st;
+    ui::setStyle(st); look.refresh(); toastLbl.setColour(juce::Label::backgroundColourId, ui::accent);
+    sendLookAndFeelChange(); refreshTop(); repaint();
+}
+// the web app's shortcuts. One idea per modifier: a plain letter is a step, Shift + letter selects a drum, Alt + letter mutes it.
+bool MD442Editor::keyPressed(const juce::KeyPress& kp) {
+    auto mods = kp.getModifiers(); if (mods.isCommandDown() || mods.isCtrlDown()) return false;
+    int code = kp.getKeyCode(); auto& e = proc.engine; int sel = proc.selected;
+    if (code == juce::KeyPress::spaceKey) {
+        if (proc.hostPlaying()) return false;   // the DAW is playing: SPACE is the DAW's
+        { const juce::ScopedLock l(proc.lock); e.internalPlay = !e.internalPlay; } refreshTop(); return true;
+    }
+    if (code == juce::KeyPress::upKey || code == juce::KeyPress::downKey) { select(juce::jlimit(0, ROWS - 1, sel + (code == juce::KeyPress::upKey ? -1 : 1)), false); return true; }
+    if (code == '[' || code == ']') { { const juce::ScopedLock l(proc.lock); e.last = juce::jlimit(1, 16, e.last + (code == '[' ? -1 : 1)); } refreshTop(); grid.repaint(); return true; }
+    if (code >= '1' && code <= '8') { if (auto* b = sceneBtns[code - '1']) if (b->isVisible()) b->onClick(); refreshTop(); return true; }
+    static const juce::String STEPS_ = "QWERTYUIASDFGHJK", DRUMS = "QWERTYUIASDFGH";   // drums: Kick Q, Snare W, Clap E, Rim R, toms T Y U, hats I A, Crash S, Ride D, Bass F, Chords G, Accent H
+    int ch = juce::CharacterFunctions::toUpperCase((juce::juce_wchar)code);
+    if (mods.isAltDown() || mods.isShiftDown()) {
+        if (ch == 'M' && mods.isShiftDown() && sel < NUM_SOUND) { { const juce::ScopedLock l(proc.lock); e.solo = e.solo == sel ? -1 : sel; e.apply(); } grid.repaint(); return true; }
+        int k = DRUMS.indexOfChar((juce::juce_wchar)ch); if (k < 0) return false;
+        if (mods.isAltDown()) {
+            if (mods.isShiftDown()) { if (k != AC) { const juce::ScopedLock l(proc.lock); e.solo = e.solo == k ? -1 : k; e.apply(); } }
+            else if (auto* p = proc.muteParam[k]) p->setValueNotifyingHost(e.mute[(size_t)k] ? 0.f : 1.f);
+            grid.repaint(); return true;
+        }
+        select(k, true); return true;
+    }
+    if (ch == 'M') { if (sel < NUM_KEYS) if (auto* p = proc.muteParam[sel]) p->setValueNotifyingHost(e.mute[(size_t)sel] ? 0.f : 1.f); grid.repaint(); return true; }
+    if (ch == 'N') { addScene.onClick(); return true; }
+    if (ch == 'L') { chainBtn.onClick(); return true; }
+    int i = STEPS_.indexOfChar((juce::juce_wchar)ch);
+    if (i >= 0) {
+        const juce::ScopedLock l(proc.lock); auto& sc = e.scene();
+        if (sel == BREAK) sc.brk[(size_t)i] = sc.brk[(size_t)i] == '.' ? 'g' : '.'; else if (sel < NUM_KEYS) sc.g[(size_t)sel][(size_t)i] = !sc.g[(size_t)sel][(size_t)i];
+        grid.repaint(); return true;
+    }
+    return false;
 }
 MD442Editor::~MD442Editor() { stopTimer(); if (sender) sender->stopThread(3000); setLookAndFeel(nullptr); }
 
@@ -261,7 +307,7 @@ void MD442Editor::rebuildVoiceKnobs() {
                                                                         {"pan.BRK", "PAN"}, {"flt.BRK", "FILTER"}, {"drv.BRK", "DRIVE"}, {"rev.BRK", "VERB"}, {"ech.BRK", "ECHO"}})
             addAndMakeVisible(voiceKnobs.add(new Knob(*this, m.first, m.second)));
         voiceTitle = "BREAKS: loops and 8 slices from MD187 / MD888. Click a step: slice 1-8, LOOP (plays the loop in time), ~ (keep ringing). Pads C#2-G#2 play the slices.";
-        resized(); repaint(); return;
+        keysToEditor(); resized(); repaint(); return;
     }
     for (auto& kn : md442::voiceKnobs(k)) addAndMakeVisible(voiceKnobs.add(new Knob(*this, kn.key, kn.label)));
     if (k < NUM_SOUND) {
@@ -273,7 +319,7 @@ void MD442Editor::rebuildVoiceKnobs() {
         }
     }
     voiceTitle = juce::String(voices()[(size_t)k].name).toUpperCase();
-    resized(); repaint();
+    keysToEditor(); resized(); repaint();
 }
 void MD442Editor::refreshTop() {
     auto& e = proc.engine; int n, sc, last, pend; bool chain, playing;
@@ -292,6 +338,7 @@ void MD442Editor::timerCallback() {
     bool running = proc.hostPlaying() || e.internalPlay; if (!running) h = -1;
     if (h != grid.head || f != grid.flash) { grid.head = h; grid.flash = f; grid.repaint(); }
     if (proc.stateChanged.exchange(false)) { if (proc.selected != lastSel) rebuildVoiceKnobs(); grid.repaint(); for (auto* k : voiceKnobs) k->repaint(); }
+    applyStyle((int)std::lround(e.pv("brk.kit")));
     refreshTop();
     if (toastTicks > 0 && --toastTicks == 0) toastLbl.setVisible(false);
     static int tick = 0; if (++tick % 15 == 0) grid.repaint();   // pattern edits made from elsewhere (scene changes, chain)
@@ -301,7 +348,8 @@ void MD442Editor::toast(const juce::String& msg) { toastLbl.setText(msg, juce::d
 
 void MD442Editor::paint(juce::Graphics& g) {
     g.fillAll(ui::bg);
-    g.setColour(ui::text); g.setFont(juce::FontOptions(22.f, juce::Font::bold)); g.drawText("MD|442", 14, 8, 110, 30, juce::Justification::centredLeft);
+    g.setColour(ui::text); g.setFont(juce::FontOptions(22.f, juce::Font::bold)); g.drawText("MD|", 14, 8, 44, 30, juce::Justification::centredLeft);
+    g.setColour(style ? ui::accent : ui::text); g.drawText(style == 1 ? "187" : style == 2 ? "888" : "442", 50, 8, 60, 30, juce::Justification::centredLeft);
     for (auto [r, t] : std::vector<std::pair<juce::Rectangle<int>, juce::String>> {{voiceArea, voiceTitle}, {masterArea, "MASTER"}, {fxArea, "EFFECTS"}}) {
         g.setColour(ui::panel); g.fillRoundedRectangle(r.toFloat(), 6);
         g.setColour(ui::dim); g.setFont(juce::FontOptions(11.f, juce::Font::bold)); g.drawText(t, r.reduced(10, 4).removeFromTop(14), juce::Justification::centredLeft);
