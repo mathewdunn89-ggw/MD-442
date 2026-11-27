@@ -80,12 +80,13 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <p><button class="go" id="go">Install</button></p>
 <progress id="bar" max="100" value="0"></progress>
 <div id="status"></div><div id="log"></div>
-<p class="small"><b>New in 1.6:</b> the keys play, the pads are the steps. <a href="#manual">The quick guide is just below.</a> 1.6 has not been tested on a keyboard yet; 1.5 is below if you want it back.</p>
+<p class="small"><b>New in 1.7:</b> hold a pad and move a fader for that instrument's volume. <a href="#manual">The quick guide is just below.</a> 1.7 has not been tested on a keyboard yet; 1.6 and 1.5 are below if you want one back.</p>
 </div>
 
-<details><summary>Go back to version 1.5</summary>
-<p class="small">The version before: stock key layout (keys and pads are both steps). Pick your keyboard and firmware at the top, then:</p>
-<p><button class="sec" id="goold">Install 1.5</button></p>
+<details><summary>Go back to version 1.6 or 1.5</summary>
+<p class="small">Pick your keyboard and MD-Module at the top, then:</p>
+<p><button class="sec" id="goprev">Install 1.6</button> <span class="small">The version before: the same layout, without hold a pad + fader.</span></p>
+<p><button class="sec" id="goold">Install 1.5</button> <span class="small">The stock key layout: keys and pads are both steps.</span></p>
 </details>
 
 
@@ -121,7 +122,7 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <div class="q"><i>4</i><b><kbd>FX</kbd> switches the faders</b><span>Lit: reverb, delay, drive, filter. Off: volumes.</span></div>
 <div class="q wide"><i>5</i><b><kbd>REC</kbd> then <kbd>PLAY</kbd> records you</b><span>Play the keys in time and it loops. Fix it on the pads. <kbd>BT</kbd> saves.</span></div>
 </div>
-<p class="small" style="margin:2px 0 22px"><span class="dot" style="background:#ffb347"></span>Hold one of the 5 keys on the left: beat repeat and fill. <span class="dot" style="background:#ff7ad1"></span>The 5 on the right: echo, kill low, wash, riser, drop.</p>
+<p class="small" style="margin:2px 0 22px"><span class="dot" style="background:#ffb347"></span>Hold one of the 5 keys on the left: beat repeat and fill. <span class="dot" style="background:#ff7ad1"></span>The 5 on the right: echo, kill low, wash, riser, drop.<br><span class="dot" style="background:#3dff7a"></span>Hold a pad and move a fader: that instrument's volume.</p>
 
 <h2 style="margin:0 0 10px">Want more? Open what you need</h2>
 <details id="m-keys"><summary>What the keys do on each instrument</summary>
@@ -175,6 +176,7 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <tr><td><kbd>FX</kbd> lit</td><td>1 REVERB &middot; 2 DELAY &middot; 3 DRIVE &middot; 4 FILTER (middle off, down low-pass, up high-pass).</td></tr>
 <tr><td><kbd>FX</kbd> off</td><td>1 DRUMS 1 &middot; 2 DRUMS 2 &middot; 3 BASS &middot; 4 CHORDS volume.</td></tr>
 <tr><td><kbd>FADER BANK</kbd> lit</td><td>Fader 1 is BREAKS volume instead of DRUMS 1.</td></tr>
+<tr><td>Hold a pad + any fader</td><td>That pad's instrument volume. Pads 1 to 11: the drums of the kit on screen (kick, snare, clap, closed hat, open hat, toms, rim, crash, ride). Pads 12 to 16: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS. The step or mute the press changed is put back.</td></tr>
 </table>
 <p class="small" style="margin-top:8px">A fader only takes over once you move it, so nothing jumps when you switch.</p>
 <h3 id="m-knobs" style="margin-top:16px">Knobs</h3>
@@ -237,7 +239,7 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <tr><td>Swapping</td><td>A few minutes either way, as often as you like: another module at the top of this page, or <a href="#restore">M-VAVE's own firmware back</a>. Your module settings are kept.</td></tr>
 </table>
 </details>
-<p class="small" style="margin-top:12px"><a href="fw/1.6/md-hardware-controls.pdf">The whole lot on one page (PDF)</a></p>
+<p class="small" style="margin-top:12px"><a href="fw/1.7/md-hardware-controls.pdf">The whole lot on one page (PDF)</a></p>
 </section>
 <p class="small" style="margin-top:22px">Uses the same USB-MIDI update as M-UPGRADE (X0X's fm1ota.js, GPL-3.0, Leo Kuroshita / Hügelton Instruments; SMK-37 port by genkigenki). MD firmware source: <a href="https://github.com/mathewdunn89-ggw/MD-442">github.com/mathewdunn89-ggw/MD-442</a>. M-VAVE, SMK-37 and FM-1 are trademarks of their owners. No warranty.</p>
 </main>
@@ -509,7 +511,8 @@ const pick = (group, val) => document.querySelectorAll(`[data-${group}]`).forEac
 function refresh() {
   pick("kb", kb); pick("fw", fw);
   $("stocklink").textContent = "Download " + STOCK[kb][0]; $("stocklink").href = STOCK[kb][1];
-  $("go").textContent = "Install " + fw.toUpperCase() + " 1.6";
+  $("go").textContent = "Install " + fw.toUpperCase() + " 1.7";
+  $("goprev").textContent = "Install " + fw.toUpperCase() + " 1.6";
   $("goold").textContent = "Install " + fw.toUpperCase() + " 1.5";
 }
 document.querySelectorAll("[data-kb]").forEach((b) => b.onclick = () => { if (!busy) { kb = b.dataset.kb; refresh(); } });
@@ -580,7 +583,8 @@ const install = async (dir, ver) => {
     await write(p);
   } catch (e) { if (!busy) say("Could not start: " + e.message); }
 };
-$("go").onclick = () => install("fw/1.6/", "1.6");
+$("go").onclick = () => install("fw/1.7/", "1.7");
+$("goprev").onclick = () => install("fw/1.6/", "1.6");
 $("goold").onclick = () => install("fw/", "1.5");
 let stockPkg = null;
 $("stockfile").onchange = async (e) => {

@@ -130,10 +130,9 @@
     const gate = document.createElement('div'); gate.setAttribute('role', 'dialog'); gate.setAttribute('aria-modal', 'true'); gate.setAttribute('aria-label', 'Enter the site');
     gate.style.cssText = 'position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:24px;text-align:center;background:#0a0a0a;color:#f2f2f2;transition:opacity .45s ease';
     const name = document.createElement('div'); name.textContent = 'MATHEW'; name.style.cssText = "font-family:'Anybody',sans-serif;font-weight:900;font-variation-settings:'wdth' 150;font-size:clamp(56px,14vw,200px);line-height:.82;letter-spacing:-.04em";
-    const tag = document.createElement('div'); tag.textContent = 'Full Moon Radio is on'; tag.style.cssText = "font-family:'Instrument Serif',serif;font-style:italic;font-size:clamp(20px,2.4vw,30px);color:#c8c8c8";
     const go = document.createElement('button'); go.type = 'button'; go.textContent = 'Enter'; go.style.cssText = mono + ';padding:20px 44px;border-radius:999px;border:1px solid #3dff7a;background:#3dff7a;color:#0a0a0a;cursor:pointer;box-shadow:0 0 0 0 rgba(61,255,122,.5),0 0 24px rgba(61,255,122,.45)';
-    const quiet = document.createElement('button'); quiet.type = 'button'; quiet.textContent = 'Enter without sound'; quiet.style.cssText = mono + ';font-size:10px;padding:12px 16px;border:0;background:none;color:#a3a3a3;cursor:pointer;text-decoration:underline;text-underline-offset:4px';
-    gate.append(name, tag, go, quiet);
+    const quiet = document.createElement('button'); quiet.type = 'button'; quiet.textContent = 'Enter without music'; quiet.style.cssText = mono + ';font-size:10px;padding:12px 16px;border:0;background:none;color:#a3a3a3;cursor:pointer;text-decoration:underline;text-underline-offset:4px';
+    gate.append(name, go, quiet);
     const scroll = document.documentElement.style.overflow; document.documentElement.style.overflow = 'hidden';
     const close = sound => {
       try { sessionStorage.setItem('entered', '1'); } catch (_) {}
