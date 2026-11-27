@@ -272,8 +272,8 @@ const keepBeats = () => { try { localStorage.setItem(LSB, JSON.stringify(beats))
 /* Drums are made the way the classic analogue machines make them: ringing resonators hit by a pulse,
    banks of six square waves for the metal, filtered noise for snap and clap. Works on a live or an offline context. */
 const BUS = .4, CLIPIN = .56, OUT = .79, DUCK = .75, BDUCK = .72;   // louder into the soft clip (patterns land near -13 LUFS with peaks around -3 dBFS, so the kick keeps its punch); the ceiling stays at -1 dBFS: tanh(3.5) / tanh(1.4) × .79
-const PTRIM = { 'Peak Warehouse': 0.5, 'Berlin Roll': -1.0, 'Electro': 1.5, 'Acid Jack': 2.0, 'Deep House': 3.0, 'Breakbeat': 1.5, 'Dub Techno': 0.5,
-  'Boom Bap': 1.5, 'Dusty': 1.5, 'Stab City': 2.0, 'Vox Hits': 3.5, 'Laid Back': 3.5, 'Chop Shop': 0.0, 'Horns': 3.0, 'Scratch': 2.5, 'Warehouse': -2.0, 'Gabba': 0.0, 'Trance Stab': 0.5, 'Industry': -1.0, 'Acid 155': 0.0, 'Schranz': -1.0, 'Rolling': -1.0, 'Peak Time': -1.0 };   // dB per pattern, so they all play at the same loudness   // headroom into the master chain, output trim after the limiter, how far the kick dips the rest
+const PTRIM = { 'Peak Warehouse': 0.5, 'Berlin Roll': -1.0, 'Electro': 1.5, 'Acid Jack': 2.0, 'Deep House': 3.0, 'Breakbeat': 1.5, 'Dub Techno': 0.0,
+  'Boom Bap': 1.5, 'Dusty': 1.5, 'Stab City': 2.0, 'Vox Hits': 3.5, 'Laid Back': 3.5, 'Chop Shop': 0.5, 'Horns': 3.0, 'Scratch': 2.5, 'Warehouse': -2.0, 'Gabba': 0.0, 'Trance Stab': 0.5, 'Industry': -1.0, 'Acid 155': 0.0, 'Schranz': -1.0, 'Rolling': -1.0, 'Peak Time': -1.0 };   // dB per pattern, so they all play at the same loudness   // headroom into the master chain, output trim after the limiter, how far the kick dips the rest
 const trimOf = () => { const b = beats.find(x => x.name === S.preset); return b ? +b.trim || 0 : PTRIM[S.preset] || 0; };
 const HAT_F = [205.3, 304.4, 369.6, 522.7, 540, 800], RIDE_F = [263, 400, 421, 474, 587, 845];
 const curves = {};
