@@ -969,6 +969,19 @@ const PIANO = ['KeyA', 'KeyW', 'KeyS', 'KeyE', 'KeyD', 'KeyF', 'KeyT', 'KeyG', '
 function toggleKeys() { S.keys.open = !S.keys.open; if (!S.keys.open) { down.clear(); if (!S.keys.hold) held = []; } drawAll(); persist(); if (S.keys.open) requestAnimationFrame(() => { const k = root.querySelector('.keyp:not([hidden])'); if (k) k.scrollIntoView({ block: 'end', behavior: 'smooth' }); }); }   // the piano sits under the steps: bring it on screen
 
 /* one transport key: PLAY when stopped, STOP while playing (space bar, the SMK-37 and DAW sync still start and stop it) */
+/* WRITE next to PLAY: loop record. Arm it, play the keys (screen or SMK-37) and each pass layers into the loop for the instrument
+   shown on the key. Pick BASS, STAB or SAMPLE in the drum row (or under PLAYS) between passes. Starts the loop if it is stopped. */
+let wrSel = '';
+function toggleWrite() {
+  const on = !S.keys.rec; if (on && S.keys.mode) S.keys.mode = 0;           // the arp can't be written: plain notes while WRITE is on
+  setKeys({ rec: on }); if (on && !playing) { boot(); setPlaying(true); }
+  lcdFlash('WRITE', on ? 'Play ' + (NAME[S.keys.target] || 'bass') + ' to layer it' : 'Off'); buzz(15);
+}
+const writeKey = () => { const b = key('', toggleWrite, 'led wr'); b.title = 'Loop record: what you play on the keys is written into the loop, pass after pass';
+  return live(b, () => {
+    if (S.sel !== wrSel) { wrSel = S.sel; if (['BS', 'ST', 'SM'].includes(S.sel) && S.keys.target !== S.sel) S.keys.target = S.sel; }   // picking bass, stab or sample also points the keys at it
+    b.textContent = 'WRITE · ' + (SHORT[S.keys.target] || 'BASS'); b.classList.toggle('on', !!S.keys.rec); b.setAttribute('aria-pressed', !!S.keys.rec);
+    b.setAttribute('aria-label', S.keys.rec ? 'Stop writing into the loop' : 'Write what you play into the loop: ' + (NAME[S.keys.target] || 'bass')); }); };
 function playKey() {
   const b = key('PLAY', () => { if (!learnAct('play')) setPlaying(!playing); }, 'big go play');
   return live(b, () => { b.classList.toggle('on', playing); b.textContent = playing ? (rec ? '■ STOP · REC' : '■ STOP') : '▶ PLAY'; b.classList.toggle('recon', !!rec && playing); b.setAttribute('aria-label', playing ? 'Stop' : 'Play'); b.setAttribute('aria-pressed', playing); });
@@ -1085,7 +1098,7 @@ function buildDesk() {
   const play = playKey(), fs = key('', fullScreen, 'ico');
   fs.setAttribute('aria-label', 'Full screen'); fs.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6M3 3l6.5 6.5M21 3l-6.5 6.5M3 21l6.5-6.5M21 21l-6.5-6.5"/></svg>';
   const hk = h('div', 'hk'); const sck = key('SHORTCUTS', openPalette); sck.title = MACOS ? '⌘K or ?' : 'Ctrl+K or ?';
-  hk.append(sck, themeKey(), metroKey(), recKey(), play, fs); hd.append(logo, lcd, hk);
+  hk.append(sck, themeKey(), metroKey(), recKey(), writeKey(), play, fs); hd.append(logo, lcd, hk);
   // one section per drum: title bar picks the drum, two knobs per column
   const secs = h('div', 'row secs');
   SECT.forEach(s => {
