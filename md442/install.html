@@ -36,11 +36,23 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 .parts{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
 .parts span{flex:1 1 90px;border-radius:8px;padding:7px 6px;text-align:center;font:700 13px system-ui;color:#fff}
 .parts small{display:block;font-weight:400;font-size:11.5px;opacity:.9;color:#fff}
-.toc{font-size:13.5px;color:var(--dim);margin:0 0 14px;display:flex;flex-wrap:wrap;gap:4px 12px}.toc a{white-space:nowrap}
+.man details{margin:0 0 8px;padding:12px 16px}.man details[open] summary{margin-bottom:10px}.man details p{margin:8px 0 0}
+.pic{padding:14px 14px 12px}.kbd{display:block;width:100%;height:auto;margin:0 0 10px}
+.kbd text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:800}
+.kbd .t-dim{font-size:10px;fill:#8a958c;letter-spacing:1px}.kbd .t-scr{font-size:22px;fill:#3dff7a;font-family:ui-monospace,Menlo,monospace}
+.kbd .t-btn{font-size:22px;fill:#000}.kbd .t-sm{font-size:14px}.kbd .t-pad{font-size:13px}.kbd .t-zone{font-size:19px;letter-spacing:1px}.kbd .t-num{font-size:16px;fill:#000}
+.kbd .b-on{fill:#3dff7a;stroke:#3dff7a}.kbd .b-off{fill:#0f1311;stroke:#3a463e}
+.five{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 10px}
+.q{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 14px 14px 52px}
+.q.wide{grid-column:1/-1}
+.q i{position:absolute;left:14px;top:14px;width:26px;height:26px;border-radius:50%;background:var(--g);color:#000;font:800 15px/26px system-ui;text-align:center}
+.q b{display:block;font-size:16.5px;line-height:1.35}.q span{display:block;color:#c3ccc5;font-size:14px;margin-top:3px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 6px 0 0}
+@media(max-width:560px){.five{grid-template-columns:1fr}}
 @media(max-width:560px){.man td:first-child{width:42%}}
 </style></head><body><main>
 <div class="logo">MD<span>-</span>MODULES</div>
-<p class="sub">Three drum machines for your keyboard: MD442, MD187 and MD888. Pick one and install it straight from Chrome on Mac or Windows. Nothing to download. <a href="#manual">How to play it</a> is further down.</p>
+<p class="sub">Three drum machines for your keyboard: MD442, MD187 and MD888. Pick one and install it straight from Chrome on Mac or Windows. Nothing to download. <a href="#manual">How to play it</a> is just below.</p>
 
 <div class="card"><h2><span class="n">1</span>Your keyboard</h2>
 <div class="opts">
@@ -68,7 +80,7 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <p><button class="go" id="go">Install</button></p>
 <progress id="bar" max="100" value="0"></progress>
 <div id="status"></div><div id="log"></div>
-<p class="small"><b>New in 1.7:</b> hold a pad and move a fader for that instrument's volume, and two fixes. As in 1.6, the keys always play the instrument on screen, the pads are the steps, &lt; and &gt; pick the instrument (DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS), and FX switches the faders between effects and volumes. <a href="#manual">How to play it is further down this page</a> (<a href="fw/1.7/md-hardware-controls.pdf">PDF</a>). 1.7 has not been tested on a keyboard yet; 1.6 and 1.5 are below if you want one back.</p>
+<p class="small"><b>New in 1.7:</b> hold a pad and move a fader for that instrument's volume. <a href="#manual">The quick guide is just below.</a> 1.7 has not been tested on a keyboard yet; 1.6 and 1.5 are below if you want one back.</p>
 </div>
 
 <details><summary>Go back to version 1.6 or 1.5</summary>
@@ -88,28 +100,32 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 </details>
 
 <section class="man" id="manual">
-<div class="logo" style="font-size:24px;margin:34px 0 4px">HOW TO PLAY <span>1.7</span></div>
-<p class="sub" style="margin-bottom:10px">The actual mapping of the MD-Modules (version 1.7) on the SMK-37 Elite and Pro. All three play the same way. <a href="fw/1.7/md-hardware-controls.pdf">One-page PDF to print</a>.</p>
-<p class="toc"><a href="#m-idea">The idea</a><a href="#m-keys">Keys</a><a href="#m-pads">Pads</a><a href="#m-buttons">Buttons</a><a href="#m-knobs">Knobs</a><a href="#m-faders">Faders</a><a href="#m-rec">Record</a><a href="#m-perf">Build-ups</a><a href="#m-mute">Mutes and patterns</a><a href="#m-app">With the app</a><a href="#m-stock">Module or M-VAVE</a></p>
+<div class="logo" style="font-size:24px;margin:34px 0 4px">HOW TO PLAY</div>
+<p class="sub" style="margin-bottom:14px">Five things and you are making a beat. All three MD-Modules play the same way.</p>
 
-<div class="card" id="m-idea"><h3>The idea in four lines</h3>
-<table>
-<tr><td><kbd>&lt;</kbd> <kbd>&gt;</kbd></td><td>Pick the instrument. The screen shows its name.</td></tr>
-<tr><td>Keys</td><td>Always play that instrument. They never turn steps on or off.</td></tr>
-<tr><td>Pads</td><td>Are its 16 steps. Tap a pad: step on. Tap again: off.</td></tr>
-<tr><td><kbd>FX</kbd></td><td>Switches the faders. Lit: effects. Off: volumes.</td></tr>
-</table>
+<div class="card pic">
+<svg class="kbd" viewBox="-6 0 672 330" role="img" aria-label="Simplified picture of the keyboard: screen with the arrow buttons, FX and the faders, the 16 pads, and the keys"><rect x="-4" y="2" width="668" height="134" rx="10" fill="#141816" stroke="#26302a"/><rect x="14" y="16" width="130" height="56" rx="6" fill="#050706" stroke="#3a463e"/><text x="79" y="40" class="t-dim" text-anchor="middle">INSTRUMENT</text><text x="79" y="63" class="t-scr" text-anchor="middle">BASS</text><rect x="34" y="86" width="42" height="34" rx="6" class="b-on"/><text x="55" y="110" class="t-btn" text-anchor="middle">&lt;</text><rect x="84" y="86" width="42" height="34" rx="6" class="b-on"/><text x="105" y="110" class="t-btn" text-anchor="middle">&gt;</text><rect x="172" y="86" width="52" height="34" rx="6" fill="#3a1414" stroke="#ff5a5a"/><text x="198" y="108" class="t-sm" text-anchor="middle" fill="#ff8a8a">REC</text><rect x="232" y="86" width="52" height="34" rx="6" class="b-off"/><text x="258" y="108" class="t-sm" text-anchor="middle" fill="#e8efe9">PLAY</text><rect x="172" y="16" width="52" height="34" rx="6" class="b-on"/><text x="198" y="39" class="t-btn" text-anchor="middle" style="font-size:17px">FX</text><rect x="250" y="14" width="4" height="58" rx="2" fill="#26302a"/><rect x="244" y="34" width="16" height="10" rx="3" fill="#c3ccc5"/><rect x="276" y="14" width="4" height="58" rx="2" fill="#26302a"/><rect x="270" y="22" width="16" height="10" rx="3" fill="#c3ccc5"/><rect x="302" y="14" width="4" height="58" rx="2" fill="#26302a"/><rect x="296" y="42" width="16" height="10" rx="3" fill="#c3ccc5"/><rect x="328" y="14" width="4" height="58" rx="2" fill="#26302a"/><rect x="322" y="28" width="16" height="10" rx="3" fill="#c3ccc5"/><rect x="372" y="16" width="30" height="48" rx="5" fill="#3dff7a" stroke="#3dff7a"/><text x="387" y="46" class="t-pad" text-anchor="middle" fill="#000">1</text><rect x="408" y="16" width="30" height="48" rx="5" fill="#0f1311" stroke="#3a463e"/><text x="423" y="46" class="t-pad" text-anchor="middle" fill="#8a958c">2</text><rect x="444" y="16" width="30" height="48" rx="5" fill="#0f1311" stroke="#3a463e"/><text x="459" y="46" class="t-pad" text-anchor="middle" fill="#8a958c">3</text><rect x="480" y="16" width="30" height="48" rx="5" fill="#0f1311" stroke="#3a463e"/><text x="495" y="46" class="t-pad" text-anchor="middle" fill="#8a958c">4</text><rect x="516" y="16" width="30" height="48" rx="5" fill="#3dff7a" stroke="#3dff7a"/><text x="531" y="46" class="t-pad" text-anchor="middle" fill="#000">5</text><rect x="552" y="16" width="30" height="48" rx="5" fill="#0f1311" stroke="#3a463e"/><text x="567" y="46" class="t-pad" text-anchor="middle" fill="#8a958c">6</text><rect x="588" y="16" width="30" height="48" rx="5" fill="#0f1311" stroke="#3a463e"/><text x="603" y="46" class="t-pad" text-anchor="middle" fill="#8a958c">7</text><rect x="624" y="16" width="30" height="48" rx="5" fill="#0f1311" stroke="#3a463e"/><text x="639" y="46" class="t-pad" text-anchor="middle" fill="#8a958c">8</text><rect x="372" y="72" width="30" height="48" rx="5" fill="#3dff7a" stroke="#3dff7a"/><text x="387" y="102" class="t-pad" text-anchor="middle" fill="#000">9</text><rect x="408" y="72" width="30" height="48" rx="5" fill="#0f1311" stroke="#3a463e"/><text x="423" y="102" class="t-pad" text-anchor="middle" fill="#8a958c">10</text><rect x="444" y="72" width="30" height="48" rx="5" fill="#3dff7a" stroke="#3dff7a"/><text x="459" y="102" class="t-pad" text-anchor="middle" fill="#000">11</text><rect x="480" y="72" width="30" height="48" rx="5" fill="#0f1311" stroke="#3a463e"/><text x="495" y="102" class="t-pad" text-anchor="middle" fill="#8a958c">12</text><rect x="516" y="72" width="30" height="48" rx="5" fill="#3dff7a" stroke="#3dff7a"/><text x="531" y="102" class="t-pad" text-anchor="middle" fill="#000">13</text><rect x="552" y="72" width="30" height="48" rx="5" fill="#0f1311" stroke="#3a463e"/><text x="567" y="102" class="t-pad" text-anchor="middle" fill="#8a958c">14</text><rect x="588" y="72" width="30" height="48" rx="5" fill="#0f1311" stroke="#3a463e"/><text x="603" y="102" class="t-pad" text-anchor="middle" fill="#8a958c">15</text><rect x="624" y="72" width="30" height="48" rx="5" fill="#0f1311" stroke="#3a463e"/><text x="639" y="102" class="t-pad" text-anchor="middle" fill="#8a958c">16</text><rect x="0" y="150" width="28.5" height="120" rx="3" fill="#ffb347"/><rect x="30" y="150" width="28.5" height="120" rx="3" fill="#ffb347"/><rect x="60" y="150" width="28.5" height="120" rx="3" fill="#ffb347"/><rect x="90" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="120" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="150" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="180" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="210" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="240" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="270" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="300" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="330" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="360" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="390" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="420" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="450" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="480" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="510" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="540" y="150" width="28.5" height="120" rx="3" fill="#f4f7f4"/><rect x="570" y="150" width="28.5" height="120" rx="3" fill="#ff7ad1"/><rect x="600" y="150" width="28.5" height="120" rx="3" fill="#ff7ad1"/><rect x="630" y="150" width="28.5" height="120" rx="3" fill="#ff7ad1"/><rect x="21" y="150" width="18" height="72" rx="2" fill="#b96a1c" stroke="#0b0d0c"/><rect x="51" y="150" width="18" height="72" rx="2" fill="#b96a1c" stroke="#0b0d0c"/><rect x="111" y="150" width="18" height="72" rx="2" fill="#101311" stroke="#0b0d0c"/><rect x="141" y="150" width="18" height="72" rx="2" fill="#101311" stroke="#0b0d0c"/><rect x="171" y="150" width="18" height="72" rx="2" fill="#101311" stroke="#0b0d0c"/><rect x="231" y="150" width="18" height="72" rx="2" fill="#101311" stroke="#0b0d0c"/><rect x="261" y="150" width="18" height="72" rx="2" fill="#101311" stroke="#0b0d0c"/><rect x="321" y="150" width="18" height="72" rx="2" fill="#101311" stroke="#0b0d0c"/><rect x="351" y="150" width="18" height="72" rx="2" fill="#101311" stroke="#0b0d0c"/><rect x="381" y="150" width="18" height="72" rx="2" fill="#101311" stroke="#0b0d0c"/><rect x="441" y="150" width="18" height="72" rx="2" fill="#101311" stroke="#0b0d0c"/><rect x="471" y="150" width="18" height="72" rx="2" fill="#101311" stroke="#0b0d0c"/><rect x="531" y="150" width="18" height="72" rx="2" fill="#101311" stroke="#0b0d0c"/><rect x="561" y="150" width="18" height="72" rx="2" fill="#a8327c" stroke="#0b0d0c"/><rect x="591" y="150" width="18" height="72" rx="2" fill="#a8327c" stroke="#0b0d0c"/><path d="M2 282 v8 H88 v-8" fill="none" stroke="#ffb347" stroke-width="2.5"/><text x="45.0" y="316" class="t-zone" text-anchor="middle" fill="#ffb347">BUILD</text><path d="M92 282 v8 H568 v-8" fill="none" stroke="#3dff7a" stroke-width="2.5"/><text x="330.0" y="316" class="t-zone" text-anchor="middle" fill="#3dff7a">KEYS PLAY THE INSTRUMENT</text><path d="M572 282 v8 H658 v-8" fill="none" stroke="#ff7ad1" stroke-width="2.5"/><text x="615.0" y="316" class="t-zone" text-anchor="middle" fill="#ff7ad1">DROP</text><circle cx="144" cy="103" r="13" fill="#3dff7a"/><text x="144" y="109" class="t-num" text-anchor="middle">1</text><circle cx="330" cy="242" r="13" fill="#3dff7a"/><text x="330" y="248" class="t-num" text-anchor="middle">2</text><circle cx="350" cy="103" r="13" fill="#3dff7a"/><text x="350" y="109" class="t-num" text-anchor="middle">3</text><circle cx="352" cy="28" r="13" fill="#3dff7a"/><text x="352" y="34" class="t-num" text-anchor="middle">4</text><circle cx="302" cy="103" r="13" fill="#3dff7a"/><text x="302" y="109" class="t-num" text-anchor="middle">5</text></svg>
 <div class="parts">
-<span style="background:#b96a1c">DRUMS 1<small>909 kit</small></span>
-<span style="background:#a83232">DRUMS 2<small>808 kit</small></span>
-<span style="background:#23874a">BASS<small>303 bass</small></span>
-<span style="background:#3560c0">CHORDS<small>one key, a chord</small></span>
-<span style="background:#7340b8">BREAKS<small>loops and hits</small></span>
+<span style="background:#b96a1c">DRUMS 1</span>
+<span style="background:#a83232">DRUMS 2</span>
+<span style="background:#23874a">BASS</span>
+<span style="background:#3560c0">CHORDS</span>
+<span style="background:#7340b8">BREAKS</span>
 </div>
-<p class="small">The five instruments, in the order <kbd>&lt;</kbd> <kbd>&gt;</kbd> steps through them. The keys, the pads, the sound knobs and the mod wheel all follow the one on screen.</p>
+<p class="small" style="margin:0">The five instruments <kbd>&lt;</kbd> <kbd>&gt;</kbd> steps through. A simplified picture, not to scale.</p>
 </div>
 
-<div class="card" id="m-keys"><h3>Keys</h3>
+<div class="five">
+<div class="q"><i>1</i><b><kbd>&lt;</kbd> <kbd>&gt;</kbd> Pick the instrument</b><span>The screen shows its name.</span></div>
+<div class="q"><i>2</i><b>Keys play it</b><span>Drums, bass notes, or a whole chord from one key.</span></div>
+<div class="q"><i>3</i><b>Pads are its 16 steps</b><span>Tap a pad: step on. Tap again: off.</span></div>
+<div class="q"><i>4</i><b><kbd>FX</kbd> switches the faders</b><span>Lit: reverb, delay, drive, filter. Off: volumes.</span></div>
+<div class="q wide"><i>5</i><b><kbd>REC</kbd> then <kbd>PLAY</kbd> records you</b><span>Play the keys in time and it loops. Fix it on the pads. <kbd>BT</kbd> saves.</span></div>
+</div>
+<p class="small" style="margin:2px 0 22px"><span class="dot" style="background:#ffb347"></span>Hold one of the 5 keys on the left: beat repeat and fill. <span class="dot" style="background:#ff7ad1"></span>The 5 on the right: echo, kill low, wash, riser, drop.<br><span class="dot" style="background:#3dff7a"></span>Hold a pad and move a fader: that instrument's volume.</p>
+
+<h2 style="margin:0 0 10px">Want more? Open what you need</h2>
+<details id="m-keys"><summary>What the keys do on each instrument</summary>
 <table>
 <tr><td>On DRUMS 1 / DRUMS 2</td><td>Each key is a drum. From F3 going up: kick, snare, clap, closed hat, open hat, low tom, mid tom, high tom, rim, crash, ride (DRUMS 2: cymbal, cowbell). The same eleven repeat from E4. Hit harder for louder.</td></tr>
 <tr><td>On BASS</td><td>Notes. Hold one key and press another and it slides to it.</td></tr>
@@ -120,9 +136,9 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <tr><td>Pitch wheel</td><td>Bends BASS or CHORDS.</td></tr>
 <tr><td>Mod wheel</td><td>BASS / CHORDS: opens the filter. Drums / breaks: a high-pass riser on the one on screen.</td></tr>
 <tr><td>The 5 keys at each end</td><td>Not notes. They are the build-up keys, <a href="#m-perf">below</a>.</td></tr>
-</table></div>
-
-<div class="card" id="m-pads"><h3>Pads</h3>
+</table>
+</details>
+<details id="m-pads"><summary>More with the pads</summary>
 <table>
 <tr><td>Tap a pad</td><td>That step on. Tap again: off. Pads 1 to 16 are steps 1 to 16 (top row 1 to 8).</td></tr>
 <tr><td>Drums</td><td>The pads show the drum you last played on the keys. Play another drum key to see and edit that drum's steps.</td></tr>
@@ -132,9 +148,49 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <tr><td><kbd>PATCH</kbd> + a pad</td><td>Go to that pattern (1 to 16) at the end of the bar.</td></tr>
 <tr><td><kbd>BT</kbd> + a pad</td><td>Paste the copied pattern there (hold <kbd>BT</kbd> a moment first to copy the current one).</td></tr>
 <tr><td>After a tap on <kbd>KNOB BANK</kbd></td><td>The pads are mutes, <a href="#m-mute">below</a>.</td></tr>
-</table></div>
-
-<div class="card" id="m-buttons"><h3>Buttons</h3>
+</table>
+</details>
+<details id="m-rec"><summary>Record a beat, step by step</summary>
+<ol>
+<li>Pick the instrument with <kbd>&lt;</kbd> <kbd>&gt;</kbd>.</li>
+<li>Press <kbd>REC</kbd>, then <kbd>PLAY</kbd>.</li>
+<li>Play the keys in time. Drums, bass notes and chords land on the nearest step and loop.</li>
+<li>Fix it on the pads: tap a step off, tap a new one on.</li>
+<li>Next instrument, and do it again. <kbd>BT</kbd> saves.</li>
+</ol>
+<p class="small">Without REC: play a note, then tap the pads where you want it.</p>
+</details>
+<details id="m-perf"><summary>Build-ups and breakdowns: the 5 keys at each end</summary>
+<table>
+<tr><td>C3, C#3, D3, D#3</td><td>Beat repeat: 1/2, 1/4, 1/8, 1/16 bar. Let go and it is back in time.</td></tr>
+<tr><td>E3 FILL</td><td>A roll on the drum on screen, faster and louder each bar.</td></tr>
+<tr><td>G#5 ECHO</td><td>Throws the instrument into the delay. The echoes ring for a bar after you let go.</td></tr>
+<tr><td>A5 KILL LOW</td><td>Kicks and bass out. Back on the next one.</td></tr>
+<tr><td>A#5 WASH</td><td>Reverb on the instrument. <kbd>PATCH</kbd> + ECHO or WASH: on everything.</td></tr>
+<tr><td>B5 RISER</td><td>A high-pass sweep up over 4 bars. Back on the next one.</td></tr>
+<tr><td>C6 DROP</td><td>Everything out, tails ring. Back on the next one.</td></tr>
+</table>
+</details>
+<details id="m-faders"><summary>Faders and knobs</summary>
+<table>
+<tr><td><kbd>FX</kbd> lit</td><td>1 REVERB &middot; 2 DELAY &middot; 3 DRIVE &middot; 4 FILTER (middle off, down low-pass, up high-pass).</td></tr>
+<tr><td><kbd>FX</kbd> off</td><td>1 DRUMS 1 &middot; 2 DRUMS 2 &middot; 3 BASS &middot; 4 CHORDS volume.</td></tr>
+<tr><td><kbd>FADER BANK</kbd> lit</td><td>Fader 1 is BREAKS volume instead of DRUMS 1.</td></tr>
+<tr><td>Hold a pad + any fader</td><td>That pad's instrument volume. Pads 1 to 11: the drums of the kit on screen (kick, snare, clap, closed hat, open hat, toms, rim, crash, ride). Pads 12 to 16: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS. The step or mute the press changed is put back.</td></tr>
+</table>
+<p class="small" style="margin-top:8px">A fader only takes over once you move it, so nothing jumps when you switch.</p>
+<h3 id="m-knobs" style="margin-top:16px">Knobs</h3>
+<table>
+<tr><td><kbd>K1</kbd></td><td>Master volume.</td></tr>
+<tr><td><kbd>K2</kbd></td><td>Moves through the pages on screen, or up and down a list. <kbd>PATCH</kbd> + K2: tempo.</td></tr>
+<tr><td><kbd>K3</kbd></td><td>The instrument (the same as <kbd>&lt;</kbd> <kbd>&gt;</kbd>). In a list: the value.</td></tr>
+<tr><td><kbd>K4</kbd></td><td>The pattern, changing at the end of the bar.</td></tr>
+<tr><td><kbd>K5</kbd>-<kbd>K8</kbd></td><td>The four things shown on screen.</td></tr>
+<tr><td>Hold <kbd>KNOB BANK</kbd> + <kbd>K2</kbd> <kbd>K3</kbd> <kbd>K4</kbd></td><td>Drums and breaks: filter (left low-pass, right high-pass, middle off), resonance, decay. BASS / CHORDS: cutoff, resonance, envelope.</td></tr>
+<tr><td>Chord type</td><td>On CHORDS press <kbd>PARA</kbd> until the page says CHORD, then turn <kbd>K5</kbd>: Minor, Major, Min7, Maj7, Min9, Sus4, 5th, or Off (a second bass).</td></tr>
+</table>
+</details>
+<details id="m-buttons"><summary>Every button</summary>
 <table>
 <tr><td><kbd>PLAY</kbd></td><td>Start and stop.</td></tr>
 <tr><td><kbd>REC</kbd></td><td>Record on and off. With PLAY running, what you play on the keys goes into the pattern.</td></tr>
@@ -154,50 +210,9 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <tr><td><kbd>PATCH</kbd> + <kbd>REC</kbd> / <kbd>PLAY</kbd></td><td>Undo / redo.</td></tr>
 <tr><td><kbd>BT</kbd> + <kbd>REC</kbd></td><td>Clear the instrument on screen in this pattern (it asks first).</td></tr>
 <tr><td><kbd>OCT-</kbd> + <kbd>OCT+</kbd> held 5 seconds</td><td>Update mode, the same as stock. M-UPGRADE and the restore below can always reach the keyboard.</td></tr>
-</table></div>
-
-<div class="card" id="m-knobs"><h3>Knobs</h3>
-<table>
-<tr><td><kbd>K1</kbd></td><td>Master volume.</td></tr>
-<tr><td><kbd>K2</kbd></td><td>Moves through the pages on screen, or up and down a list. <kbd>PATCH</kbd> + K2: tempo.</td></tr>
-<tr><td><kbd>K3</kbd></td><td>The instrument (the same as <kbd>&lt;</kbd> <kbd>&gt;</kbd>). In a list: the value.</td></tr>
-<tr><td><kbd>K4</kbd></td><td>The pattern, changing at the end of the bar.</td></tr>
-<tr><td><kbd>K5</kbd>-<kbd>K8</kbd></td><td>The four things shown on screen.</td></tr>
-<tr><td>Hold <kbd>KNOB BANK</kbd> + <kbd>K2</kbd> <kbd>K3</kbd> <kbd>K4</kbd></td><td>Drums and breaks: filter (left low-pass, right high-pass, middle off), resonance, decay. BASS / CHORDS: cutoff, resonance, envelope.</td></tr>
-<tr><td>Chord type</td><td>On CHORDS press <kbd>PARA</kbd> until the page says CHORD, then turn <kbd>K5</kbd>: Minor, Major, Min7, Maj7, Min9, Sus4, 5th, or Off (a second bass).</td></tr>
-</table></div>
-
-<div class="card" id="m-faders"><h3>Faders</h3>
-<table>
-<tr><td><kbd>FX</kbd> lit</td><td>1 REVERB &middot; 2 DELAY &middot; 3 DRIVE &middot; 4 FILTER (middle off, down low-pass, up high-pass).</td></tr>
-<tr><td><kbd>FX</kbd> off</td><td>1 DRUMS 1 &middot; 2 DRUMS 2 &middot; 3 BASS &middot; 4 CHORDS volume.</td></tr>
-<tr><td><kbd>FADER BANK</kbd> lit</td><td>Fader 1 is BREAKS volume instead of DRUMS 1.</td></tr>
-<tr><td>Hold a pad + any fader</td><td>That pad's instrument volume. Pads 1 to 11: the drums of the kit on screen (kick, snare, clap, closed hat, open hat, toms, rim, crash, ride). Pads 12 to 16: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS. The step or mute the press changed is put back.</td></tr>
 </table>
-<p class="small" style="margin-top:8px">A fader only takes over once you move it, so nothing jumps when you switch.</p></div>
-
-<div class="card" id="m-rec"><h3>Record a beat</h3>
-<ol>
-<li>Pick the instrument with <kbd>&lt;</kbd> <kbd>&gt;</kbd>.</li>
-<li>Press <kbd>REC</kbd>, then <kbd>PLAY</kbd>.</li>
-<li>Play the keys in time. Drums, bass notes and chords land on the nearest step and loop.</li>
-<li>Fix it on the pads: tap a step off, tap a new one on.</li>
-<li>Next instrument, and do it again. <kbd>BT</kbd> saves.</li>
-</ol>
-<p class="small">Without REC: play a note, then tap the pads where you want it.</p></div>
-
-<div class="card" id="m-perf"><h3>Build-ups and breakdowns: the 5 keys at each end (hold)</h3>
-<table>
-<tr><td>C3, C#3, D3, D#3</td><td>Beat repeat: 1/2, 1/4, 1/8, 1/16 bar. Let go and it is back in time.</td></tr>
-<tr><td>E3 FILL</td><td>A roll on the drum on screen, faster and louder each bar.</td></tr>
-<tr><td>G#5 ECHO</td><td>Throws the instrument into the delay. The echoes ring for a bar after you let go.</td></tr>
-<tr><td>A5 KILL LOW</td><td>Kicks and bass out. Back on the next one.</td></tr>
-<tr><td>A#5 WASH</td><td>Reverb on the instrument. <kbd>PATCH</kbd> + ECHO or WASH: on everything.</td></tr>
-<tr><td>B5 RISER</td><td>A high-pass sweep up over 4 bars. Back on the next one.</td></tr>
-<tr><td>C6 DROP</td><td>Everything out, tails ring. Back on the next one.</td></tr>
-</table></div>
-
-<div class="card" id="m-mute"><h3>Mutes and patterns</h3>
+</details>
+<details id="m-mute"><summary>Mutes and patterns</summary>
 <table>
 <tr><td>Tap <kbd>KNOB BANK</kbd></td><td>Pads become mutes (lit). Pads 1 to 11: the drums of the kit on screen. Pads 12 to 16: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS. Tap it again: back to steps.</td></tr>
 <tr><td>Hold <kbd>KNOB BANK</kbd> + pads</td><td>Mute only while you hold.</td></tr>
@@ -205,9 +220,9 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <tr><td><kbd>PATCH</kbd> + <kbd>KNOB BANK</kbd></td><td>Unmute everything.</td></tr>
 <tr><td><kbd>PATCH</kbd> + <kbd>&lt;</kbd> <kbd>&gt;</kbd></td><td>The pattern before or after, at the end of the bar.</td></tr>
 <tr><td><kbd>PATCH</kbd> + a pad</td><td>That pattern. <kbd>OCT+</kbd> on the pattern screen: patterns 17 to 32.</td></tr>
-</table></div>
-
-<div class="card" id="m-app"><h3>On its own, and with the app</h3>
+</table>
+</details>
+<details id="m-app"><summary>On its own, and with the app</summary>
 <table>
 <tr><td>On its own</td><td>No computer needed. The sound comes out of the keyboard's own audio out. Everything above works the same.</td></tr>
 <tr><td>Plugged into the MD|442 app (USB)</td><td>One play button for both. PLAY or STOP on the keyboard starts and stops the app and sets its tempo. START in the app starts the keyboard in time. They never run two separate beats.</td></tr>
@@ -215,16 +230,16 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <tr><td>With a DAW or other gear</td><td>The keyboard sends and follows MIDI clock, start and stop over USB. Change this under <kbd>GLOBE</kbd>.</td></tr>
 <tr><td>Unplug it</td><td>It carries on by itself at its own tempo.</td></tr>
 </table>
-</div>
-
-<div class="card" id="m-stock"><h3>MD-Module or M-VAVE's own firmware?</h3>
+</details>
+<details id="m-stock"><summary>MD-Module or M-VAVE's own firmware?</summary>
 <table>
 <tr><td>The keyboard holds one</td><td>Installing an MD-Module replaces M-VAVE's firmware. There is not enough memory in the keyboard for both, or for all three modules at once.</td></tr>
 <tr><td>With an MD-Module</td><td>The keyboard is a drum machine that makes its own sound. No computer needed.</td></tr>
 <tr><td>What you give up meanwhile</td><td>M-VAVE's controller features: its own arp, chord, scale and note repeat modes, Bluetooth, and working as a plain MIDI controller for a DAW or for the MD|442 app's pads and keys.</td></tr>
 <tr><td>Swapping</td><td>A few minutes either way, as often as you like: another module at the top of this page, or <a href="#restore">M-VAVE's own firmware back</a>. Your module settings are kept.</td></tr>
 </table>
-<p class="small" style="margin-top:8px">1.7 has not been tested on a real keyboard yet. If something here does not match what the keyboard does, the keyboard is wrong, not you: go back to 1.6 or 1.5 above and say what you pressed.</p></div>
+</details>
+<p class="small" style="margin-top:12px"><a href="fw/1.7/md-hardware-controls.pdf">The whole lot on one page (PDF)</a></p>
 </section>
 <p class="small" style="margin-top:22px">Uses the same USB-MIDI update as M-UPGRADE (X0X's fm1ota.js, GPL-3.0, Leo Kuroshita / Hügelton Instruments; SMK-37 port by genkigenki). MD firmware source: <a href="https://github.com/mathewdunn89-ggw/MD-442">github.com/mathewdunn89-ggw/MD-442</a>. M-VAVE, SMK-37 and FM-1 are trademarks of their owners. No warranty.</p>
 </main>
@@ -583,7 +598,9 @@ $("stockfile").onchange = async (e) => {
   } catch (err) { say("Can't use that file: " + err.message + "."); }
 };
 $("stockgo").onclick = () => { if (stockPkg && !busy) write(stockPkg); };
-if (/restore(\.html)?\/?$/.test(location.pathname) || location.hash === "#restore") { $("restore").open = true; $("restore").scrollIntoView(); }
-document.querySelectorAll('a[href="#restore"]').forEach((a) => a.addEventListener("click", () => { $("restore").open = true; }));
+const openAt = (id) => { const t = id && document.getElementById(id); const d = t && t.closest("details"); if (d) d.open = true; return t; };
+if (/restore(\.html)?\/?$/.test(location.pathname)) openAt("restore").scrollIntoView();
+else if (location.hash.length > 1) { const t = openAt(location.hash.slice(1)); if (t) t.scrollIntoView(); }
+document.querySelectorAll('a[href^="#"]').forEach((a) => a.addEventListener("click", () => { openAt(a.getAttribute("href").slice(1)); }));
 window.addEventListener("beforeunload", (e) => { if (busy) { e.preventDefault(); e.returnValue = "The keyboard is being written."; } });
 </script></body></html>
