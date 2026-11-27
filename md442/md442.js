@@ -22,11 +22,11 @@ const NOTES = ['E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'C', 'C#', 'D', 'D#'];
 const NOTE_CYCLE = [0, 3, 5, 7, 10, 12, -2];
 const sgn = v => (v > 0 ? '+' : v < 0 ? '−' : '');
 // MD|442's three machines: one engine, the same filters, effects and controls; their own patterns, sound and sample banks.
-// The banks are the ones in the MD|187 / MD|888 keyboard firmwares (tools/md_gen_samples.py there): 8 slices each.
+// The banks: 8 slices each, synthesised (no recordings) at 44.1 kHz by gen_banks.py, brighter than the 22 kHz copies inside the keyboard firmwares.
 const STYLES = { 442: { name: 'MD|442', tag: 'TECHNO', first: 'Peak Warehouse', bank: 4 }, 187: { name: 'MD|187', tag: 'HIP-HOP', first: 'Boom Bap', bank: 0 }, 888: { name: 'MD|888', tag: 'HARD TECHNO', first: 'Warehouse', bank: 4 } };
 const STYLE_IDS = ['442', '187', '888'];
 const BANKS = [['187', 'BOOMBP', 1, 96, 'Boom bap break'], ['187', 'DRUMS', 1, 96, 'Dusty drum hits'], ['187', 'STABS', 1, 96, 'Jazz stabs'], ['187', 'VOX', 1, 96, 'Vocal hits'],
-  ['888', 'RUMBLE', 1, 155, 'Rumble'], ['888', 'GABBA', 1, 155, 'Gabba kicks'], ['888', 'TRANCE', 2, 155, 'Trance stabs'], ['888', 'HITS', 1, 155, 'Industrial hits']];   // [machine, file, bars, BPM it was cut at, name]
+  ['888', 'RUMBLE', 1, 155, 'Rumble'], ['888', 'GABBA', 1, 155, 'Gabba kicks'], ['888', 'TRANCE', 2, 155, 'Trance stabs'], ['888', 'HITS', 1, 155, 'Schranz loop']];   // [machine, file, bars, BPM it was cut at, name]
 const ETIMES = [['1/16', 1], ['1/8 T', 4 / 3], ['1/8', 2], ['3/16', 3], ['1/4', 4], ['3/8', 6]];   // echo time in 16th notes
 const F = {
   db: v => v <= -40 ? 'OFF' : sgn(v) + String(Math.abs(Math.round(v * 2) / 2)) + ' dB',
@@ -171,21 +171,21 @@ const VPRESETS = {
   "Trance Stab": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"x.x.x.x.x.x.x.x.","OH":"..x...x...x...x.","RD":"x.x.x.x.x.x.x.x."},"bk":6,"br":"..1-..1-..2-..3-","cx":0,"lv":95},
   "Industry": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"xxxxxxxxxxxxxxxx","RS":"...x..x....x..x."},"ac":"x...x...x...x...","bk":7,"br":"..1-......7-..5-","cx":0,"lv":90},
   "Acid 155": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"..x...x...x...x.","CP":"....x.......x..."},"bk":4,"br":"gggggggggggggggg","cx":0,"lv":70,"root":45,"bs":["a0","0","s12","0","3","a0","s0","10","0","a12","0","s7","a0","0","3","s15"]},
-  "Schranz": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CH":"xxxxxxxxxxxxxxxx","LT":"..x...x...x...x.","MT":".x...x...x...x..","HT":"...x...x...x...x"},"ac":"x...x...x...x...","bk":4,"br":"gggggggggggggggg","cx":0,"lv":75},
+  "Schranz": {"s":"888","bpm":158,"sw":0,"g":{"BD":"x...x...x...x...","OH":"..x...x...x...x.","LT":"...x......x...x.","HT":".x.....x.x......","RS":"......x.......x."},"ac":"x...x...x...x...","bk":7,"br":"gggggggggggggggg","cx":20,"lv":95},
   "Rolling": {"s":"888","sw":0,"g":{"RS":".x..x..x.x..x..x","BD":"x...x...x...x...","OH":"..x...x...x...x.","CH":"x.xxx.xxx.xxx.xx"},"bk":4,"br":"gggggggggggggggg","cx":0,"lv":95},
   "Peak Time": {"s":"888","sw":0,"g":{"BD":"x...x...x...x...","CP":"....x.......x...","OH":"..x...x...x...x.","RD":"x.x.x.x.x.x.x.x.","CR":"x..............."},"ac":"x...x...x...x...","bk":6,"br":"1-..1-..6-..7-.4","cx":0,"lv":100}
 };
 // each machine's own sound, under every one of its patterns (the knobs are the same on all three)
 const VSOUND = {
-  187: { bpm: 96, 'bd.tune': 47, 'bd.decay': 950, 'bd.attack': 30, 'bd.punch': 38, 'bd.rumble': 0, 'sd.tune': -1.5, 'sd.tone': 38, 'sd.snappy': 48, 'sd.decay': 260, 'cp.tone': 1050, 'cp.decay': 260,
-    'ch.decay': 55, 'oh.decay': 380, 'hh.tone': 34, 'rs.tune': -2, 'cr.tone': 35, 'cr.decay': 1800, 'bs.cutoff': 280, 'bs.reso': 18, 'bs.acid': 0, 'bs.drive': 22, 'bs.fat': 65, 'bs.decay': 420,
-    'st.tone': 1700, 'st.decay': 520, 'st.chord': 3, 'fx.verb': 14, 'fx.space': 0, 'fx.drive': 18, 'fx.vdec': 1.2, 'drv.BD': 12, 'drv.SD': 18, 'flt.CH': -10, 'flt.SM': -6, 'drv.SM': 14, 'accent': 4 },
-  888: { bpm: 155, 'bd.tune': 54, 'bd.decay': 420, 'bd.attack': 92, 'bd.punch': 100, 'bd.rumble': 85, 'sd.tune': 1, 'sd.snappy': 75, 'sd.decay': 220, 'cp.tone': 1500, 'cp.decay': 240,
-    'ch.decay': 42, 'oh.decay': 300, 'hh.tone': 82, 'rd.tone': 70, 'bs.cutoff': 700, 'bs.reso': 72, 'bs.acid': 85, 'bs.drive': 80, 'bs.decay': 120, 'st.tone': 6000, 'st.decay': 280, 'st.chord': 1,
-    'fx.verb': 20, 'fx.space': 14, 'fx.drive': 34, 'fx.vdec': 2.2, 'fx.etime': 2, 'fx.efb': 40, 'drv.BD': 55, 'drv.CP': 30, 'flt.SM': 0, 'drv.SM': 25, 'accent': 7 }
+  187: { bpm: 93, 'bd.tune': 49, 'bd.decay': 600, 'bd.attack': 58, 'bd.punch': 62, 'bd.rumble': 0, 'sd.tune': -1, 'sd.tone': 60, 'sd.snappy': 68, 'sd.decay': 230, 'cp.tone': 1350, 'cp.decay': 220,
+    'ch.decay': 48, 'oh.decay': 340, 'hh.tone': 58, 'rs.tune': 0, 'cr.tone': 50, 'cr.decay': 1600, 'bs.cutoff': 420, 'bs.reso': 18, 'bs.acid': 0, 'bs.drive': 28, 'bs.fat': 55, 'bs.decay': 380,
+    'st.tone': 3200, 'st.decay': 480, 'st.chord': 3, 'fx.verb': 9, 'fx.space': 0, 'fx.drive': 22, 'fx.vdec': .9, 'drv.BD': 22, 'drv.SD': 26, 'drv.SM': 20, 'accent': 5 },
+  888: { bpm: 155, 'bd.tune': 55, 'bd.decay': 330, 'bd.attack': 95, 'bd.punch': 100, 'bd.rumble': 40, 'sd.tune': 1, 'sd.tone': 62, 'sd.snappy': 78, 'sd.decay': 200, 'cp.tone': 1650, 'cp.decay': 200,
+    'ch.decay': 36, 'oh.decay': 260, 'hh.tone': 90, 'rd.tone': 78, 'cr.tone': 62, 'bs.cutoff': 900, 'bs.reso': 70, 'bs.acid': 85, 'bs.drive': 80, 'bs.decay': 120, 'st.tone': 7500, 'st.decay': 260, 'st.chord': 1,
+    'fx.verb': 12, 'fx.space': 12, 'fx.drive': 40, 'fx.vdec': 1.3, 'fx.etime': 2, 'fx.efb': 38, 'drv.BD': 60, 'drv.CP': 35, 'drv.SM': 30, 'accent': 7 }
 };
 function convertV(p) {
-  const v = Object.assign({}, VSOUND[p.s]); v.shuffle = Math.round(50 + p.sw / 4); v['sm.bank'] = p.bk; v['sm.chop'] = p.cx; v['lvl.SM'] = half(LEVEL.SM + 20 * Math.log10(Math.max(1, p.lv) / 100));
+  const v = Object.assign({}, VSOUND[p.s]); if (p.bpm) v.bpm = p.bpm; v.shuffle = Math.round(50 + p.sw / 4); v['sm.bank'] = p.bk; v['sm.chop'] = p.cx; v['lvl.SM'] = half(LEVEL.SM + 20 * Math.log10(Math.max(1, p.lv) / 100));
   const sc = emptyScene(); Object.keys(p.g).forEach(k => { sc.g[k] = p.g[k].split('').map(c => c === 'x'); }); if (p.ac) sc.g.AC = p.ac.split('').map(c => c === 'x');
   p.br.split('').forEach((c, i) => { sc.g.SM[i] = c !== '.'; sc.sl[i] = c >= '1' && c <= '8' ? +c : 0; });
   const root = p.root || (p.s === '888' ? 45 : 38); v.key = ((root - 28) % 12 + 12) % 12; const oct = 12 * Math.floor((root - 28) / 12);
@@ -300,7 +300,7 @@ function mkEngine(ac, live) {
   X.revIn = g(); const pre = ac.createDelay(.1); pre.delayTime.value = .018;
   X.cvs = [ac.createConvolver(), ac.createConvolver()]; X.cvg = [g(1), g(0)]; X.cvA = 0; X.irSecs = 0;
   X.revRet = g(11); const rvf = bq('highpass', 320, .7); X.cvs.forEach((c, j) => { pre.connect(c); c.connect(X.cvg[j]); X.cvg[j].connect(rvf); }); X.revIn.connect(pre);
-  chain(rvf, bq('highshelf', 5000, null, -3), bq('lowpass', 9000, .7), X.revRet, X.duck);
+  chain(rvf, bq('highshelf', 5000, null, -2), bq('lowpass', 12000, .7), X.revRet, X.duck);
   // dub delay: dotted eighth, filtered feedback, a little of it into the room
   X.dlyIn = g(); X.dl = ac.createDelay(2); X.fb = g(.4); X.dlyRet = g(1.6);
   const dlp = bq('lowpass', 2000, -3), dhp = bq('highpass', 140, -3);   // Q is in dB here: -3 = no bump, so the loop can never gain and run away   // inside the loop, so every repeat is darker than the last
@@ -424,7 +424,7 @@ function voice(X, k, t, i, vel, note) {
     const open = k === 'OH', tn = P['hh.tone'] / 100, tau = open ? P['oh.decay'] / 3450 : P['ch.decay'] / 4160, life = tau * 9;
     if (X.openHat) { hold(X.openHat.gain, t); X.openHat.gain.setTargetAtTime(0, t, .006); X.openHat = null; }   // a new hat chokes the open one
     // the metal bank through the two classic band-passes (3.44 k body, 7.1 k sizzle), then a high-pass set by TONE, plus a layer of band-passed noise for air
-    const e = eg(open ? .36 : .6, tau, .0015), hp = flt('highpass', 2400 + tn * 4600, .7), lo = flt('bandpass', 3440, 1.1), hi = flt('bandpass', 7100, 1), lg = ac.createGain(), hg = ac.createGain(), sm = flt('highshelf', 9500, null, -4);   // softer front edge and a gentle top shelf: crisp, not fizzy
+    const e = eg(open ? .36 : .6, tau, .0015), hp = flt('highpass', 2400 + tn * 4600, .7), lo = flt('bandpass', 3440, 1.1), hi = flt('bandpass', 7100, 1), lg = ac.createGain(), hg = ac.createGain(), sm = flt('highshelf', 9500, null, -2);   // softer front edge and a gentle top shelf: crisp, not fizzy
     lg.gain.value = 6 * (1 - tn * .6); hg.gain.value = 8; X.bank.connect(lo); X.bank.connect(hi); lo.connect(lg); hi.connect(hg); lg.connect(hp); hg.connect(hp); hp.connect(sm); sm.connect(e); e.connect(d);
     if (X.live) setTimeout(() => { try { X.bank.disconnect(lo); X.bank.disconnect(hi); } catch (_) {} }, Math.max(0, (t - ac.currentTime) + life + .2) * 1000);
     const nz = ac.createBufferSource(), ng = ac.createGain(); nz.buffer = X.noise; nz.loop = true; ng.gain.value = 1.6 + tn * .6;
