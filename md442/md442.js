@@ -930,18 +930,27 @@ function noteOn(note) {
   if (S.keys.mode) { if (S.keys.hold && down.size === 0) { held = []; arpPos = 0; } down.add(note); if (!held.includes(note)) held.push(note); if (!playing) { if (ac.state === 'running') arpRun(); else ac.resume().then(arpRun).catch(() => {}); } }
   else {
     down.add(note); const go = () => playNote(note, ac.currentTime + .01); if (ac.state === 'running') go(); else ac.resume().then(go).catch(() => {});
-    if (S.keys.rec && playing && S.keys.target === 'BS' && head >= 0) { const sc = scene(); sc.g.BS[head] = true; sc.n[head] = note; mark(); drawAll(); }
-    else if (S.keys.rec && playing && S.keys.target === 'SM' && head >= 0) { const sc = scene(); sc.g.SM[head] = true; sc.sl[head] = slOf(note); mark(); drawAll(); }   // REC: writes the note into the bass line at the step that is playing
+    if (S.keys.rec && playing && head >= 0) writeNote(note);
   }
   drawKbd();
+}
+// WRITE: records what you play (on screen or on the SMK-37) into the looping pattern of the instrument KEYS plays, on the
+// nearest step: a note in the second half of a step lands on the next one. Bass keeps the note, the sampler the slice, the
+// stab its timing (it plays its chord on the pattern's key). One UNDO takes back a whole take.
+function writeNote(note) {
+  const k = S.keys.target, sc = scene(); if (!sc.g[k]) return;
+  const late = ac && headT && ac.currentTime - headT > stepLen() / 2, i = late ? (head + 1) % Math.max(1, S.last) : head;
+  if (performance.now() - editT > 1500) keep('keys write'); editT = performance.now();
+  sc.g[k][i] = true; if (k === 'BS') sc.n[i] = note; else if (k === 'SM') sc.sl[i] = slOf(note);
+  mark(); drawAll();
 }
 function noteOff(note) { if (!down.has(note)) return; down.delete(note); if (S.keys.mode && !S.keys.hold) held = held.filter(x => x !== note); drawKbd(); }
 function drawKbd() { kbdEls.forEach(({ el, n }) => { if (el.isConnected) { el.classList.toggle('on', down.has(n)); el.classList.toggle('held', held.includes(n) && !!S.keys.mode); } }); }
 function setKeys(o) { Object.assign(S.keys, o); if (!S.keys.mode || (o.hold === false)) { held = held.filter(n => down.has(n)); } if (!S.keys.mode) held = []; drawAll(); drawKbd(); persist(); }
 function buildKeys(box, count) {
   const ctl = h('div', 'kctl'), lab = (t, el) => { const w = h('div', 'lab'); w.append(h('span', 'cap', t), el); return w; };
-  const hold = key('HOLD', () => setKeys({ hold: !S.keys.hold }), 'led'), rec = key('WRITE', () => setKeys({ rec: !S.keys.rec }), 'led'); rec.title = 'Writes the notes you play into the bass line while it runs';
-  live(hold, () => { hold.classList.toggle('on', S.keys.hold); hold.setAttribute('aria-pressed', S.keys.hold); }); live(rec, () => { rec.classList.toggle('on', S.keys.rec); rec.setAttribute('aria-pressed', S.keys.rec); rec.disabled = S.keys.target !== 'BS' || !!S.keys.mode; });
+  const hold = key('HOLD', () => setKeys({ hold: !S.keys.hold }), 'led'), rec = key('WRITE', () => setKeys({ rec: !S.keys.rec }), 'led'); rec.title = 'Records what you play into the loop for the instrument above, on the nearest step, while it plays. Turn ARP off to use it.';
+  live(hold, () => { hold.classList.toggle('on', S.keys.hold); hold.setAttribute('aria-pressed', S.keys.hold); }); live(rec, () => { rec.classList.toggle('on', S.keys.rec); rec.setAttribute('aria-pressed', S.keys.rec); rec.disabled = !!S.keys.mode; });
   ctl.append(lab('PLAYS', seg([['BS', 'BASS'], ['ST', 'STAB'], ['SM', 'SAMPLE']], () => S.keys.target, v => setKeys({ target: v }))), lab('ARP', seg(ARPM.map((m, j) => [j, m]), () => S.keys.mode, v => setKeys({ mode: v }))),
     lab('RATE', seg(ARPR.map((r, j) => [j, r[0]]), () => S.keys.rate, v => setKeys({ rate: v }))), lab('OCTAVES', seg([[1, '1'], [2, '2']], () => S.keys.oct, v => setKeys({ oct: v }))), hold, rec);
   const kb = h('div', 'kbd'); let shownKey = -1;
@@ -985,7 +994,7 @@ function flashKey(k) { (instEls[k] || []).forEach(b => { if (!b.isConnected) ret
 
 /* steps: ONE DRUM = 16 big keys for the selected drum, WHOLE PATTERN = every drum as a row of 16 */
 const LETTERS = 'QWERTYUIASDFGHJK', DRUM_LET = 'QWERTYUIASDFGHJ', DRUM_CODES = DRUM_LET.split('').map(c => 'Key' + c);   // steps use all 16; the 14 drums use the first 14 with Shift (select) or Alt (mute)
-let head = -1, holdT = 0;
+let head = -1, headT = 0, holdT = 0;
 const stepBoxes = [];
 function buildSteps(box, view) {
   view = view || S.view; if (!stepBoxes.includes(box)) stepBoxes.push(box);
@@ -1636,7 +1645,7 @@ function frame() {
   requestAnimationFrame(frame);
   if (!ac) return;
   let moved = false;
-  while (queue.length && queue[0].t <= ac.currentTime) { const q = queue.shift(); head = q.i; moved = true; q.hits.forEach(flashKey); if (q.hits.includes('BD') && window.MDStrobe && window.MDStrobe.flash) window.MDStrobe.flash(true); }
+  while (queue.length && queue[0].t <= ac.currentTime) { const q = queue.shift(); head = q.i; headT = q.t; moved = true; q.hits.forEach(flashKey); if (q.hits.includes('BD') && window.MDStrobe && window.MDStrobe.flash) window.MDStrobe.flash(true); }
   if (moved) drawHead();
   if (S.mixer && !PHONE) { if (!cbuf) cbuf = new Float32Array(256); SOUND.forEach(k => { const el = chMeters[k]; if (!el || !el.isConnected) return; E.chAn[k].getFloatTimeDomainData(cbuf); let pk = 0; for (let i = 0; i < 256; i++) pk = Math.max(pk, Math.abs(cbuf[i])); const v = chLvl[k] = Math.max(pk, (chLvl[k] || 0) * .88); el.style.height = clamp(Math.sqrt(v) * 100, 0, 100) + '%'; }); if (chMeters.master && chMeters.master.isConnected) chMeters.master.style.height = clamp(Math.sqrt(lvl) * 100, 0, 100) + '%'; }
   if (meterEls.length) { if (!mbuf) mbuf = new Float32Array(E.an.fftSize); E.an.getFloatTimeDomainData(mbuf); let pk = 0; for (let i = 0; i < mbuf.length; i++) pk = Math.max(pk, Math.abs(mbuf[i])); lvl = Math.max(pk, lvl * .9); const w = clamp(lvl, 0, 1) * 100 + '%'; meterEls.forEach(m => { m.style.width = w; m.classList.toggle('hot', lvl > .92); }); }
