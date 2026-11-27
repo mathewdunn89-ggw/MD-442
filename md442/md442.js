@@ -472,6 +472,7 @@ function preloadBank(i) {
     .then(a => new Promise((res, rej) => dc.decodeAudioData(a, res, rej))).then(buf => { bankBufs[i] = buf; bankWait[i] = null; return buf; }).catch(() => { bankWait[i] = null; return null; }));
 }
 // sl > 0: that slice (1-8) of the bank; sl < 0: the loop from step -sl - 1; else the loop where this step falls (two-bar banks follow the bar count)
+const SM_GAIN = 2.2;   // the banks sat about 8 dB under the drums: +6 dB so a slice or a vocal cuts through
 function sampler(X, t, i, vel, sl) {
   const bi = Math.round(P['sm.bank']), buf = bankBufs[bi], b = BANKS[bi]; if (!buf) { preloadBank(bi); return false; }
   const ac = X.ac, rate = P.bpm / b[3] * Math.pow(2, P['sm.tune'] / 12), steps = 16 * b[2], per = buf.duration / steps;
@@ -480,7 +481,7 @@ function sampler(X, t, i, vel, sl) {
   else { const pos = sl < 0 ? (-sl - 1) % steps : (i + 16 * ((X.bar || 0) % b[2])) % steps; off = pos * per; dur = buf.duration - off; X.smLoop = true; }
   if (X.smG && X.smEnd > t) { hold(X.smG.gain, t); X.smG.gain.setTargetAtTime(0, t, .003); }      // one sampler voice: a new hit cuts the last, as on the keyboard
   const src = ac.createBufferSource(), e = ac.createGain(), end = t + dur / rate; src.buffer = buf; src.playbackRate.value = rate;
-  e.gain.value = 0; e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(vel * 1.1, t + .002); e.gain.setValueAtTime(vel * 1.1, Math.max(t + .002, end - .006)); e.gain.linearRampToValueAtTime(0, end);
+  e.gain.value = 0; e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(vel * SM_GAIN, t + .002); e.gain.setValueAtTime(vel * SM_GAIN, Math.max(t + .002, end - .006)); e.gain.linearRampToValueAtTime(0, end);
   src.connect(e); e.connect(X.in.SM); src.start(t, off, dur + .01); src.stop(end + .02); X.smG = e; X.smEnd = end; return true;
 }
 // a SAMPLE step in a pattern: a slice plays and rings through the steps after it (the firmware's "-"); a run of loop steps plays on and
@@ -555,7 +556,11 @@ function tick() {
 /* MIDI clock out (CLOCK OUT in the MIDI panel): 24 per beat, Start and Stop, sent ahead with timestamps so an FM-1, SMK-37 firmware, Maschine or Ableton can follow MD|442.
    Never sent while MD|442 is itself following someone else's clock, so two machines can't chase each other. */
 let ckStarted = false;
-const ckOuts = () => (midi.cko && midi.access && !(midi.lastCk && performance.now() - midi.lastCk < 1000)) ? [...midi.access.outputs.values()] : [];
+// ONE TRANSPORT with an MD keyboard (SMK-37 or FM-1): plugged in and connected, its PLAY/STOP start and stop this page and its clock sets the
+// tempo, and START here sends Start and clock to it (even with CLOCK OUT off), so the two never run separate beats. Unplugged, it plays on its own.
+const KB_NAME = /SMK|FM-?1|M-?VAVE|MD ?\|? ?(442|187|888)/i;
+const isKb = o => KB_NAME.test(o.name || '') || (kbx.out && o.name === kbx.out.name);
+const ckOuts = () => { if (midi.ext || !midi.access || (midi.lastCk && performance.now() - midi.lastCk < 1000)) return []; const all = [...midi.access.outputs.values()]; return midi.cko ? all : all.filter(isKb); };
 function clockStep(t, now) {
   const outs = ckOuts(); if (!outs.length) return;
   const base = performance.now() - now * 1000, dt = stepLen() / 6;
@@ -570,7 +575,7 @@ function setPlaying(on) {
   if (on && sg.restoreT) sgRestore();
   if (on) { ckStarted = false; if (rec) clearTimeout(rec.tail); boot(); apply(); E.bar = -1; cur = 0; mstep = 0; firstBar = true; nt = -1; repStart = null; queue.length = 0; clearInterval(timer); timer = setInterval(tick, 25); tick(); }
   else { if (sg.mode === 'rec') songRecStop(); else if (sg.mode === 'play') songEnd();
-   clearInterval(timer); clockStop(); queue.length = 0; head = -1; drawHead(); if (rec && !rec.busy) rec.tail = setTimeout(recStop, Math.max(1500, P['fx.vdec'] * 1050 + 300));   // let the tails ring out, then save
+   clearInterval(timer); clockStop(); midi.ext = false; queue.length = 0; head = -1; drawHead(); if (rec && !rec.busy) rec.tail = setTimeout(recStop, Math.max(1500, P['fx.vdec'] * 1050 + 300));   // let the tails ring out, then save
  if (pend != null) { const n = pend; pend = null; goScene(n); } if (mqDo) flipGroup(); if (ac) { E.fb.gain.setTargetAtTime(0, ac.currentTime, .05); setTimeout(apply, 700); } }
   if (!on && S.keys.mode && held.length) arpRun();
   const st = window.MDStrobe; if (st) { if (on) st.music = 'md442'; else if (st.music === 'md442') st.music = null; }
@@ -1512,11 +1517,13 @@ const midiMap = () => (Object.keys(midi.cc).length || Object.keys(midi.note).len
 try { const m = JSON.parse(localStorage.getItem(MIDI_LS) || '{}'); if (m && m.cc) midi.cc = m.cc; if (m && m.note) midi.note = m.note; if (m && m.cko) midi.cko = true; } catch (_) {}
 const midiKeep = () => { try { localStorage.setItem(MIDI_LS, JSON.stringify({ cc: midi.cc, note: midi.note, cko: !!midi.cko })); } catch (_) {} };
 function midiHit(k, v) { if (!SOUND.includes(k)) return; sgEv('h', k, v); if (off(k)) return; boot(); const g = .35 + .65 * (v / 127), go = () => voice(E, k, ac.currentTime + .005, 0, g); if (ac.state === 'running') go(); else ac.resume().then(go).catch(() => {}); flashKey(k); }
+// started by the keyboard or a DAW: follow it, and send it nothing back (no second Start, no clock of our own)
+function follow() { if (playing) return; boot(); midi.ext = true; setPlaying(true); if (!playing) midi.ext = false; }
 function onMidi(e) {
   const d = e.data; if (!d || !d.length) return; const st = d[0];
   if (st === 0xF8) { clockTick(e.timeStamp || performance.now()); return; }
-  if (st === 0xFA || st === 0xFB) { boot(); setPlaying(true); return; } if (st === 0xFC) { setPlaying(false); return; }
-  if (st === 0xF0 && d[1] === 0x7F && d[3] === 0x06) { const c = d[4]; midi.last = 'MMC ' + c; if (c === 2 || c === 3) { boot(); setPlaying(true); } else if (c === 1 || c === 9) setPlaying(false); return; }
+  if (st === 0xFA || st === 0xFB) { follow(); return; } if (st === 0xFC) { setPlaying(false); return; }
+  if (st === 0xF0 && d[1] === 0x7F && d[3] === 0x06) { const c = d[4]; midi.last = 'MMC ' + c; if (c === 2 || c === 3) follow(); else if (c === 1 || c === 9) setPlaying(false); return; }
   if (st >= 0xF0) return;
   const type = st & 0xF0, ch = (st & 15) + 1, a = d[1], b = d[2] || 0;
   if (type === 0x90 && b > 0) {
@@ -1533,12 +1540,21 @@ function onMidi(e) {
     const k = midiMap().cc[id]; if (isAct(k)) { const hi = b > 63; if (hi && !midi.ccHi[id]) doAct(k); midi.ccHi[id] = hi; return; } if (k && DEF[k]) { midi.busy = true; set(k, toVal(k, b / 127)); midi.busy = false; }
   }
 }
-function midiScan() { const acc = midi.access; if (!acc) return; midi.names = []; acc.inputs.forEach(inp => { inp.onmidimessage = onMidi; midi.names.push(inp.name || 'MIDI device'); }); midi.on = true; drawAll(); }
-async function midiConnect() {
+function midiScan() { const acc = midi.access; if (!acc) return; midi.names = []; acc.inputs.forEach(inp => { inp.onmidimessage = onMidi; midi.names.push(inp.name || 'MIDI device'); }); midi.on = true; drawAll(); kbAuto(); }
+// an MD keyboard plugged in: put this beat on it (patterns 9+) and keep LIVE on it, so both play the same beat from one PLAY. Once per plug-in.
+function kbAuto() {
+  const outs = midi.access ? [...midi.access.outputs.values()].filter(o => o.state !== 'disconnected' && isKb(o)) : [];
+  if (kbx.out && kbx.out.state === 'disconnected') kbx.out = null;
+  if (!outs.length) { kbx.auto = false; return; }
+  if (kbx.auto || !kbx.live || kbx.out) return;
+  kbx.auto = true; setTimeout(() => sendToKeyboard(true), 300);
+}
+async function midiConnect(quiet) {
+  quiet = quiet === true;
   if (!navigator.requestMIDIAccess) { toast(NOMIDI); return false; }
   if (midi.access) { midiScan(); return true; }
-  try { midi.access = await navigator.requestMIDIAccess({ sysex: true }).catch(() => navigator.requestMIDIAccess()); midi.access.onstatechange = midiScan; midiScan(); toast(midi.names.length ? 'MIDI: ' + midi.names.join(', ') : 'MIDI is on. Plug in or pair a controller and it will appear.'); return true; }
-  catch (_) { toast('MIDI was not allowed. Allow it in the browser to use a controller.'); return false; }
+  try { midi.access = await navigator.requestMIDIAccess({ sysex: true }).catch(() => navigator.requestMIDIAccess()); midi.access.addEventListener('statechange', midiScan); midiScan(); if (!quiet) toast(midi.names.length ? 'MIDI: ' + midi.names.join(', ') : 'MIDI is on. Plug in or pair a controller and it will appear.'); return true; }
+  catch (_) { if (!quiet) toast('MIDI was not allowed. Allow it in the browser to use a controller.'); return false; }
 }
 function toggleMidi() { S.midiOpen = !S.midiOpen; if (S.midiOpen && !midi.access) midiConnect(); drawAll(); persist(); }
 function midiLearn() { midi.learn = !midi.learn; midi.armP = midi.armD = midi.armA = null; if (midi.learn && !midi.access) midiConnect(); drawAll(); if (midi.learn) toast('LEARN: touch a knob, a drum, a scene, MUTE or MUTE GROUP on screen, then move the control or hit the pad on your controller.'); }
@@ -1637,7 +1653,9 @@ async function kbAccess() {
   if (!navigator.requestMIDIAccess) { toast('Sending to the keyboard needs Chrome or Edge.'); return false; }
   try { kbx.sx = await navigator.requestMIDIAccess({ sysex: true }); } catch (_) { toast('Allow MIDI (with SysEx) in the browser to send beats to the keyboard.'); return false; }
   const scan = () => { kbx.outs = []; kbx.sx.outputs.forEach(o => kbx.outs.push(o)); kbx.sx.inputs.forEach(i => i.addEventListener('midimessage', kbIn)); };
-  kbx.sx.onstatechange = scan; scan(); return true;
+  kbx.sx.addEventListener('statechange', scan); scan();
+  if (!midi.access) { midi.access = kbx.sx; midi.access.addEventListener('statechange', midiScan); midiScan(); }   // the keyboard's PLAY/STOP and clock reach the page too: one transport
+  return true;
 }
 const kbAsk = (out, f) => new Promise(res => { kbx.wait = res; try { out.send(f); } catch (_) { kbx.wait = null; res(false); } setTimeout(() => { if (kbx.wait === res) { kbx.wait = null; res(false); } }, 1500); });
 async function sendToKeyboard(quiet) {
@@ -1678,6 +1696,8 @@ applyTheme();
 (PHONE ? buildPhone : buildDesk)();
 live(root, () => { if (root.dataset.style !== S.style) root.dataset.style = S.style; });   // MD|442 green, MD|187 amber, MD|888 red, as on the keyboards
 preloadBank(P['sm.bank']);
+// MIDI allowed here before: listen straight away, so a plugged-in keyboard's PLAY starts this page in step (no CONNECT needed, no prompt)
+try { if (navigator.requestMIDIAccess && navigator.permissions) navigator.permissions.query({ name: 'midi', sysex: true }).then(p => { if (p.state === 'granted') midiConnect(true); }).catch(() => {}); } catch (_) {}
 let mbuf = null, cbuf = null, lvl = 0; const chLvl = {};
 function frame() {
   requestAnimationFrame(frame);
