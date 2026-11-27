@@ -3,7 +3,10 @@
 
 namespace md442 {
 
-static const double BUS = .4, CLIPIN = .34, OUT = .79, DUCK = .75;
+static const double BUS = .4, CLIPIN = .56, OUT = .79, DUCK = .75, BDUCK = .72, SM_GAIN = 2.2;
+static const double LEVEL_SM = -4;
+// where each channel's drive starts to bite: about where that drum peaks
+static inline double cda(int k) { return k == BD ? .9 : k == BS ? .6 : k == LT || k == MT ? .5 : k == HT || k == SD || k == CP ? .45 : .35; }
 static const double HAT_F[] = {205.3, 304.4, 369.6, 522.7, 540, 800}, RIDE_F[] = {263, 400, 421, 474, 587, 845};
 static inline double lin(double db) { return db <= -40 ? 0 : std::pow(10, db / 20); }
 
@@ -81,7 +84,7 @@ std::string Engine::presetName(int idx) {
 }
 std::string Engine::presetStyle(int idx) { int n = (int)presetSources().size(); return idx < n ? "MD442" : stylePresets()[(size_t)(idx - n)].style; }
 const char* Engine::loopName(int kit, int slot) const {
-    static const char* N[3][4] = {{"-", "-", "-", "-"}, {"BOOMBAP", "DRUMS", "STABS", "VOX"}, {"RUMBLE", "GABBA", "TRANCE", "HITS"}};
+    static const char* N[3][4] = {{"-", "-", "-", "-"}, {"BOOMBP", "DRUMS", "STABS", "VOX"}, {"RUMBLE", "GABBA", "TRANCE", "HITS"}};
     return N[std::clamp(kit, 0, 2)][std::clamp(slot, 0, 3)];
 }
 
@@ -118,10 +121,10 @@ void Engine::prepare(double sampleRate, bool isLive) {
     bch = Channel(); bch.clp.init(Biquad::LOWPASS, sr, 22000, -3); bch.chp.init(Biquad::HIGHPASS, sr, 10, -3); bch.pan.snap(0); bch.sv.snap(0); bch.sd.snap(0);
     chs[BD].entry.os2 = true; chs[BS].entry.os2 = true; chs[ST].stHp = Biquad(Biquad::HIGHPASS, sr, 170, .7);
     rumLp = Biquad(Biquad::LOWPASS, sr, 130, .7); rum.snap(0);
-    duck = Param(1);
+    duck = Param(1); bduck = Param(1); smEnd = -1; smLoop = false;
     // reverb: the convolver's block latency comes out of the 18 ms pre-delay
     pre.init(.1, sr); for (auto& c : cv) c.reset(); cvg[0] = Param(1); cvg[1] = Param(0); cvA = 0; irSecs = 0; irPending = false; dropOld = -1;
-    for (int c = 0; c < 2; ++c) { rvf[c] = Biquad(Biquad::HIGHPASS, sr, 320, .7); rvShelf[c] = Biquad(Biquad::HIGHSHELF, sr, 5000, 1, -3); rvLp[c] = Biquad(Biquad::LOWPASS, sr, 9000, .7); }
+    for (int c = 0; c < 2; ++c) { rvf[c] = Biquad(Biquad::HIGHPASS, sr, 320, .7); rvShelf[c] = Biquad(Biquad::HIGHSHELF, sr, 5000, 1, -2); rvLp[c] = Biquad(Biquad::LOWPASS, sr, 12000, .7); }
     dl.init(2, sr); dlp.init(Biquad::LOWPASS, sr, 2000, -3); dhp.init(Biquad::HIGHPASS, sr, 140, -3); dret = Biquad(Biquad::HIGHPASS, sr, 300, .7); fb.snap(.4); dtime.snap(.1);
     for (int c = 0; c < 2; ++c) {
         lo[c].init(Biquad::LOWSHELF, sr, 300, 1, 0); mid[c].init(Biquad::PEAKING, sr, 1000, .7, 0); hi[c].init(Biquad::HIGHSHELF, sr, 4000, 1, 0);
@@ -129,7 +132,7 @@ void Engine::prepare(double sampleRate, bool isLive) {
         drv[c] = Shaper(); drv[c].os2 = true;
     }
     mst.snap(.7);
-    comp.init(sr, -12, 12, 2, .03, .2);
+    comp.init(sr, -12, 12, 2.5, .03, .12);
     effBpm = pv("bpm");
     apply(true);
 }
@@ -186,12 +189,12 @@ void Engine::apply(bool snap) {
         double v = k == ST ? pv("st.verb") / 100 * .5 : P[(size_t)defIndex("rev." + id)] / 100 * (k == BS ? .4 : va);
         double d = k == BS ? pv("bs.echo") / 100 * .8 : k == ST ? pv("st.echo") / 100 * 1.1 : P[(size_t)defIndex("ech." + id)] / 100 * sa;
         setT(c.pan, P[(size_t)defIndex("pan." + id)] / 100, .02, snap);
-        double cd = P[(size_t)defIndex("drv." + id)] / 100; if (cd > .01) c.cdrv.set(1 + cd * 12, 1 - cd * .4); else c.cdrv.clear();
+        double cd = P[(size_t)defIndex("drv." + id)] / 100; if (cd > .01) c.cdrv.setSoft(cd, cda(k)); else c.cdrv.clear();
         filt(c.clp, c.chp, P[(size_t)defIndex("flt." + id)], snap);
         setT(c.sv, v, .04, snap); setT(c.sd, d, .04, snap);
     }
-    setT(brkGain, pv("brk.level") / 100 * .45, .02, snap);
-    {   auto& c = bch; setT(c.pan, pv("pan.BRK") / 100, .02, snap); double cd = pv("drv.BRK") / 100; if (cd > .01) c.cdrv.set(1 + cd * 12, 1 - cd * .4); else c.cdrv.clear();
+    setT(brkGain, lin(halfR(LEVEL_SM + 20 * std::log10(std::max(1.0, pv("brk.level")) / 100))), .012, snap);   // the web sampler's level: 100 = its -4 dB
+    {   auto& c = bch; setT(c.pan, pv("pan.BRK") / 100, .02, snap); double cd = pv("drv.BRK") / 100; if (cd > .01) c.cdrv.setSoft(cd, .35); else c.cdrv.clear();
         filt(c.clp, c.chp, pv("flt.BRK"), snap); setT(c.sv, pv("rev.BRK") / 100 * va, .04, snap); setT(c.sd, pv("ech.BRK") / 100 * sa, .04, snap); }
     setT(fb, pv("fx.efb") / 100 * .9, .05, snap);
     setT(dtime, std::min(1.95, 60 / effBpm / 4 * ETIMES[std::clamp((int)std::lround(pv("fx.etime")), 0, 5)].sixteenths), .08, snap);
@@ -205,7 +208,7 @@ void Engine::apply(bool snap) {
     chs[BD].entry.set(1 + pun + rmb * .4, .95);
     setT(rum, (.02 + rmb * (.1 + depth * .07)) / 9, .05, snap);
     double dr = pv("bs.drive") / 100; chs[BS].entry.set(1 + dr * 18, 1 - dr * .32);
-    double da = pv("fx.drive") / 100; for (auto& dv : drv) { if (da > .01) dv.set(1 + da * 14, 1 - da * .35); else dv.clear(); }
+    double da = pv("fx.drive") / 100; for (auto& dv : drv) { if (da > .01) dv.setSoft(da, .5); else dv.clear(); }
     double cr = std::pow(2, pv("cr.tune") / 12), rd = std::pow(2, pv("rd.tune") / 12);
     for (int i = 0; i < 6; ++i) { setT(crb.f[i], HAT_F[i] * 1.12 * cr, .01, snap); setT(rdb.f[i], RIDE_F[i] * 1.5 * rd, .01, snap); }
 }
@@ -233,8 +236,10 @@ void Engine::voice(int k, double t, int stepIdx, double vel, const int* note) {
     };
     if (k == BD) {
         double f = pv("bd.tune"), tau = pv("bd.decay") / 3300, pu = pv("bd.punch") / 100, at = pv("bd.attack") / 100;
-        ring(f, tau, .8, 1.9 + pu * 4.2, .007 + (1 - pu) * .022, .955); ring(f * 2, tau * .28, .1 + pu * .12, 1.5, .006);
-        if (at > .02) click(at * .55, 600 + at * 3400);
+        ring(f, tau, .8, 1.9 + pu * 4.2, .007 + (1 - pu) * .022, .955); ring(f * 2, tau * .28, .16 + pu * .2, 1.5, .006);   // a little second harmonic for weight on small speakers
+        if (at > .02) { click(at * .55, 600 + at * 3400); hiss(at * .5 + pu * .2, .0042, {bq(Biquad::BANDPASS, 3300 + at * 1400, 1.5)}, .0004); }   // the beater
+        ring(f * 3.1, .014 + pu * .008, .08 + pu * .14, 1.3, .004);   // knock: the short mid punch of a hard kick
+        bduck.cancelAndHoldAtTime(t); bduck.setTargetAtTime(BDUCK, t, .003); bduck.setTargetAtTime(1, t + .07, .045);   // the bass dips a bit further, so kick and bass never fight
         duck.cancelAndHoldAtTime(t); duck.setTargetAtTime(DUCK, t, .004); duck.setTargetAtTime(1, t + .06, .06);   // everything else dips for a moment
     } else if (k == SD) {
         double f = 238 * std::pow(2, pv("sd.tune") / 12), sn = pv("sd.snappy") / 100, tn = pv("sd.tone") / 100 - .5;
@@ -260,7 +265,7 @@ void Engine::voice(int k, double t, int stepIdx, double vel, const int* note) {
         openHat = 0;
         auto* h = new HatPart(); h->bank = &hat.v; h->r = Rng((uint32_t)(rng.next() * 2e9) | 1u);
         h->env = eg(t, open ? .36 : .6, tau, .0015);
-        h->hp = bq(Biquad::HIGHPASS, 2400 + tn * 4600, .7); h->lo = bq(Biquad::BANDPASS, 3440, 1.1); h->hi = bq(Biquad::BANDPASS, 7100, 1); h->sm = bq(Biquad::HIGHSHELF, 9500, 1, -4);
+        h->hp = bq(Biquad::HIGHPASS, 2400 + tn * 4600, .7); h->lo = bq(Biquad::BANDPASS, 3440, 1.1); h->hi = bq(Biquad::BANDPASS, 7100, 1); h->sm = bq(Biquad::HIGHSHELF, 9500, 1, -2);
         h->lg = 6 * (1 - tn * .6); h->hg = 8; h->ng = 1.6 + tn * .6; h->nh = bq(Biquad::BANDPASS, 7000 + tn * 3000, .9); h->noiseStop = t + life + .1;
         add(h, t + life + .2);
         if (open) openHat = h->id;
@@ -297,49 +302,63 @@ void Engine::voice(int k, double t, int stepIdx, double vel, const int* note) {
     }
 }
 
-// ---------------------------------------------------------------- the BREAK
+// ---------------------------------------------------------------- the BREAK: the web app's sampler
+// one voice playing a piece of a bank in time with the tempo; a new hit cuts the last
 struct Engine::BrkPart : Part {
-    const Loop* L = nullptr; double pos = 0, to = 0, rate = 1, fade = 1, fadeStep = 0; double t0 = 0; bool stopping = false;
+    const Loop* L = nullptr; double pos = 0, rate = 1; Param env { 0 };
     double tick(double t) override {
-        if (!L || pos >= to - 1) return 0;
-        size_t i = (size_t)pos; double f = pos - (double)i, x = L->data[i] * (1 - f) + L->data[std::min(i + 1, L->data.size() - 1)] * f;
-        double att = std::min(1.0, (t - t0) / .002);   // 2 ms in, so a slice never clicks
-        double rel = std::min(1.0, (to - pos) / (L->sr * .003));
-        if (stopping) { fade -= fadeStep; if (fade <= 0) { fade = 0; pos = to; } }
-        pos += rate;
-        return x * att * rel * fade;
+        double e = env.next(t); if (!L) return 0;
+        size_t i = (size_t)pos; if (i + 1 >= L->data.size()) return 0;
+        double f = pos - (double)i, x = L->data[i] * (1 - f) + L->data[i + 1] * f;
+        pos += rate; return x * e;
     }
 };
-void Engine::brkStop(double) { if (brk) { auto* b = static_cast<BrkPart*>(brk.get()); if (!b->stopping) { b->stopping = true; b->fadeStep = 1 / (.004 * sr); } } }
-void Engine::brkStart(double from, double to, double t, double vel) {
+void Engine::brkStop(double t) { if (brk) { auto* b = static_cast<BrkPart*>(brk.get()); b->env.cancelAndHoldAtTime(t); b->env.setTargetAtTime(0, t, .003); b->stop = std::min(b->stop, t + .05); smEnd = -1; } }
+// sl > 0: that slice (1-8) of the bank; sl < 0: the loop from step -sl - 1; else the loop where this step falls (two-bar banks follow the bar count)
+bool Engine::sampler(double t, int idx, long long bar, double vel, int sl) {
     int kit = (int)std::lround(pv("brk.kit")), slot = (int)std::lround(pv("brk.slot"));
-    if (kit < 1 || kit > 2) return; const Loop& L = loops[(size_t)kit][(size_t)std::clamp(slot, 0, 3)]; if (L.data.empty()) return;
-    // the old sound fades out over 4 ms while the new one starts: it lives on as an ordinary part
-    if (brk) { brkStop(t); auto* b = static_cast<BrkPart*>(brk.release()); b->ch = -1; b->stop = t + .01; parts.emplace_back(b); }
-    auto* b = new BrkPart(); b->L = &L; b->pos = from * (double)L.data.size(); b->to = to * (double)L.data.size();
-    b->rate = L.sr / sr * std::pow(2, pv("brk.pitch") / 12); b->t0 = t; b->vel = vel; b->ch = -1; b->start = t - .5 / sr; b->stop = 1e18;
-    brk.reset(b); hitFlags.fetch_or(1u << 14);
-}
-void Engine::slice(int n, double vel) { if (n < 0 || n > 7) return; brkStart(n / 8.0, (n + 1) / 8.0, now + 1 / sr, vel); }
-void Engine::brkStep(char c, int idx, long long bar, double t, double vel) {
-    if (c == '-') return;
-    if (c == '.') { brkStop(t); return; }
-    if (c >= '1' && c <= '8') { int n = c - '1'; brkStart(n / 8.0, (n + 1) / 8.0, t, vel); return; }
-    if (c == 'g') {   // play the loop through: start at this step's place in it, and let it run on into the next
-        int kit = (int)std::lround(pv("brk.kit")), slot = (int)std::lround(pv("brk.slot")); if (kit < 1 || kit > 2) return;
-        int bars = std::max(1, loops[(size_t)kit][(size_t)std::clamp(slot, 0, 3)].bars), segs = bars * 16;
-        int seg = (int)((bar % bars) * 16 + idx);
-        if (brkRng.next() * .5 + .5 < pv("brk.complex") / 100) seg = (int)((brkRng.next() * .5 + .5) * segs) % segs;   // CHOP: jump to another 16th of the loop
-        else if (brk) { auto* b = static_cast<BrkPart*>(brk.get()); double want = (double)seg / segs * (double)b->L->data.size();
-            if (!b->stopping && b->L && std::fabs(b->pos - want) < b->L->sr * .012) return; }   // already right there: let it run, no retrigger
-        brkStart((double)seg / segs, 1.0, t, vel);
+    if (kit < 1 || kit > 2) return false; const Loop& L = loops[(size_t)kit][(size_t)std::clamp(slot, 0, 3)]; if (L.data.empty()) return false;
+    double secs = (double)L.data.size() / L.sr, rate = effBpm / L.bpm * std::pow(2, pv("brk.pitch") / 12); int bars = std::max(1, L.bars), steps = 16 * bars;
+    double off, dur;
+    if (sl > 0) { off = (sl - 1) * secs / 8; dur = secs / 8; smLoop = false; }
+    else { int pos = sl < 0 ? (-sl - 1) % steps : (int)((idx + 16 * (((bar % bars) + bars) % bars)) % steps); off = pos * secs / steps; dur = secs - off; smLoop = true; }
+    if (brk) {   // the old sound fades out over a few ms while the new one starts: it lives on as an ordinary part
+        auto* o = static_cast<BrkPart*>(brk.release()); if (smEnd > t) { o->env.cancelAndHoldAtTime(t); o->env.setTargetAtTime(0, t, .003); o->stop = std::min(o->stop, t + .05); }
+        parts.emplace_back(o);
     }
+    auto* b = new BrkPart(); double end = t + dur / rate; b->L = &L; b->pos = off * L.sr; b->rate = rate * L.sr / sr;
+    b->env.setValueAtTime(0, t); b->env.linearRampToValueAtTime(vel * SM_GAIN, t + .002); b->env.setValueAtTime(vel * SM_GAIN, std::max(t + .002, end - .006)); b->env.linearRampToValueAtTime(0, end);
+    b->vel = 1; b->ch = -1; b->start = t - .5 / sr; b->stop = end + .02; b->id = nextId++;
+    brk.reset(b); smEnd = end; hitFlags.fetch_or(1u << 14); return true;
+}
+void Engine::slice(int n, double vel) { if (n < 0 || n > 7) return; sampler(now + 1 / sr, 0, 0, vel, n + 1); }
+// a BREAK step in a pattern: a slice plays and rings through the steps after it ("-"); a run of loop steps plays on and is only
+// lined up again every beat, unless CHOP makes it jump somewhere else in the loop
+void Engine::smStep(const Scene& s, int idx, long long bar, double t, double vel) {
+    auto on = [&](int i) { return s.brk[(size_t)i] != '.'; }; auto sl = [&](int i) { char c = s.brk[(size_t)i]; return c >= '1' && c <= '8' ? c - '0' : 0; };
+    if (!on(idx)) return;
+    if (sl(idx)) { sampler(t, idx, bar, vel, sl(idx)); return; }
+    bool prevOn = idx > 0 && on(idx - 1); int j = idx - 1; while (j >= 0 && on(j) && !sl(j)) --j;
+    if (prevOn && j >= 0 && on(j) && sl(j)) return;
+    int kit = (int)std::lround(pv("brk.kit")), slot = (int)std::lround(pv("brk.slot")); if (kit < 1 || kit > 2) return;
+    double chop = pv("brk.complex") / 100; int bars = std::max(1, loops[(size_t)kit][(size_t)std::clamp(slot, 0, 3)].bars);
+    if (chop > 0 && idx % 2 == 0 && brkRng.next() * .5 + .5 < chop * .7) { sampler(t, idx, bar, vel, -(1 + 2 * (int)std::floor((brkRng.next() * .5 + .5) * 8 * bars))); return; }
+    if (prevOn && idx % 4 && smLoop && smEnd > t) return;
+    sampler(t, idx, bar, vel, 0);
+}
+
+bool Engine::writeStep(int k, int note) {
+    if (!wasRunning || headIdx < 0 || k < 0 || k > NUM_KEYS || k == AC) return false;
+    int L = std::max(1, last), i = now - headT > 60 / effBpm / 4 / 2 ? (headIdx + 1) % L : headIdx; auto& s = scene();
+    if (k == NUM_KEYS) { s.brk[(size_t)i] = (char)('1' + std::clamp(note, 0, 7)); return true; }
+    s.g[(size_t)k][(size_t)i] = true; if (k == BS) s.n[(size_t)i] = std::clamp(note, -24, 24);
+    return true;
 }
 
 void Engine::playStep(int idx, double t, long long bar) {
     auto& s = scene(); double acc = s.g[AC][(size_t)idx] && !mute[AC] ? std::pow(10, pv("accent") / 20) : 1;
     for (int k = 0; k < NUM_SOUND; ++k) if (s.g[(size_t)k][(size_t)idx] && !off(k)) voice(k, t, idx, acc);
-    brkStep(s.brk[(size_t)idx], idx, bar, t, 1);
+    smStep(s, idx, bar, t, acc);
 }
 
 // steps fall on 16th notes of the DAW's timeline (or the plugin's own clock while the DAW is stopped)
@@ -349,7 +368,7 @@ void Engine::runSequencer(int n, const Transport& tr) {
     else if (!tr.hostKnown && std::fabs(pv("bpm") - effBpm) > 1e-6) { effBpm = pv("bpm"); apply(); }
     if (!running) {
         if (wasRunning) { pending.clear(); brkStop(now); playhead = -1; if (pend >= 0) { sc = pend; pend = -1; } }
-        wasRunning = false; lastStep = -1; return;
+        wasRunning = false; lastStep = -1; headIdx = -1; return;
     }
     double ppq0 = host ? tr.ppq : seqPpq;
     if (!host && !wasRunning) ppq0 = seqPpq = 0;
@@ -398,7 +417,7 @@ void Engine::process(float* L, float* R, int n, const Transport& tr) {
         // hits that are due
         if (!pending.empty()) {
             for (size_t i = 0; i < pending.size();) {
-                if (pending[i].t <= t + dt * .5) { playStep(pending[i].idx, t, pending[i].bar); head = pending[i].idx; pending.erase(pending.begin() + (long)i); }
+                if (pending[i].t <= t + dt * .5) { playStep(pending[i].idx, t, pending[i].bar); head = headIdx = pending[i].idx; headT = t; pending.erase(pending.begin() + (long)i); }
                 else ++i;
             }
         }
@@ -412,7 +431,7 @@ void Engine::process(float* L, float* R, int n, const Transport& tr) {
             if (pp->ch < 0) brkIn += pp->tick(t) * pp->vel; else chs[pp->ch].in += pp->tick(t) * pp->vel;
             ++i;
         }
-        if (brk) brkIn += brk->tick(t) * brk->vel;
+        if (brk) { if (t >= brk->stop) brk.reset(); else if (t >= brk->start) brkIn += brk->tick(t); }
         double duckG = duck.next(t);
         double mixL = 0, mixR = 0, dkL = 0, dkR = 0, revIn = 0, dlyIn = 0;
         for (int k = 0; k < NUM_SOUND; ++k) {
@@ -423,14 +442,14 @@ void Engine::process(float* L, float* R, int n, const Transport& tr) {
             x = c.cdrv.process(x); x = c.clp.process(x); x = c.chp.process(x);
             double y = x * c.gain.next(), pn = c.pan.next(), a = (pn + 1) / 2, gl = std::cos(a * PI / 2), gr = std::sin(a * PI / 2);
             if (k == BD) { mixL += y * gl; mixR += y * gr; revIn += rumLp.process(y * rum.next()); }
-            else { dkL += y * gl; dkR += y * gr; }
+            else { double z = k == BS ? y * bduck.next(t) : y; dkL += z * gl; dkR += z * gr; }
             revIn += y * c.sv.next(); dlyIn += y * c.sd.next();
         }
         // the BREAK sits in the middle, under the kick's duck, with a touch of the room
         {   // through its own channel: drive, filter, level, pan, and the room and echo sends, like every drum
             auto& c = bch; double x = c.chp.process(c.clp.process(c.cdrv.process(brkIn)));
             double y = x * brkGain.next(), pn = c.pan.next(), a = (pn + 1) / 2;
-            dkL += y * std::cos(a * PI / 2) * 1.41421356; dkR += y * std::sin(a * PI / 2) * 1.41421356;   // centred = full level both sides, as before
+            dkL += y * std::cos(a * PI / 2); dkR += y * std::sin(a * PI / 2);
             revIn += y * c.sv.next(); dlyIn += y * c.sd.next();
         }
         // dub delay: every repeat darker than the last, a little of it into the room

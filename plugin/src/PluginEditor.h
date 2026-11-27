@@ -72,7 +72,7 @@ private:
     MD442Look look;
     StepGrid grid { *this };
     juce::TextButton presetBtn, playBtn { "PLAY" }, patternBtn { "PATTERN" }, chainBtn { "CHAIN" }, addScene { "+" }, delScene { "-" },
-        importBtn { "IMPORT" }, exportBtn { "EXPORT" }, sendBtn { "SEND TO KEYBOARD" }, randomBtn { "RANDOM" }, clearBtn { "CLEAR" };
+        importBtn { "IMPORT" }, exportBtn { "EXPORT" }, sendBtn { "SEND TO KEYBOARD" }, randomBtn { "RANDOM" }, clearBtn { "CLEAR" }, recBtn { "SEQ REC" };
     DragMidiButton dragBtn { *this };
     juce::ComboBox lenBox;
     juce::OwnedArray<juce::TextButton> sceneBtns;

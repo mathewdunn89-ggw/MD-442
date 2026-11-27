@@ -55,6 +55,9 @@ public:
     double bpm() const { return effBpm; }
     double sampleRate() const { return sr; }
     double now = 0;               // seconds
+    // SEQ REC: writes a played note into the looping pattern on the nearest step (a note in the second half of a step lands on the next one).
+    // k: a drum, BS (note = semitones above the key) or NUM_KEYS for the BREAKS row (note = slice 0-7). False when the pattern is not playing.
+    bool writeStep(int k, int note = 0);
     void stopAll();
 private:
     friend struct HatPart;
@@ -70,7 +73,7 @@ private:
         double in = 0;
     } chs[NUM_SOUND], bch;   // bch: the BREAK's channel
     Smooth rum, brkGain; Biquad rumLp;
-    Param duck { 1 };
+    Param duck { 1 }, bduck { 1 };   // the kick dips everything else for a moment, and the bass a bit further
     // reverb
     DelayLine pre; Convolver cv[2]; Param cvg[2] { Param(1), Param(0) }; int cvA = 0; double irSecs = 0, irWantAt = -1; bool irPending = false;
     Biquad rvf[2], rvShelf[2], rvLp[2];
@@ -85,9 +88,10 @@ private:
     // sequencer
     struct Pending { double t; int idx; long long bar; };
     struct BrkPart; std::unique_ptr<Part> brk;   // the BREAK plays one sound at a time
-    void brkStep(char c, int idx, long long bar, double t, double vel);
-    void brkStart(double from, double to, double t, double vel);
+    void smStep(const Scene& s, int idx, long long bar, double t, double vel);
+    bool sampler(double t, int idx, long long bar, double vel, int sl);
     void brkStop(double t);
+    double smEnd = -1; bool smLoop = false; int headIdx = -1; double headT = 0;
     Rng brkRng { 777 };
     std::vector<Pending> pending; double seqPpq = 0; bool wasRunning = false; long long lastStep = -1;
     void playStep(int idx, double t, long long bar = 0);

@@ -205,6 +205,8 @@ struct HalfBand {   // 2x up / down sampling with a windowed-sinc low-pass
 struct Shaper {   // y = comp * tanh(k x) / tanh(k), with x held to -1..1 like the end of a curve; k = 0 means no curve (straight through)
     double k = 0, comp = 1, nrm = 1; bool os2 = false; HalfBand hb;
     void set(double kk, double cc) { k = kk; comp = cc; nrm = kk > 0 ? std::tanh(kk) : 1; }
+    // drive that adds grit without jumping in level: a signal peaking at A is rounded off, the quiet parts only come up a little
+    void setSoft(double amt, double A) { double kA = .05 + amt * 3; k = kA / A; nrm = std::tanh(kA); comp = A * std::pow(std::tanh(kA) / kA, .5); }
     void clear() { k = 0; }
     inline double curve(double x) const { x = std::clamp(x, -1.0, 1.0); return std::tanh(k * x) / nrm * comp; }
     inline double process(double x) {

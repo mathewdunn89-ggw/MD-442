@@ -163,10 +163,12 @@ void MD442Processor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBu
         const auto m = meta.getMessage(); run(juce::jlimit(0, n, meta.samplePosition));
         if (m.isNoteOn()) {
             int note = m.getNoteNumber(), ch = m.getChannel(); double g = velGain(m.getVelocity(), engine.pv("accent"));
-            if (ch == 2) { int off = note - 28 - (int)std::lround(engine.pv("key")); engine.hit(BS, g, &off); }
-            else if (ch == 3) { int off = note - 52 - (int)std::lround(engine.pv("key")); engine.hit(ST, g, &off); }
-            else if ((note >= 49 && note <= 56) || (note >= 73 && note <= 80)) engine.slice((note - 49) % 24, g);
-            else { int k = note >= 36 && note <= 48 ? note - 36 : note >= 60 && note <= 72 ? note - 60 : -1; if (k >= 0) engine.hit(k, g); }
+            int wk = -1, wn = 0;   // SEQ REC: the same note goes into the loop
+            if (ch == 2) { int off = note - 28 - (int)std::lround(engine.pv("key")); engine.hit(BS, g, &off); wk = BS; wn = off; }
+            else if (ch == 3) { int off = note - 52 - (int)std::lround(engine.pv("key")); engine.hit(ST, g, &off); wk = ST; }
+            else if ((note >= 49 && note <= 56) || (note >= 73 && note <= 80)) { engine.slice((note - 49) % 24, g); wk = NUM_KEYS; wn = (note - 49) % 24; }
+            else { int k = note >= 36 && note <= 48 ? note - 36 : note >= 60 && note <= 72 ? note - 60 : -1; if (k >= 0) { engine.hit(k, g); wk = k; } }
+            if (seqRec && wk >= 0 && engine.writeStep(wk, wn)) stateChanged = true;
         } else if (m.isController()) {
             int cc = m.getControllerNumber(), val = m.getControllerValue();
             const juce::ScopedTryLock cl(ccLock);

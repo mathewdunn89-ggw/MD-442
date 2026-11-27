@@ -1,4 +1,4 @@
-# name bars bpm (synthesised by tools/md_gen_samples.py 888: no recordings)
+# name bars bpm (synthesised by the site's tools/gen_banks.py, 44.1 kHz: no recordings)
 RUMBLE 1 155
 GABBA 1 155
 TRANCE 2 155

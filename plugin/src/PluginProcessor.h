@@ -46,6 +46,7 @@ public:
     void setValue(int defIdx, double v);
     std::atomic<int> program { 0 };
     std::atomic<int> selected { md442::BD };
+    std::atomic<bool> seqRec { false };         // SEQ REC: what you play is written into the loop
     std::atomic<bool> stateChanged { false };   // tells the screen to redraw everything
     bool hostPlaying() const { return lastHostPlaying.load(); }
     double hostBpm() const { return lastBpm.load(); }

@@ -85,7 +85,7 @@ void StepGrid::paint(juce::Graphics& g) {
         int k = BREAK; float y = k * h; auto name = juce::Rectangle<float>(0, y + 1, (float)nameW, h - 2);
         g.setColour(k == sel ? ui::accent : ((flash >> 14) & 1u) ? ui::cell.brighter(.3f) : ui::cell); g.fillRoundedRectangle(name, 3);
         g.setColour(k == sel ? juce::Colours::black : kit ? ui::text : ui::dim); g.setFont(juce::FontOptions(11.f, juce::Font::bold));
-        g.drawText(kit ? juce::String("BREAK ") + (kit == 1 ? "187" : "888") : juce::String("BREAK"), name.reduced(6, 0), juce::Justification::centredLeft);
+        g.drawText(kit ? juce::String("BREAKS ") + (kit == 1 ? "187" : "888") : juce::String("BREAKS"), name.reduced(6, 0), juce::Justification::centredLeft);
         for (int i = 0; i < STEPS; ++i) {
             auto c = cellRect(k, i).reduced(2, 2); char ch = sc.brk[(size_t)i];
             juce::Colour col = ch == '.' ? ((i / 4) % 2 ? ui::cell : ui::cell.brighter(.06f)) : ch == '-' ? ui::accent.withAlpha(.35f) : ch == 'g' ? juce::Colour(0xff3fbf6f) : ui::on;
@@ -174,7 +174,7 @@ void DragMidiButton::mouseUp(const juce::MouseEvent& e) {
 MD442Editor::MD442Editor(MD442Processor& p) : AudioProcessorEditor(&p), proc(p) {
     setLookAndFeel(&look);
     addAndMakeVisible(grid);
-    for (auto* b : { &presetBtn, &playBtn, &patternBtn, &chainBtn, &addScene, &delScene, &importBtn, &exportBtn, &sendBtn, &randomBtn, &clearBtn }) addAndMakeVisible(b);
+    for (auto* b : { &presetBtn, &playBtn, &patternBtn, &chainBtn, &addScene, &delScene, &importBtn, &exportBtn, &sendBtn, &randomBtn, &clearBtn, &recBtn }) addAndMakeVisible(b);
     addAndMakeVisible(dragBtn);
     presetBtn.onClick = [this] { showPresetMenu(); };
     playBtn.setClickingTogglesState(false);
@@ -202,7 +202,14 @@ MD442Editor::MD442Editor(MD442Processor& p) : AudioProcessorEditor(&p), proc(p) 
     lenBox.onChange = [this] { const juce::ScopedLock l(proc.lock); proc.engine.last = lenBox.getSelectedId(); };
     importBtn.onClick = [this] { importBeat(); }; exportBtn.onClick = [this] { exportBeat(); };
     sendBtn.onClick = [this] { sendToKeyboard(); };
-    sendBtn.setTooltip("Sends this beat's scenes to an SMK-37 or FM-1 running MD|442 firmware 1.1, as patterns 9-16");
+    recBtn.setClickingTogglesState(true); recBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xffc21818));
+    recBtn.setTooltip("Loop record: while the pattern plays, the pads and keys you play are written into it on the nearest step, pass after pass");
+    recBtn.onClick = [this] {
+        bool on = recBtn.getToggleState(); proc.seqRec = on;
+        if (on && !proc.hostPlaying()) { const juce::ScopedLock l(proc.lock); proc.engine.internalPlay = true; }   // starts the loop if it is stopped
+        toast(on ? "SEQ REC: play the pads and keys, they are written into the loop" : "SEQ REC off"); refreshTop();
+    };
+    sendBtn.setTooltip("Sends this beat's scenes to an SMK-37 or FM-1 running the MD|442 firmware (1.6 is the current one), as patterns 9-16");
     dragBtn.setTooltip("Drag onto a track in Ableton or Maschine to drop this beat in as a MIDI clip. Click to save it.");
     randomBtn.onClick = [this] {
         juce::Random r; auto pick = [&](std::initializer_list<const char*> l) { return *(l.begin() + r.nextInt((int)l.size())); };
@@ -253,7 +260,7 @@ void MD442Editor::rebuildVoiceKnobs() {
         for (auto& m : std::vector<std::pair<const char*, const char*>> {{"brk.kit", "KIT"}, {"brk.slot", "LOOP"}, {"brk.level", "LEVEL"}, {"brk.complex", "CHOP"}, {"brk.pitch", "PITCH"},
                                                                         {"pan.BRK", "PAN"}, {"flt.BRK", "FILTER"}, {"drv.BRK", "DRIVE"}, {"rev.BRK", "VERB"}, {"ech.BRK", "ECHO"}})
             addAndMakeVisible(voiceKnobs.add(new Knob(*this, m.first, m.second)));
-        voiceTitle = "BREAK: loops and 8 slices from MD187 / MD888. Click a step: slice 1-8, LOOP (plays the loop in time), ~ (keep ringing). Pads C#2-G#2 play the slices.";
+        voiceTitle = "BREAKS: loops and 8 slices from MD187 / MD888. Click a step: slice 1-8, LOOP (plays the loop in time), ~ (keep ringing). Pads C#2-G#2 play the slices.";
         resized(); repaint(); return;
     }
     for (auto& kn : md442::voiceKnobs(k)) addAndMakeVisible(voiceKnobs.add(new Knob(*this, kn.key, kn.label)));
@@ -275,6 +282,7 @@ void MD442Editor::refreshTop() {
     chainBtn.setToggleState(chain, juce::dontSendNotification); lenBox.setSelectedId(last, juce::dontSendNotification);
     playBtn.setToggleState(playing || proc.hostPlaying(), juce::dontSendNotification);
     playBtn.setButtonText(proc.hostPlaying() ? "SYNCED" : juce::String::fromUTF8(playing ? "\xe2\x96\xa0 STOP" : "\xe2\x96\xb6 PLAY"));
+    recBtn.setToggleState(proc.seqRec.load(), juce::dontSendNotification);
     presetBtn.setButtonText(proc.beatName + "  v");
 }
 
@@ -316,7 +324,7 @@ void MD442Editor::resized() {
     auto tools = r.removeFromBottom(26); randomBtn.setBounds(tools.removeFromLeft(90).reduced(2)); clearBtn.setBounds(tools.removeFromLeft(80).reduced(2));
     tools.removeFromLeft(16);
     importBtn.setBounds(tools.removeFromLeft(80).reduced(2)); exportBtn.setBounds(tools.removeFromLeft(80).reduced(2));
-    dragBtn.setBounds(tools.removeFromLeft(96).reduced(2)); sendBtn.setBounds(tools.removeFromLeft(150).reduced(2));
+    dragBtn.setBounds(tools.removeFromLeft(96).reduced(2)); sendBtn.setBounds(tools.removeFromLeft(150).reduced(2)); recBtn.setBounds(tools.removeFromLeft(84).reduced(2));
     for (int i = 2; i >= 0; --i) killBtn[i].setBounds(tools.removeFromRight(84).reduced(2));
     grid.setBounds(r);
     auto row1 = bottom.removeFromTop(122); voiceArea = row1;
@@ -400,11 +408,11 @@ void MD442Editor::sendToKeyboard() {
                 auto out = juce::MidiOutput::openDevice(d.identifier); if (!out) continue;
                 if (!ask(*out, frames[0])) continue;
                 for (size_t i = 1; i < frames.size(); ++i) ask(*out, frames[i]);
-                say("Sent to " + d.name + ": " + juce::String((int)frames.size()) + (frames.size() > 1 ? " scenes on patterns 9-" + juce::String(8 + (int)frames.size()) : juce::String(" scene on pattern 9")) + ". The dub stab stays in the plugin.");
+                say("Sent to " + d.name + ": " + juce::String((int)frames.size()) + (frames.size() > 1 ? " scenes on patterns 9-" + juce::String(8 + (int)frames.size()) : juce::String(" scene on pattern 9")) + ". The chords stay in the plugin.");
                 return;
             }
             say(ins.empty() ? "No MIDI input could be opened to hear the keyboard answer. If your DAW holds the keyboard's port, close the DAW's use of it and try again."
-                            : "No MD|442 keyboard answered. Connect it by USB and check it runs MD|442 firmware 1.1 or newer.");
+                            : "No MD|442 keyboard answered. Connect it by USB and check it runs the MD|442 firmware (1.6 is the current one).");
         }
     };
     if (sender) sender->stopThread(2000);

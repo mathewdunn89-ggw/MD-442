@@ -101,7 +101,7 @@ bool writeMidi(const Engine& e, const juce::File& f, bool allScenes) {
 }
 
 juce::MemoryBlock kbFrame(const Engine& e, int slot, const Scene& sc) {
-    // MD|442 firmware 1.1, command 50 "put pattern": F0 7D 46 4C 32 slot bpmLo bpmHi swing root acid rows[13x3] notes[16] F7
+    // MD|442 firmware (1.1 and newer), command 50 "put pattern": F0 7D 46 4C 32 slot bpmLo bpmHi swing root acid rows[13x3] notes[16] F7
     static const int ROWS[] = {BD, SD, LT, MT, HT, RS, CP, CH, OH, CR, RD, AC, BS};
     std::vector<juce::uint8> f;
     int bpm = (int)std::lround(e.bpm() > 0 ? e.bpm() : e.pv("bpm")); bpm = juce::jlimit(30, 300, bpm);
@@ -115,6 +115,18 @@ juce::MemoryBlock kbFrame(const Engine& e, int slot, const Scene& sc) {
     }
     for (int i = 0; i < STEPS; ++i) f.push_back((juce::uint8)juce::jlimit(0, 127, sc.n[(size_t)i] + 64));
     f.push_back(0xF7);
+    return juce::MemoryBlock(f.data(), f.size());
+}
+
+juce::MemoryBlock kbBreak(const Engine& e, int slot, const Scene& sc) {
+    // command 52, as the web app sends it: F0 7D 46 4C 34 slot bank chop on[3] slice[16] is187 F7
+    int kit = (int)std::lround(e.pv("brk.kit")); if (kit < 1) return {};
+    std::vector<juce::uint8> f; for (int b : {0xF0, 0x7D, 0x46, 0x4C, 52}) f.push_back((juce::uint8)b);
+    f.push_back((juce::uint8)slot); f.push_back((juce::uint8)juce::jlimit(0, 3, (int)std::lround(e.pv("brk.slot")))); f.push_back((juce::uint8)juce::jlimit(0, 100, (int)std::lround(e.pv("brk.complex"))));
+    int m = 0; for (int i = 0; i < STEPS; ++i) if (sc.brk[(size_t)i] != '.') m |= 1 << i;
+    f.push_back((juce::uint8)(m & 127)); f.push_back((juce::uint8)((m >> 7) & 127)); f.push_back((juce::uint8)((m >> 14) & 3));
+    for (int i = 0; i < STEPS; ++i) { char c = sc.brk[(size_t)i]; f.push_back((juce::uint8)(c >= '1' && c <= '8' ? c - '0' : 0)); }
+    f.push_back((juce::uint8)(kit == 1 ? 1 : 0)); f.push_back(0xF7);
     return juce::MemoryBlock(f.data(), f.size());
 }
 

@@ -20,7 +20,7 @@ inline const std::array<VoiceInfo, NUM_KEYS>& voices() {
         {"BD", "Kick", "KICK"}, {"SD", "Snare", "SNARE"}, {"CP", "Clap", "CLAP"}, {"RS", "Rim shot", "RIM"},
         {"LT", "Low tom", "LO TOM"}, {"MT", "Mid tom", "MID TOM"}, {"HT", "Hi tom", "HI TOM"},
         {"CH", "Closed hat", "CL HAT"}, {"OH", "Open hat", "OP HAT"}, {"CR", "Crash", "CRASH"}, {"RD", "Ride", "RIDE"},
-        {"BS", "Bass", "BASS"}, {"ST", "Dub stab", "STAB"}, {"AC", "Accent", "ACCENT"} }};
+        {"BS", "Bass", "BASS"}, {"ST", "Chords", "CHORDS"}, {"AC", "Accent", "ACCENT"} }};
     return v;
 }
 
@@ -99,8 +99,8 @@ inline const std::vector<ParamDef>& defs() {
     D("brk.complex", 0, 100, 0, "Break chop", F_PC); D("brk.pitch", -12, 12, 0, "Break pitch", F_ST, false, .5);
     // the BREAK's channel tools, the same five as every drum
     D("pan.BRK", -100, 100, 0, "Break pan", F_PAN); D("flt.BRK", -100, 100, 0, "Break filter", F_FILTER); D("drv.BRK", 0, 100, 0, "Break channel drive", F_PC);
-    D("rev.BRK", 0, 100, 20, "Break reverb send", F_PC); D("ech.BRK", 0, 100, 0, "Break echo send", F_PC);
-    const double LEVEL[] = {0, -3, -4, -8, -6, -6, -6, -3, -4, -6, -8, -7, -6};
+    D("rev.BRK", 0, 100, 12, "Break reverb send", F_PC); D("ech.BRK", 0, 100, 8, "Break echo send", F_PC);
+    const double LEVEL[] = {0, -3, -4, -8, -6, -6, -6, -3, -4, -6, -8, -5.5, -6};
     const double PAN[] = {0, 0, 0, -12, -30, 0, 30, 18, -18, -24, 26, 0, 0};
     const double RV[] = {0, .5, .7, .45, .5, .55, .55, .16, .24, .3, .2, 0, 0}, DV[] = {0, .32, .45, .4, .4, .5, .5, .1, .18, .2, .12, 0, 0};
     for (int k = 0; k < NUM_SOUND; ++k) D(std::string("lvl.") + voices()[k].id, -40, 6, LEVEL[k], std::string(voices()[k].name) + " level", F_DB);
