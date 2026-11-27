@@ -10,6 +10,16 @@ Peak Warehouse, Berlin Roll, Electro, Acid Jack, Deep House, Breakbeat, Dub Tech
 | M-VAVE SMK-37 Pro (also Starrykey 37 Play) | md442-smk37-pro.fwsc |
 | M-VAVE FM-1 | md442-fm1.fwsc |
 
+## Version 1.5
+- M-VAVE's updater (M-UPGRADE) can always see the keyboard. The firmware's identity is the short shape M-UPGRADE 3.11
+  accepts (SMK-37 Elite_915); 1.2 to 1.4 used a longer one that it refused.
+- Every stock button and knob, the MIDI settings and the update combo (hold OCTAVE- and OCTAVE+ for 5 seconds) work
+  as before. Your saved patterns and global settings are kept.
+- New, on controls that did nothing before: KNOB BANK (tap: mute pads; hold: K2-K4 shape the selected instrument;
+  with OCTAVE- / +: the instrument), the 10 end keys of the keybed (beat repeat, fill, echo, kill low, wash, riser,
+  drop), PATCH + < / > (the pattern). See md442-controls.pdf.
+- MD187 (90s hip-hop) and MD888 (hard techno) are on the same download page.
+
 ## Before you install
 - This replaces the keyboard's firmware. You can always go back (below), but you do it at your own risk.
 - Use a USB data cable. Keep the keyboard powered and plugged in the whole time.

@@ -23,31 +23,34 @@ always go back to M-VAVE's own firmware.
    that the file matches the connected keyboard before it writes anything.
 5. Keep the keyboard plugged in until it says Done. It restarts into the firmware you picked.
 
-Switching between MD442, MD187 and MD888 is the same: run the installer again and pick another. Switching to MD187
-or MD888 starts that firmware's own patterns (the keyboard says OLD DATA CLEARED once); going from MD442 1.2 or 1.3
-to MD442 1.4 keeps your patterns.
+Switching between MD442, MD187 and MD888 is the same: run the installer again and pick another. Your global
+settings (MIDI channels, clock and notes out, output level, key lights, autosave) stay as they are. Each firmware
+starts with its own patterns and sound; the other firmware's saved patterns are kept until you save in this one.
+MD|442 1.2 users keep their patterns in MD442 1.5.
 
 Windows or Linux: install Python 3, run `pip install mido python-rtmidi`, then
 `python3 tools/fm1_install.py md187-smk37-elite.fwsc` (or the file you want).
 
-## PERFORM controls (all three, version 1.4)
-PATCH is SHIFT. The one-page cheat sheet (md-hardware-controls.pdf) shows them on a picture of the Elite.
+## PERFORM controls (all three, version 1.5)
+Every stock X0X button, knob, MIDI setting and the update combo work exactly as in MD|442 1.2. The new moves
+use only controls that did nothing before: KNOB BANK, the 10 end keys of the keybed, PATCH + < / >, and the mod
+wheel on drums. PATCH is SHIFT. The one-page cheat sheet (md-hardware-controls.pdf) shows them on a picture of the Elite.
 
 **Build a beat**
 | Control | What it does |
 | --- | --- |
-| black keys, or OCTAVE- / OCTAVE+ | pick the instrument (909's 11 tracks, the 808's, 303A, 303B, BREAK); PATCH + OCTAVE: the part |
-| pads (or white keys) | the instrument's 16 steps: tap on, tap off, hold for that step's sound; < / > the bars |
+| black keys, or KNOB BANK + OCTAVE- / OCTAVE+ | pick the instrument (909's 11 tracks, the 808's, 303A, 303B, BREAK) |
+| pads (or white keys) | the instrument's 16 steps: tap on, tap off, hold for that step's sound; OCTAVE- / + the bars (stock) |
 | SEQ REC + keys or pads | record live |
-| PATCH + FADER BANK | DRUM PADS: pads 1-11 play the kit on screen, 12-16 the other kit's BD SD CP CH OH, with velocity; with REC they record to the nearest step. Again: back to steps |
-| K2 / K3 / K4 | the instrument's FILTER (left low-pass, right high-pass, rests at OFF), RESONANCE, DECAY (303: cutoff, reso, env mod; BREAK: pitch) |
-| PATCH + K2 / K3 / K4 | tempo / part / pattern |
+| KNOB BANK + FADER BANK | DRUM PADS: pads 1-11 play the kit on screen, 12-16 the other kit's BD SD CP CH OH, with velocity; with REC they record to the nearest step. Again: back to steps |
+| KNOB BANK held + K2 / K3 / K4 | the instrument's FILTER (left low-pass, right high-pass, rests at OFF), RESONANCE, DECAY (303: cutoff, reso, env mod; BREAK: pitch) |
+| K2 / K3 / K4 alone | X0X's SELECT, ALGORITHM, PRESETS (stock); PATCH + them: tempo / part / pattern |
 
 **Mix it live**
 | Control | What it does |
 | --- | --- |
 | faders | A: 909, 808, 303A, 303B levels. FADER BANK: break level, reverb, delay, master filter |
-| KNOB BANK | tap: MUTE pads (lit; 1-11 tracks, 12-16 parts), tap again to leave. Hold: mute while held |
+| KNOB BANK | tap: MUTE pads (lit; 1-11 tracks, 12-16 parts), tap again to leave. Hold + pads: mute while held |
 | PATCH + a pad (in MUTE) | solo that track or part; again to unsolo |
 | PATCH + KNOB BANK | unmute everything |
 | PATCH + < / >, PATCH + pad | the pattern before / after, or that pattern, at the end of the bar |
@@ -65,8 +68,8 @@ PATCH is SHIFT. The one-page cheat sheet (md-hardware-controls.pdf) shows them o
 
 The mod wheel is a high-pass riser on the selected drum or the BREAK (on a 303 it opens the cutoff). With the BREAK
 selected the black keys play its 8 slices live (MD187 stabs and vocal hits, MD888 trance stabs and hits).
-The filters start at OFF each time the keyboard starts. Holding < and > together for 5 seconds puts the keyboard
-in update mode.
+The filters start at OFF each time the keyboard starts. Holding OCTAVE- and OCTAVE+ together for 5 seconds puts
+the keyboard in update mode (as in 1.2), so M-UPGRADE can always reach it.
 
 ## Go back to the stock firmware
 Install M-VAVE's own package for your model with M-VAVE's updater (M-UPGRADE).
