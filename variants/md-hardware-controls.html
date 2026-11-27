@@ -32,9 +32,9 @@
 </head>
 <body>
 <h1>MD<span>|</span>Hardware &nbsp;PERFORM &middot; M-VAVE SMK-37 Elite</h1>
-<div class="sub">One layout for MD442, MD187 and MD888. <b>PATCH</b> is SHIFT: hold it for every <span class="k sh">PATCH +</span> combo.
+<div class="sub">One layout for MD442, MD187 and MD888. Every stock button, knob, MIDI setting and the update combo work as in MD|442 1.2; the new moves live only on controls that did nothing before. <b>PATCH</b> and <b>KNOB BANK</b> are the two hold buttons.
 The 10 end keys of the keybed are your build-up and breakdown tools: hold to play, let go to come back.
-Version 1.4, not yet tested on a keyboard.</div>
+Version 1.5, not yet tested on a keyboard.</div>
 
 <div class="grid">
 <div>
@@ -53,7 +53,7 @@ Version 1.4, not yet tested on a keyboard.</div>
         <circle cx="180" cy="70" r="11" fill="#3a3c45"/><text x="180" y="91">K6</text>
         <circle cx="220" cy="70" r="11" fill="#3a3c45"/><text x="220" y="91">K7</text>
         <circle cx="260" cy="70" r="11" fill="#3a3c45"/><text x="260" y="91">K8</text>
-        <text x="200" y="103" fill="#8d91a0">K2-K4 follow the instrument</text>
+        <text x="200" y="103" fill="#8d91a0">hold KNOB BANK: K2-K4 shape the instrument</text>
       </g>
       <g font-size="7.6" fill="#cfd2da" text-anchor="middle">
         <rect x="292" y="16" width="6" height="74" rx="3" fill="#3a3c45"/><rect x="286" y="48" width="18" height="9" rx="2" fill="#9aa0ad"/>
@@ -64,15 +64,15 @@ Version 1.4, not yet tested on a keyboard.</div>
       </g>
       <g font-size="7.2" text-anchor="middle">
         <rect x="410" y="16" width="62" height="18" rx="4" fill="#e8a10f"/><text x="441" y="28" fill="#15161a" font-weight="700">KNOB BANK</text>
-        <text x="441" y="43" fill="#ffd27a">MUTE / SOLO</text>
+        <text x="441" y="43" font-size="6.4" fill="#ffd27a">MUTE &#183; HOLD: SOUND</text>
         <rect x="480" y="16" width="62" height="18" rx="4" fill="#3a3c45"/><text x="511" y="28" fill="#fff">FADER BANK</text>
-        <text x="511" y="43" fill="#cfd2da">+PATCH: DRUM PADS</text>
+        <text x="511" y="43" font-size="6.4" fill="#cfd2da">+KNOB BANK: DRUMS</text>
         <rect x="410" y="52" width="30" height="18" rx="4" fill="#4a7dff"/><text x="425" y="64" fill="#fff" font-weight="700">&lt;</text>
         <rect x="444" y="52" width="30" height="18" rx="4" fill="#4a7dff"/><text x="459" y="64" fill="#fff" font-weight="700">&gt;</text>
-        <text x="442" y="80" fill="#a9c0ff">BARS</text>
+        <text x="442" y="80" font-size="6.2" fill="#a9c0ff">SELECT &#183; +PATCH: PATTERN</text>
         <rect x="480" y="52" width="30" height="18" rx="4" fill="#d94fd0"/><text x="495" y="64" fill="#fff" font-weight="700">OCT-</text>
         <rect x="514" y="52" width="30" height="18" rx="4" fill="#d94fd0"/><text x="529" y="64" fill="#fff" font-weight="700">OCT+</text>
-        <text x="512" y="80" fill="#f2a8ee">INSTRUMENT</text><text x="511" y="94" font-size="6.2" fill="#cfd2da">+PATCH: PATTERN</text><text x="511" y="102" font-size="6.2" fill="#cfd2da">/ PART</text>
+        <text x="512" y="80" fill="#f2a8ee">BARS / OCTAVE</text><text x="511" y="94" font-size="6.2" fill="#cfd2da">+KNOB BANK:</text><text x="511" y="102" font-size="6.2" fill="#cfd2da">INSTRUMENT</text>
         <rect x="410" y="88" width="62" height="16" rx="4" fill="#e8a10f"/><text x="441" y="99" fill="#15161a" font-weight="700">PATCH = SHIFT</text>
       </g>
       <g font-size="7.6" text-anchor="middle" fill="#fff">
@@ -161,7 +161,7 @@ Version 1.4, not yet tested on a keyboard.</div>
   <div class="card">
     <h2>Why it's laid out this way</h2>
     <div class="why">
-      <p><b>One thing selected, every control on it</b> (Roland TR-8S, Ableton Push): pick an instrument and the pads, K2-K4 and the mod wheel all follow it, so you never hunt for a page.</p>
+      <p><b>One thing selected, every control on it</b> (Roland TR-8S, Ableton Push): pick an instrument and the pads, the sound knobs (hold KNOB BANK) and the mod wheel all follow it, so you never hunt for a page.</p>
       <p><b>Mutes and solo one touch away</b> (Elektron mute mode, Maschine SHIFT solo): KNOB BANK turns the pads into mutes, PATCH + a pad solos.</p>
       <p><b>Moves you hold, not settings you change</b> (TR-8S scatter, Maschine Perform FX, a DJ mixer's filter and echo): the end keys play while held and let go cleanly. Two hands, no shift.</p>
       <p><b>Everything lands on the one</b>: patterns change at the bar, and KILL LOW, RISER and DROP come back on the next downbeat, so a drop can't be late.</p>
@@ -173,10 +173,10 @@ Version 1.4, not yet tested on a keyboard.</div>
   <div class="card">
     <h2>Build a beat</h2>
     <table>
-      <tr><td>Pick the instrument</td><td>A black key, or <span class="k">OCT-</span> <span class="k">OCT+</span> to flick BD, SD ... 303A, 303B, BREAK. <span class="k sh">PATCH +</span> OCT: the part</td></tr>
-      <tr><td>Steps</td><td>Pads (or the white keys) are its 16 steps: tap on, tap off, hold for that step's sound. <span class="k">&lt;</span> <span class="k">&gt;</span>: bars 1-4</td></tr>
-      <tr><td>Play it in</td><td><span class="k">SEQ REC</span> + play keys or pads. <span class="k sh">PATCH +</span> <span class="k">FADER BANK</span>: DRUM PADS, velocity, records to the nearest step</td></tr>
-      <tr><td>Shape it</td><td><span class="k">K2</span> filter (left low-pass, right high-pass, rests at OFF), <span class="k">K3</span> resonance, <span class="k">K4</span> decay. 303: cutoff, reso, env mod. BREAK: pitch</td></tr>
+      <tr><td>Pick the instrument</td><td>A black key, or hold <span class="k sh">KNOB BANK</span> + <span class="k">OCT-</span> <span class="k">OCT+</span> to flick BD, SD ... 303A, 303B, BREAK</td></tr>
+      <tr><td>Steps</td><td>Pads (or the white keys) are its 16 steps: tap on, tap off, hold for that step's sound. <span class="k">OCT-</span> <span class="k">OCT+</span>: bars 1-4</td></tr>
+      <tr><td>Play it in</td><td><span class="k">SEQ REC</span> + play keys or pads. <span class="k sh">KNOB BANK</span> + <span class="k">FADER BANK</span>: DRUM PADS, velocity, records to the nearest step</td></tr>
+      <tr><td>Shape it</td><td>Hold <span class="k sh">KNOB BANK</span>: <span class="k">K2</span> filter (left low-pass, right high-pass, rests at OFF), <span class="k">K3</span> resonance, <span class="k">K4</span> decay. 303: cutoff, reso, env mod. BREAK: pitch</td></tr>
     </table>
   </div>
   <div class="card">
@@ -207,7 +207,7 @@ Version 1.4, not yet tested on a keyboard.</div>
       <tr><td><span class="k">SEQ PLAY</span> <span class="k">SEQ REC</span></td><td>Play / stop; record (knob moves too). <span class="k sh">PATCH +</span> <span class="k sh">K2</span>/<span class="k sh">K3</span>/<span class="k sh">K4</span>: tempo / part / pattern</td></tr>
       <tr><td>Other buttons</td><td>FX, SCALE, CHORD, NOTE RPT, PARA, GLOBE, BT, ARP, SEQ: as in MD|442 1.2 (FX, list, accent, slide, sound, settings, save, TB-3PO, steps)</td></tr>
     </table>
-    <div class="note">In a list, a question or GLOBE's settings, K2-K4 are SELECT, ALGORITHM and PRESETS again. Filters start at OFF on power-up. Update mode: hold &lt; and &gt; for 5 s.</div>
+    <div class="note">K2-K4 are always X0X's SELECT, ALGORITHM and PRESETS unless KNOB BANK is held. Filters start at OFF on power-up. Update mode (for M-UPGRADE): hold OCT- and OCT+ for 5 s, as in 1.2. Switching between MD442, MD187 and MD888 keeps your global settings (MIDI channels, clock, output).</div>
   </div>
   <div class="fw">
     <div class="g"><b>MD442</b>Techno and house, 142 BPM. Your MD|442 beats. Keeps your saved patterns.</div>

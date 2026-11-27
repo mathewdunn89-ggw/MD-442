@@ -129,7 +129,7 @@ index baf5e5d..b70cc1f 100644
      if (timed)
          PROF_ADD(PR_BRK, pt);
 diff --git a/firmware/src/app/main_fm1.c b/firmware/src/app/main_fm1.c
-index 0e44bf0..7ec128e 100644
+index 0e44bf0..e5b7b8e 100644
 --- a/firmware/src/app/main_fm1.c
 +++ b/firmware/src/app/main_fm1.c
 @@ -198,7 +198,7 @@ static void smk_faders(void)
@@ -137,7 +137,7 @@ index 0e44bf0..7ec128e 100644
      static uint8_t last[4] = {0xFF, 0xFF, 0xFF, 0xFF}, held;
      uint32_t i, down = (fm1_in.buttons >> SMK_BTN_FADER_BANK) & 1u;
 -    if (down && !held) {                                /* FADER BANK: the other bank, each fader waits to move */
-+    if (down && !held && !(plat_buttons() & (1u << B_HOME))) {   /* FADER BANK: the other bank (PATCH + it: md_perform.c) */
++    if (down && !held && !((fm1_in.buttons >> SMK_BTN_KNOB_BANK) & 1u)) {   /* FADER BANK: the other bank (KNOB BANK + it: md_perform.c) */
          smk_fbank ^= 1u;
          for (i = 0; i < 4u; i++)
              last[i] = 0xFF;
@@ -275,10 +275,10 @@ index 9bbe9f6..6ac144b 100644
 +#endif
 diff --git a/firmware/src/app/md_perform.c b/firmware/src/app/md_perform.c
 new file mode 100644
-index 0000000..48edfdb
+index 0000000..9874bb9
 --- /dev/null
 +++ b/firmware/src/app/md_perform.c
-@@ -0,0 +1,719 @@
+@@ -0,0 +1,709 @@
 +/* SPDX-License-Identifier: GPL-3.0-only */
 +/* MD PERFORM: the SMK-37's controls laid out for building beats and mixing them live from the keyboard alone
 + * (MD442, MD187 and MD888 share it). Included by main_fm1.c after the UI (ui.c) in this unity build.
@@ -866,36 +866,25 @@ index 0000000..48edfdb
 +    uint32_t r;
 +    md_prev_raw = raw;
 +    /* the knobs: X0X's own while a list, a question, GLO or PATCH wants them */
-+    md_nav = (uint8_t)(ui.overlay != O_NONE || ui.view == V_GLO || ui.view == V_PERF || home);
++    /* the knobs: X0X's own (stock), except while KNOB BANK is held: then K2..K4 are the instrument's */
++    md_nav = (uint8_t)(!((raw >> SMK_BTN_KNOB_BANK) & 1u) || ui.overlay != O_NONE || ui.view == V_GLO || ui.view == V_PERF || home);
 +    if (!md_nav) {
 +        int k;
 +        for (k = 0; k < 3; k++) {
 +            int32_t e = fm1_enc_take(panel.enc[EN_SELECT + k]) * panel.dir[EN_SELECT + k];
-+            if (e)
++            if (e) {
 +                md_knob(k, (int)e);
++                md_mute_used = 1;                         /* a hold to shape the sound: no mute toggle */
++            }
 +        }
 +    }
-+    /* OCTAVE- / +: the instrument; with PATCH the part */
-+    for (r = FM1_BTN_OCT_DOWN; r <= FM1_BTN_OCT_UP; r++) {
-+        int up = r == FM1_BTN_OCT_UP, i;
-+        uint32_t lb;
-+        if (!((pressed >> r) & 1u))
-+            continue;
-+        for (lb = 0; lb < NB && panel.btn[lb] != r; lb++)
-+            ;
-+        if (lb < NB)                                      /* calibrated as an X0X button: leave it */
-+            continue;
-+        ui.act_t = plat_ms();
-+        if (home) {
-+            int p = ui.part + (up ? 1 : -1);
-+            ui.btn_used |= 1u << B_HOME;
-+            p = (p + NPARTS) % NPARTS;
-+            md_select(p < 2 ? p * 11 : p + 20);
-+        } else {
-+            i = md_inst() + (up ? 1 : -1);
-+            md_select(i);
++    /* KNOB BANK + OCTAVE- / +: the instrument before / after (alone they are X0X's OCT, as stock) */
++    for (r = FM1_BTN_OCT_DOWN; r <= FM1_BTN_OCT_UP; r++)
++        if ((pressed >> r) & 1u && (raw >> SMK_BTN_KNOB_BANK) & 1u) {
++            ui.act_t = plat_ms();
++            md_mute_used = 1;
++            md_select(md_inst() + (r == FM1_BTN_OCT_UP ? 1 : -1));
 +        }
-+    }
 +    /* PATCH + < / >: the pattern before / after (all parts, cued to the bar) */
 +    for (r = SMK_BTN_LEFT; r <= SMK_BTN_RIGHT; r++) {
 +        if ((pressed >> r) & 1u && home) {
@@ -910,9 +899,9 @@ index 0000000..48edfdb
 +            say(t, 0);
 +        }
 +    }
-+    /* PATCH + FADER BANK: the pads play the kit (again: the steps) */
-+    if ((pressed >> SMK_BTN_FADER_BANK) & 1u && home) {
-+        ui.btn_used |= 1u << B_HOME;
++    /* KNOB BANK + FADER BANK: the pads play the kit (again: the steps) */
++    if ((pressed >> SMK_BTN_FADER_BANK) & 1u && (raw >> SMK_BTN_KNOB_BANK) & 1u) {
++        md_kb_held = 0;                                   /* (its release does nothing more) */
 +        md_drums ^= 1u;
 +        md_mute_on = 0;
 +        md_drum_lit = 0;
@@ -935,17 +924,18 @@ index 0000000..48edfdb
 +            md_mute_used = 0;
 +            if (!md_mute_on) {
 +                md_mute_on = 2;                           /* 2: on since this press (a hold, or a tap that keeps it) */
-+                say("MUTE PADS: TRACKS + PARTS", 0);   /* (say: 27 chars) */
++                say("MUTE PADS + FILTER KNOBS", 0);   /* (say: 27 chars) */
 +            }
 +        }
 +    }
 +    if ((released >> SMK_BTN_KNOB_BANK) & 1u && md_kb_held) {
++        int was = md_mute_on;
 +        md_kb_held = 0;
 +        if (md_mute_on == 2)                              /* just switched on: a tap keeps it, a played hold not */
 +            md_mute_on = md_mute_used ? 0 : 1;
 +        else if (!md_mute_used)
 +            md_mute_on = 0;                               /* on before: a tap switches it off */
-+        if (!md_mute_on)
++        if (!md_mute_on && was == 1)
 +            say("MUTE OFF", 0);
 +    }
 +    md_pads_muting = md_mute_on != 0 || md_drums;
@@ -1000,10 +990,10 @@ index 0000000..48edfdb
 +static void md_wheel_set(int mw) { md_wheel = (uint8_t)mw; }
 diff --git a/firmware/src/app/md_variant.h b/firmware/src/app/md_variant.h
 new file mode 100644
-index 0000000..524545a
+index 0000000..1817441
 --- /dev/null
 +++ b/firmware/src/app/md_variant.h
-@@ -0,0 +1,20 @@
+@@ -0,0 +1,29 @@
 +/* SPDX-License-Identifier: GPL-3.0-only */
 +/* MD|442's three firmwares (MD_VARIANT, tools/build.py): one engine, one PERFORM layout, their own
 + * patterns, sound and samples. */
@@ -1023,6 +1013,15 @@ index 0000000..524545a
 +#define MD_NAME "MD|442"
 +#define MD_TAG "BY MATHEW  NEST GROUP"
 +#define MD_PALETTE 0                     /* MD|442 green */
++#endif
++
++/* settings_t rsv[0]: the MD firmware a saved project belongs to (0 = MD442, as every older project) */
++#if defined(MD_VARIANT) && MD_VARIANT == 187
++#define MD_SET_ID 1u
++#elif defined(MD_VARIANT) && MD_VARIANT == 888
++#define MD_SET_ID 2u
++#else
++#define MD_SET_ID 0u
 +#endif
 diff --git a/firmware/src/app/md_variant_presets.h b/firmware/src/app/md_variant_presets.h
 new file mode 100644
@@ -1116,39 +1115,18 @@ index 0000000..600c744
 +      2, 0, 100, 45875, {1, 0, 0, 0, 1, 0, 0, 0, 6, 0, 0, 0, 7, 0, 0, 4},
 +      0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 +};
-diff --git a/firmware/src/app/panel.c b/firmware/src/app/panel.c
-index cc5e72f..b0eff0c 100644
---- a/firmware/src/app/panel.c
-+++ b/firmware/src/app/panel.c
-@@ -8,7 +8,7 @@ static const char *const B_NAME[NB] = {"FX", "SEL", "ENV", "LFO", "EDIT", "GLO",
- static const char *const E_NAME[NE] = {"SELECT", "ALGORITHM", "PRESETS", "KNOB 1", "KNOB 2",
-                                         "KNOB 3", "KNOB 4"};
- #if BOARD_SMK37
--#define PANEL_MAGIC 0x50584E53u          /* "SNXP" (SMK-37 Pro): an FM-1 table never loads here */
-+#define PANEL_MAGIC 0x3234444Du          /* "MD42" (MD|442 PERFORM: < > are OCT- / OCT+); an older table is not used */
- #define PANEL_NBTN FM1_NBTN              /* matrix buttons (smk_input.h ids 0..17) */
- #define PANEL_NENC FM1_NENC              /* encoders K1..K8 (0..7) */
- #else
-@@ -34,7 +34,7 @@ panel_t panel __attribute__((section(".noinit")));
-  * held at power-on) re-teaches all of it but K1. */
- static const panel_t PANEL_DEFAULT = {
-     PANEL_MAGIC,
--    {14, 8, 9, 7, 13, 10, 12, 11, 6, 15, 16, 17, 4, 5},
-+    {14, 8, 9, 7, 13, 10, 12, 11, 6, 15, 16, 17, 2, 3},   /* MD|442: OCT- / OCT+ on < / >; OCTAVE- / + pick the instrument */
-     {1, 2, 3, 4, 5, 6, 7},
-     {1, 1, 1, 1, 1, 1, 1},
- };
 diff --git a/firmware/src/app/plat_fm1.c b/firmware/src/app/plat_fm1.c
-index 9f5432e..d977e97 100644
+index 9f5432e..37d0a77 100644
 --- a/firmware/src/app/plat_fm1.c
 +++ b/firmware/src/app/plat_fm1.c
-@@ -4,21 +4,49 @@
+@@ -4,21 +4,51 @@
  
  uint32_t plat_ms(void) { return fm1_ms; }
  
 +#if BOARD_SMK37
-+/* MD|442 PERFORM (md_perform.c): what the UI does not see. md_nav: K2..K4 are X0X's SELECT, ALGORITHM,
-+ * PRESETS (else md_perform.c takes them); md_hide: < / > pressed while PATCH is held (the pattern, not the bars);
++/* MD PERFORM (md_perform.c): what the UI does not see. md_nav: K2..K4 are X0X's SELECT, ALGORITHM,
++ * PRESETS (else, while KNOB BANK is held, md_perform.c takes them); md_hide: < / > pressed with PATCH held,
++ * OCTAVE- / + pressed with KNOB BANK held;
 + * md_pads_muting: the pads mute (the UI does not get them) */
 +static volatile uint8_t md_nav = 1, md_pads_muting, md_mute_lit, md_pads_home;
 +static uint32_t md_hide, md_seen;
@@ -1158,11 +1136,12 @@ index 9f5432e..d977e97 100644
      uint32_t raw = fm1_in.buttons, out = 0, i;
 +#if BOARD_SMK37
 +    {
-+        uint32_t ar = raw & (1u << SMK_BTN_LEFT | 1u << SMK_BTN_RIGHT), home = (raw >> panel.btn[B_HOME]) & 1u;
-+        if (home)
-+            md_hide |= ar & ~md_seen;
-+        md_hide &= ar;
-+        md_seen = ar;
++        /* PATCH + < / >: the pattern; KNOB BANK + OCTAVE- / +: the instrument (the UI never sees those presses) */
++        uint32_t ar = raw & (1u << SMK_BTN_LEFT | 1u << SMK_BTN_RIGHT), oc = raw & FM1_OCT_BOTH, hid;
++        hid = ((raw >> panel.btn[B_HOME]) & 1u ? ar : 0u) | ((raw >> SMK_BTN_KNOB_BANK) & 1u ? oc : 0u);
++        md_hide |= hid & ~md_seen;
++        md_hide &= ar | oc;
++        md_seen = ar | oc;
 +        raw &= ~md_hide;
 +    }
 +#endif
@@ -1193,7 +1172,7 @@ index 9f5432e..d977e97 100644
      return fm1_enc_take(panel.enc[role]) * panel.dir[role];
  }
  
-@@ -56,6 +84,7 @@ void plat_leds(uint32_t buttons, uint32_t keys)
+@@ -56,6 +86,7 @@ void plat_leds(uint32_t buttons, uint32_t keys)
          if ((buttons >> i) & 1u)
              nl[panel.btn[i]] = 1;
      nl[SMK_BTN_FADER_BANK] = smk_fbank != 0;
@@ -1202,7 +1181,7 @@ index 9f5432e..d977e97 100644
          fm1_led[i] = nl[i];
      smk_keys_lit = keys;
 diff --git a/firmware/src/app/project.c b/firmware/src/app/project.c
-index 4914d7c..22a96f0 100644
+index 4914d7c..322a5c7 100644
 --- a/firmware/src/app/project.c
 +++ b/firmware/src/app/project.c
 @@ -16,6 +16,7 @@
@@ -1227,12 +1206,13 @@ index 4914d7c..22a96f0 100644
  }
  static uint32_t packed_len;             /* the last save's (or load's) packed stream, bytes */
  
-@@ -44,13 +50,19 @@ void project_defaults(void)
+@@ -44,13 +50,20 @@ void project_defaults(void)
      int i;
      proj.set.magic = PROJ_MAGIC;
      proj.set.format = PROJ_FORMAT;
 -    proj.set.palette = 0;                /* MD|442: green */
 +    proj.set.palette = MD_PALETTE;       /* MD|442 green, MD|187 amber, MD|888 red */
++    proj.set.rsv[0] = MD_SET_ID;         /* which MD firmware's patterns and sound these are */
      proj.set.keyled = 1;
      proj.set.keysound = 0;
      proj.set.autosave_off = 0;
@@ -1248,6 +1228,27 @@ index 4914d7c..22a96f0 100644
      proj.set.accent_q7 = 88;
      proj.set.stereo = PROJ_STEREO;
      proj.set.snd_rev = PROJ_SND_REV;
+@@ -446,6 +459,20 @@ int project_load(void)
+         proj.set = set;
+     else
+         bad = 1;
++    if (!bad && proj.set.rsv[0] != MD_SET_ID) {
++        /* another MD firmware's project (MD442, MD187, MD888 share the store): its global settings stay as
++         * they are (MIDI channels, clock and notes out, output, keys, autosave); this firmware's own patterns,
++         * sound, tempo and colour play. Nothing is written until something is saved here. */
++        settings_t keep = proj.set;
++        project_defaults();
++        keep.palette = proj.set.palette;
++        keep.bpm_x10 = proj.set.bpm_x10;
++        keep.rsv[0] = MD_SET_ID;
++        keep.stereo = PROJ_STEREO;
++        keep.snd_rev = PROJ_SND_REV;
++        proj.set = keep;
++        return 0;
++    }
+     sound_ok = load_obj(OBJ_SOUND, &proj.sound, sizeof proj.sound) == 0;
+     if (!sound_ok)
+         bad = 1;
 diff --git a/firmware/src/app/ui.c b/firmware/src/app/ui.c
 index 1687dec..1c4bc1f 100644
 --- a/firmware/src/app/ui.c
@@ -1593,6 +1594,30 @@ index dbe598f..d6772b8 100644
  } seq_t;
  
  void seq_init(seq_t *s, pattern_t *patterns);
+diff --git a/firmware/src/storage.c b/firmware/src/storage.c
+index 1f131f0..baf2847 100644
+--- a/firmware/src/storage.c
++++ b/firmware/src/storage.c
+@@ -93,7 +93,18 @@ static void st_owner_check(void)
+     }
+     if (ours)
+         return;
+-    if (!erased || !FELUCCA_DATA_UNTAGGED_OK) {     /* another firmware's store (or unknown): clear it */
++    {   /* MD Hardware 1.3 / 1.4 tagged MD187 and MD888 stores apart: they are X0X's objects, kept (retagged) */
++        static const char *const MD_FAM[2] = {"MD187", "MD888"};
++        uint32_t f, j, same;
++        for (f = 0; f < 2u; f++) {
++            same = 1;
++            for (j = 0; j < 16u; j++)
++                same &= tag[j] == (j < 9u ? (uint8_t)"SMK37DATA"[j] : j < 14u ? (uint8_t)MD_FAM[f][j - 9u] : 0u);
++            if (same)
++                erased = 2;                         /* (2: ours under another name) */
++        }
++    }
++    if (erased != 2 && (!erased || !FELUCCA_DATA_UNTAGGED_OK)) {     /* another firmware's store (or unknown): clear it */
+         for (s = ST_SMK_BASE; s < ST_OWNER_SECTOR; s += ST_SECTOR) {
+             st_erase(s);
+             ST_IDLE();
 diff --git a/tools/build.py b/tools/build.py
 index f469297..250fdff 100755
 --- a/tools/build.py
