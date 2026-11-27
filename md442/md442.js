@@ -957,7 +957,7 @@ function buildKeys(box, count) {
   box.append(ctl, kb);
 }
 const PIANO = ['KeyA', 'KeyW', 'KeyS', 'KeyE', 'KeyD', 'KeyF', 'KeyT', 'KeyG', 'KeyY', 'KeyH', 'KeyU', 'KeyJ', 'KeyK', 'KeyO', 'KeyL', 'KeyP'];
-function toggleKeys() { S.keys.open = !S.keys.open; if (!S.keys.open) { down.clear(); if (!S.keys.hold) held = []; } drawAll(); persist(); }
+function toggleKeys() { S.keys.open = !S.keys.open; if (!S.keys.open) { down.clear(); if (!S.keys.hold) held = []; } drawAll(); persist(); if (S.keys.open) requestAnimationFrame(() => { const k = root.querySelector('.keyp:not([hidden])'); if (k) k.scrollIntoView({ block: 'end', behavior: 'smooth' }); }); }   // the piano sits under the steps: bring it on screen
 
 /* one transport key: PLAY when stopped, STOP while playing (space bar, the SMK-37 and DAW sync still start and stop it) */
 function playKey() {
