@@ -25,6 +25,19 @@ summary{cursor:pointer;font-weight:700}a{color:var(--g)}
 .sec{background:transparent;color:var(--g);border:1.5px solid var(--g);border-radius:10px;font:600 15px system-ui;padding:10px 16px;cursor:pointer}
 .sec:disabled{opacity:.35}.small{font-size:13px;color:var(--dim)}
 body.busy .opt{pointer-events:none;opacity:.6}
+.man table{border-collapse:collapse;width:100%;font-size:14.5px}
+.man td{padding:7px 8px 7px 0;vertical-align:top;border-bottom:1px solid var(--line)}
+.man tr:last-child td{border-bottom:0}
+.man td:first-child{width:36%;font-weight:700;color:var(--fg)}
+.man td{color:#c3ccc5}
+.man h3{font-size:16px;margin:0 0 8px;color:var(--g)}
+.man .card p{margin:0 0 10px}
+kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radius:5px;padding:0 6px;font:700 12.5px/1.6 ui-monospace,Menlo,monospace;color:var(--fg);white-space:nowrap}
+.parts{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
+.parts span{flex:1 1 90px;border-radius:8px;padding:7px 6px;text-align:center;font:700 13px system-ui;color:#fff}
+.parts small{display:block;font-weight:400;font-size:11.5px;opacity:.9;color:#fff}
+.toc{font-size:13.5px;color:var(--dim);margin:0 0 14px;display:flex;flex-wrap:wrap;gap:4px 12px}.toc a{white-space:nowrap}
+@media(max-width:560px){.man td:first-child{width:42%}}
 </style></head><body><main>
 <div class="logo">MD<span>|</span>442</div>
 <p class="sub">Keyboard firmware installer. Runs in Chrome, nothing to install. Works on Mac and Windows.</p>
@@ -54,7 +67,14 @@ body.busy .opt{pointer-events:none;opacity:.6}
 <progress id="bar" max="100" value="0"></progress>
 <div id="status"></div><div id="log"></div>
 <p class="small">Switching between MD442, MD187 and MD888 works the same way: pick another one and install. Your settings are kept.</p>
+<p class="small"><b>New in 1.6:</b> the keys always play the instrument on screen, the pads are the steps, &lt; and &gt; pick the instrument (DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS), and FX switches the faders between effects and volumes. <a href="#manual">How to play it is further down this page</a> (<a href="fw/1.6/md-hardware-controls.pdf">PDF</a>). 1.6 has not been tested on a keyboard yet; 1.5 is below if you want it back.</p>
 </div>
+
+<details><summary>Go back to version 1.5</summary>
+<p class="small">The version before: stock key layout (keys and pads are both steps). Pick your keyboard and firmware at the top, then:</p>
+<p><button class="sec" id="goold">Install 1.5</button></p>
+</details>
+
 
 <details><summary>Restore M-VAVE's own firmware</summary>
 <p class="small">To go back to M-VAVE's firmware, or if the install says the keyboard's M-VAVE firmware is too old.</p>
@@ -64,6 +84,136 @@ body.busy .opt{pointer-events:none;opacity:.6}
 <li><button class="sec" id="stockgo" disabled>Restore</button> and keep the cable in until it says Done.</li>
 </ol>
 </details>
+
+<section class="man" id="manual">
+<div class="logo" style="font-size:24px;margin:34px 0 4px">HOW TO PLAY <span>1.6</span></div>
+<p class="sub" style="margin-bottom:10px">The actual mapping of firmware 1.6 on the SMK-37 Elite and Pro. It is the same for MD442, MD187 and MD888. <a href="fw/1.6/md-hardware-controls.pdf">One-page PDF to print</a>.</p>
+<p class="toc"><a href="#m-idea">The idea</a><a href="#m-keys">Keys</a><a href="#m-pads">Pads</a><a href="#m-buttons">Buttons</a><a href="#m-knobs">Knobs</a><a href="#m-faders">Faders</a><a href="#m-rec">Record</a><a href="#m-perf">Build-ups</a><a href="#m-mute">Mutes and patterns</a><a href="#m-app">With the app</a></p>
+
+<div class="card" id="m-idea"><h3>The idea in four lines</h3>
+<table>
+<tr><td><kbd>&lt;</kbd> <kbd>&gt;</kbd></td><td>Pick the instrument. The screen shows its name.</td></tr>
+<tr><td>Keys</td><td>Always play that instrument. They never turn steps on or off.</td></tr>
+<tr><td>Pads</td><td>Are its 16 steps. Tap a pad: step on. Tap again: off.</td></tr>
+<tr><td><kbd>FX</kbd></td><td>Switches the faders. Lit: effects. Off: volumes.</td></tr>
+</table>
+<div class="parts">
+<span style="background:#b96a1c">DRUMS 1<small>909 kit</small></span>
+<span style="background:#a83232">DRUMS 2<small>808 kit</small></span>
+<span style="background:#23874a">BASS<small>303 bass</small></span>
+<span style="background:#3560c0">CHORDS<small>one key, a chord</small></span>
+<span style="background:#7340b8">BREAKS<small>loops and hits</small></span>
+</div>
+<p class="small">The five instruments, in the order <kbd>&lt;</kbd> <kbd>&gt;</kbd> steps through them. The keys, the pads, the sound knobs and the mod wheel all follow the one on screen.</p>
+</div>
+
+<div class="card" id="m-keys"><h3>Keys</h3>
+<table>
+<tr><td>On DRUMS 1 / DRUMS 2</td><td>Each key is a drum. From F3 going up: kick, snare, clap, closed hat, open hat, low tom, mid tom, high tom, rim, crash, ride (DRUMS 2: cymbal, cowbell). The same eleven repeat from E4. Hit harder for louder.</td></tr>
+<tr><td>On BASS</td><td>Notes. Hold one key and press another and it slides to it.</td></tr>
+<tr><td>On CHORDS</td><td>One key plays a whole chord, an octave above the bass.</td></tr>
+<tr><td>On BREAKS</td><td>Slices 1 to 8 of the loop, from F3 up (MD187: stabs and vocal hits, MD888: trance stabs and hits).</td></tr>
+<tr><td><kbd>OCT-</kbd> <kbd>OCT+</kbd></td><td>On BASS and CHORDS: the keys' octave. On the drums and breaks: the next or previous 16 steps on the pads.</td></tr>
+<tr><td>Accent</td><td>Hit the key hard, or hold <kbd>CHORD</kbd> while you play.</td></tr>
+<tr><td>Pitch wheel</td><td>Bends BASS or CHORDS.</td></tr>
+<tr><td>Mod wheel</td><td>BASS / CHORDS: opens the filter. Drums / breaks: a high-pass riser on the one on screen.</td></tr>
+<tr><td>The 5 keys at each end</td><td>Not notes. They are the build-up keys, <a href="#m-perf">below</a>.</td></tr>
+</table></div>
+
+<div class="card" id="m-pads"><h3>Pads</h3>
+<table>
+<tr><td>Tap a pad</td><td>That step on. Tap again: off. Pads 1 to 16 are steps 1 to 16 (top row 1 to 8).</td></tr>
+<tr><td>Drums</td><td>The pads show the drum you last played on the keys. Play another drum key to see and edit that drum's steps.</td></tr>
+<tr><td>BASS / CHORDS</td><td>A new step takes the note you last played. Hold a pad and press a key: that step gets that note.</td></tr>
+<tr><td>Hold a pad + turn <kbd>K5</kbd>-<kbd>K8</kbd></td><td>On the <kbd>PARA</kbd> screen: change the sound for that step only.</td></tr>
+<tr><td>Hold a pad + turn <kbd>K2</kbd></td><td>That step's chance of playing.</td></tr>
+<tr><td><kbd>PATCH</kbd> + a pad</td><td>Go to that pattern (1 to 16) at the end of the bar.</td></tr>
+<tr><td><kbd>BT</kbd> + a pad</td><td>Paste the copied pattern there (hold <kbd>BT</kbd> a moment first to copy the current one).</td></tr>
+<tr><td>After a tap on <kbd>KNOB BANK</kbd></td><td>The pads are mutes, <a href="#m-mute">below</a>.</td></tr>
+</table></div>
+
+<div class="card" id="m-buttons"><h3>Buttons</h3>
+<table>
+<tr><td><kbd>PLAY</kbd></td><td>Start and stop.</td></tr>
+<tr><td><kbd>REC</kbd></td><td>Record on and off. With PLAY running, what you play on the keys goes into the pattern.</td></tr>
+<tr><td><kbd>&lt;</kbd> <kbd>&gt;</kbd></td><td>The instrument before and after. <kbd>PATCH</kbd> + them: the pattern before and after.</td></tr>
+<tr><td><kbd>FX</kbd></td><td>Faders are effects (lit) or volumes (off). Lit also shows the effects on screen.</td></tr>
+<tr><td><kbd>FADER BANK</kbd></td><td>With FX off: fader 1 is DRUMS 1 (off) or BREAKS (lit).</td></tr>
+<tr><td><kbd>KNOB BANK</kbd></td><td>Tap: the pads become mutes (lit). Hold: K2, K3, K4 shape the instrument.</td></tr>
+<tr><td><kbd>PATCH</kbd></td><td>The shift button, and on its own the pattern screen (press again: the song).</td></tr>
+<tr><td><kbd>PARA</kbd></td><td>The instrument's sound pages. Press again for the next page.</td></tr>
+<tr><td><kbd>SEQ</kbd></td><td>The instrument's sequencer page: length, speed, direction.</td></tr>
+<tr><td><kbd>NOTE REPEAT</kbd></td><td>The mixer screen: level, pan, reverb and delay for each part and each drum.</td></tr>
+<tr><td><kbd>ARP</kbd></td><td>On BASS or CHORDS: the line generator. <kbd>OCT+</kbd> writes a new line, <kbd>OCT-</kbd> changes it a little.</td></tr>
+<tr><td><kbd>CHORD</kbd></td><td>Hold while playing: accent.</td></tr>
+<tr><td><kbd>SCALE</kbd></td><td>Shows the screen as a list. In a question: yes.</td></tr>
+<tr><td><kbd>GLOBE</kbd></td><td>Settings: MIDI, clock, output. Yours are kept through every update.</td></tr>
+<tr><td><kbd>BT</kbd></td><td>Save. It also saves by itself when things are quiet.</td></tr>
+<tr><td><kbd>PATCH</kbd> + <kbd>REC</kbd> / <kbd>PLAY</kbd></td><td>Undo / redo.</td></tr>
+<tr><td><kbd>BT</kbd> + <kbd>REC</kbd></td><td>Clear the instrument on screen in this pattern (it asks first).</td></tr>
+<tr><td><kbd>OCT-</kbd> + <kbd>OCT+</kbd> held 5 seconds</td><td>Update mode, the same as stock. M-UPGRADE and the restore below can always reach the keyboard.</td></tr>
+</table></div>
+
+<div class="card" id="m-knobs"><h3>Knobs</h3>
+<table>
+<tr><td><kbd>K1</kbd></td><td>Master volume.</td></tr>
+<tr><td><kbd>K2</kbd></td><td>Moves through the pages on screen, or up and down a list. <kbd>PATCH</kbd> + K2: tempo.</td></tr>
+<tr><td><kbd>K3</kbd></td><td>The instrument (the same as <kbd>&lt;</kbd> <kbd>&gt;</kbd>). In a list: the value.</td></tr>
+<tr><td><kbd>K4</kbd></td><td>The pattern, changing at the end of the bar.</td></tr>
+<tr><td><kbd>K5</kbd>-<kbd>K8</kbd></td><td>The four things shown on screen.</td></tr>
+<tr><td>Hold <kbd>KNOB BANK</kbd> + <kbd>K2</kbd> <kbd>K3</kbd> <kbd>K4</kbd></td><td>Drums and breaks: filter (left low-pass, right high-pass, middle off), resonance, decay. BASS / CHORDS: cutoff, resonance, envelope.</td></tr>
+<tr><td>Chord type</td><td>On CHORDS press <kbd>PARA</kbd> until the page says CHORD, then turn <kbd>K5</kbd>: Minor, Major, Min7, Maj7, Min9, Sus4, 5th, or Off (a second bass).</td></tr>
+</table></div>
+
+<div class="card" id="m-faders"><h3>Faders</h3>
+<table>
+<tr><td><kbd>FX</kbd> lit</td><td>1 REVERB &middot; 2 DELAY &middot; 3 DRIVE &middot; 4 FILTER (middle off, down low-pass, up high-pass).</td></tr>
+<tr><td><kbd>FX</kbd> off</td><td>1 DRUMS 1 &middot; 2 DRUMS 2 &middot; 3 BASS &middot; 4 CHORDS volume.</td></tr>
+<tr><td><kbd>FADER BANK</kbd> lit</td><td>Fader 1 is BREAKS volume instead of DRUMS 1.</td></tr>
+</table>
+<p class="small" style="margin-top:8px">A fader only takes over once you move it, so nothing jumps when you switch.</p></div>
+
+<div class="card" id="m-rec"><h3>Record a beat</h3>
+<ol>
+<li>Pick the instrument with <kbd>&lt;</kbd> <kbd>&gt;</kbd>.</li>
+<li>Press <kbd>REC</kbd>, then <kbd>PLAY</kbd>.</li>
+<li>Play the keys in time. Drums, bass notes and chords land on the nearest step and loop.</li>
+<li>Fix it on the pads: tap a step off, tap a new one on.</li>
+<li>Next instrument, and do it again. <kbd>BT</kbd> saves.</li>
+</ol>
+<p class="small">Without REC: play a note, then tap the pads where you want it.</p></div>
+
+<div class="card" id="m-perf"><h3>Build-ups and breakdowns: the 5 keys at each end (hold)</h3>
+<table>
+<tr><td>C3, C#3, D3, D#3</td><td>Beat repeat: 1/2, 1/4, 1/8, 1/16 bar. Let go and it is back in time.</td></tr>
+<tr><td>E3 FILL</td><td>A roll on the drum on screen, faster and louder each bar.</td></tr>
+<tr><td>G#5 ECHO</td><td>Throws the instrument into the delay. The echoes ring for a bar after you let go.</td></tr>
+<tr><td>A5 KILL LOW</td><td>Kicks and bass out. Back on the next one.</td></tr>
+<tr><td>A#5 WASH</td><td>Reverb on the instrument. <kbd>PATCH</kbd> + ECHO or WASH: on everything.</td></tr>
+<tr><td>B5 RISER</td><td>A high-pass sweep up over 4 bars. Back on the next one.</td></tr>
+<tr><td>C6 DROP</td><td>Everything out, tails ring. Back on the next one.</td></tr>
+</table></div>
+
+<div class="card" id="m-mute"><h3>Mutes and patterns</h3>
+<table>
+<tr><td>Tap <kbd>KNOB BANK</kbd></td><td>Pads become mutes (lit). Pads 1 to 11: the drums of the kit on screen. Pads 12 to 16: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS. Tap it again: back to steps.</td></tr>
+<tr><td>Hold <kbd>KNOB BANK</kbd> + pads</td><td>Mute only while you hold.</td></tr>
+<tr><td><kbd>PATCH</kbd> + a pad (in mutes)</td><td>Solo it. Again: solo off.</td></tr>
+<tr><td><kbd>PATCH</kbd> + <kbd>KNOB BANK</kbd></td><td>Unmute everything.</td></tr>
+<tr><td><kbd>PATCH</kbd> + <kbd>&lt;</kbd> <kbd>&gt;</kbd></td><td>The pattern before or after, at the end of the bar.</td></tr>
+<tr><td><kbd>PATCH</kbd> + a pad</td><td>That pattern. <kbd>OCT+</kbd> on the pattern screen: patterns 17 to 32.</td></tr>
+</table></div>
+
+<div class="card" id="m-app"><h3>On its own, and with the app</h3>
+<table>
+<tr><td>On its own</td><td>No computer needed. The sound comes out of the keyboard's own audio out. Everything above works the same.</td></tr>
+<tr><td>Plugged into the MD app (USB)</td><td>One play button for both. PLAY or STOP on the keyboard starts and stops the app and sets its tempo. START in the app starts the keyboard in time. They never run two separate beats.</td></tr>
+<tr><td>Send your beats</td><td>In the app: MIDI &middot; DAW, then SEND TO KEYBOARD. Your scenes 1 to 8 land on keyboard patterns 9 to 16.</td></tr>
+<tr><td>With a DAW or other gear</td><td>The keyboard sends and follows MIDI clock, start and stop over USB. Change this under <kbd>GLOBE</kbd>.</td></tr>
+<tr><td>Unplug it</td><td>It carries on by itself at its own tempo.</td></tr>
+</table>
+<p class="small" style="margin-top:8px">1.6 has not been tested on a real keyboard yet. If something here does not match what the keyboard does, the keyboard is wrong, not you: go back to 1.5 above and say what you pressed.</p></div>
+</section>
 <p class="small" style="margin-top:22px">Uses the same USB-MIDI update as M-UPGRADE (X0X's fm1ota.js, GPL-3.0, Leo Kuroshita / Hügelton Instruments; SMK-37 port by genkigenki). MD firmware source: <a href="https://github.com/mathewdunn89-ggw/MD-442">github.com/mathewdunn89-ggw/MD-442</a>. M-VAVE, SMK-37 and FM-1 are trademarks of their owners. No warranty.</p>
 </main>
 <script type="module">
@@ -334,7 +484,8 @@ const pick = (group, val) => document.querySelectorAll(`[data-${group}]`).forEac
 function refresh() {
   pick("kb", kb); pick("fw", fw);
   $("stocklink").textContent = "Download " + STOCK[kb][0]; $("stocklink").href = STOCK[kb][1];
-  $("go").textContent = "Install " + fw.toUpperCase() + " 1.5";
+  $("go").textContent = "Install " + fw.toUpperCase() + " 1.6";
+  $("goold").textContent = "Install " + fw.toUpperCase() + " 1.5";
 }
 document.querySelectorAll("[data-kb]").forEach((b) => b.onclick = () => { if (!busy) { kb = b.dataset.kb; refresh(); } });
 document.querySelectorAll("[data-fw]").forEach((b) => b.onclick = () => { if (!busy) { fw = b.dataset.fw; refresh(); } });
@@ -392,18 +543,20 @@ async function write(p) {
   }
   busy = false; document.body.classList.remove("busy"); $("go").disabled = false; $("stockgo").disabled = !stockPkg;
 }
-$("go").onclick = async () => {
+const install = async (dir, ver) => {
   if (busy) return;
   const name = fw + "-" + KB[kb] + ".fwsc";
-  say("Loading " + fw.toUpperCase() + " 1.5 ...");
+  say("Loading " + fw.toUpperCase() + " " + ver + " ...");
   try {
-    const r = await fetch("fw/" + name, { cache: "no-store" });
+    const r = await fetch(dir + name, { cache: "no-store" });
     if (!r.ok) throw new Error(name + ": HTTP " + r.status);
-    const p = take(new Uint8Array(await r.arrayBuffer()), fw.toUpperCase() + " 1.5");
+    const p = take(new Uint8Array(await r.arrayBuffer()), fw.toUpperCase() + " " + ver);
     if (!p.md) throw new Error(name + " is not an MD firmware");
     await write(p);
   } catch (e) { if (!busy) say("Could not start: " + e.message); }
 };
+$("go").onclick = () => install("fw/1.6/", "1.6");
+$("goold").onclick = () => install("fw/", "1.5");
 let stockPkg = null;
 $("stockfile").onchange = async (e) => {
   stockPkg = null; $("stockgo").disabled = true;
