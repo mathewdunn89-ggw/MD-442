@@ -83,9 +83,9 @@ git -C "$HOME/fw-AC79_AIoT_SDK" sparse-checkout set --no-cone /cpu/wl82/tools/
 
 cd x0x
 export X0X_ID3=1 MD_VARIANT=442 FELUCCA_DATA_FAMILY=X0X X0X_BREAK_BANK=
-BOARD=smk37 MODEL=elite ./build.sh --release 1.7     # SMK-37 Elite
-BOARD=smk37 ./build.sh --release 1.7                 # SMK-37 Pro
-./build.sh --release 1.7                             # FM-1
+BOARD=smk37 MODEL=elite ./build.sh --release 1.8     # SMK-37 Elite
+BOARD=smk37 ./build.sh --release 1.8                 # SMK-37 Pro
+./build.sh --release 1.8                             # FM-1
 ```
 
 For MD187 or MD888, generate that firmware's sample bank first and point the build at it:

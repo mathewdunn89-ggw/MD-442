@@ -9,12 +9,12 @@ and the MIDI notes the plugin answers to.
 
 ## SMK-37 Elite and Pro with the MD firmware
 
-One layout for MD442, MD187 and MD888 (firmware 1.7). The keys play. The pads are the steps. < > picks the
+One layout for MD442, MD187 and MD888 (firmware 1.8). The keys play. The pads are the steps. < > picks the
 instrument. FX switches what the faders do. There is a one-page [cheat sheet (PDF)](../variants/md-hardware-controls.pdf).
 
 ### 1. Pick an instrument: < >
 
-DRUMS 1 (909 kit), DRUMS 2 (808 kit), BASS, CHORDS, BREAKS. The screen shows its name. The keys, the pads, the
+DRUMS 1 (909 kit), DRUMS 2 (808 kit), BASS, CHORDS, LEAD, BREAKS. The screen shows its name. The keys, the pads, the
 sound knobs and the mod wheel all follow it.
 
 ### 2. The keys play it
@@ -24,6 +24,9 @@ sound knobs and the mod wheel all follow it.
 | DRUMS 1 / 2 | From F3 up: BD SD CP CH OH LT MT HT RS CR RD, then the same again from E4. Hit harder for louder |
 | BASS | Notes. Hold one key and play another: it slides. OCT- and OCT+ change the octave |
 | CHORDS | One key plays a whole chord, an octave above the bass |
+| LEAD | New in 1.8: the CHORDS voice playing single notes, for a lead line or an arpeggio. LEAD and CHORDS are one voice and one pattern lane, so one of them sounds at a time |
+| ARP | An arpeggiator for the keys on BASS, CHORDS and LEAD. One key held: that note up through the octaves. More keys: they run upwards, in 16ths, in time with the pattern. PATCH + ARP: the line generator. Arpeggiator notes are not recorded into the pattern |
+| PATCH + SCALE | IN KEY on / off. On (the start): the keys snap to the natural minor scale of the bass line's key, and CHORDS builds its chords from that scale |
 | BREAKS | Slices 1 to 8 of the loop, from F3 up |
 | Accent | Hit hard, or hold CHORD while you play |
 
@@ -35,14 +38,14 @@ The keys never turn steps on or off. The two end zones of the keybed are the per
 | --- | --- |
 | Tap a pad | That step on. Tap again: off. Pads 1 to 16 are steps 1 to 16 |
 | DRUMS | The pads show the drum you last played on the keys. Play another key to edit that drum |
-| BASS / CHORDS | A new step takes the note you last played. Hold a pad + press a key: that step's note |
+| BASS / CHORDS / LEAD | A new step takes the note you last played. Hold a pad + press a key: that step's note |
 | Bars 2 to 4 | OCT- and OCT+ on the drums: steps 17 to 32 and on |
 
 ### 4. FX switches the faders
 
 | State | Faders 1 to 4 |
 | --- | --- |
-| FX lit | REVERB, DELAY, DRIVE, FILTER (middle off, left low-pass, right high-pass) |
+| FX lit | REVERB, DELAY, DRIVE (bottom: off), FILTER (bottom: off, up: high-pass) |
 | FX off | Volumes: DRUMS 1, DRUMS 2, BASS, CHORDS |
 | FADER BANK | Fader 1 switches between DRUMS 1 and BREAKS (lit: BREAKS) |
 | Hold a pad + any fader | That instrument's volume. Pads 1 to 11: the drums of the kit on screen. Pads 12 to 16: DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS |
@@ -85,6 +88,13 @@ A fader only takes over once you move it, so nothing jumps when you switch.
 | Tap KNOB BANK | The pads become mutes (lit): 1 to 11 the drums, 12 to 16 the five instruments. Tap again: steps |
 | PATCH + a pad (in mutes) | Solo. PATCH + KNOB BANK: unmute all |
 | PATCH + < / >, PATCH + a pad | The pattern before or after, or that pattern. Changes at the end of the bar |
+
+### Your own loops
+
+The keyboard keeps about 14 seconds of your own loops (SMK-37 Elite and Pro; about 21 on the FM-1; one loop about
+7 seconds at most, mono, 22 kHz). They stay in the keyboard when it is unplugged and play on BREAKS as BR1, BR2
+and so on (PARA, then LOOP A or LOOP B). The loops page on the MD-Modules site sends them over USB from Chrome
+or Edge.
 
 ### Unchanged from stock
 
