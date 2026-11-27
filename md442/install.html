@@ -21,7 +21,7 @@ progress{width:100%;height:12px;margin-top:14px;accent-color:var(--g)}
 #status{font-weight:600;margin:12px 0 4px;min-height:1.5em}
 #log{font:11.5px/1.4 ui-monospace,Menlo,monospace;color:#5f6b62;white-space:pre-wrap;max-height:120px;overflow:auto}
 details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 20px}
-summary{cursor:pointer;font-weight:700}a{color:var(--g)}
+details{margin:0 0 8px}summary{cursor:pointer;font-weight:700}a{color:var(--g)}
 .sec{background:transparent;color:var(--g);border:1.5px solid var(--g);border-radius:10px;font:600 15px system-ui;padding:10px 16px;cursor:pointer}
 .sec:disabled{opacity:.35}.small{font-size:13px;color:var(--dim)}
 body.busy .opt{pointer-events:none;opacity:.6}
@@ -36,11 +36,12 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 .parts{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
 .parts span{flex:1 1 90px;border-radius:8px;padding:7px 6px;text-align:center;font:700 13px system-ui;color:#fff}
 .parts small{display:block;font-weight:400;font-size:11.5px;opacity:.9;color:#fff}
+details.man>.small{margin:10px 0}details.man .card{background:none;border:0;border-top:1px solid var(--line);border-radius:0;padding:16px 0 6px;margin:0}
 .toc{font-size:13.5px;color:var(--dim);margin:0 0 14px;display:flex;flex-wrap:wrap;gap:4px 12px}.toc a{white-space:nowrap}
 @media(max-width:560px){.man td:first-child{width:42%}}
 </style></head><body><main>
 <div class="logo">MD<span>-</span>MODULES</div>
-<p class="sub">Three drum machines for your keyboard: MD442, MD187 and MD888. Pick one and install it straight from Chrome on Mac or Windows. Nothing to download. <a href="#manual">How to play it</a> is further down.</p>
+<p class="sub">Three drum machines for your keyboard: MD442, MD187 and MD888. Runs in Chrome, nothing to install. Works on Mac and Windows.</p>
 
 <div class="card"><h2><span class="n">1</span>Your keyboard</h2>
 <div class="opts">
@@ -55,12 +56,12 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <button class="opt" data-fw="md187"><b>MD187</b><small>90s hip-hop and boom-bap, 96 BPM</small></button>
 <button class="opt" data-fw="md888"><b>MD888</b><small>Hard techno, 155 BPM</small></button>
 </div>
-<p class="small" style="margin:12px 0 0">The MD-Modules are three different drum machines, each with its own sounds, patterns and samples. They all play the same way. The keyboard holds one at a time, and you can swap whenever you like: pick another and install. Your settings are kept.</p>
+<p class="small" style="margin:12px 0 0">On GitHub: <a href="https://github.com/mathewdunn89-ggw/MD-MODULE#md442">MD442</a> &middot; <a href="https://github.com/mathewdunn89-ggw/MD-MODULE#md187">MD187</a> &middot; <a href="https://github.com/mathewdunn89-ggw/MD-MODULE#md888">MD888</a> &middot; <a href="https://github.com/mathewdunn89-ggw/MD-MODULE#sample-packs">sample packs</a></p>
 </div>
 
 <div class="card"><h2><span class="n">3</span>Install</h2>
 <ol>
-<li>Quit M-UPGRADE, the MD|442 app, other MD|442 tabs and any DAW. Only one app can talk to the keyboard at a time.</li>
+<li>Quit M-UPGRADE, the MD-Modules app, other MD-Modules tabs and any DAW. Only one app can talk to the keyboard at a time.</li>
 <li>Plug the keyboard straight into the computer with a USB data cable (no hub) and switch it on.</li>
 <li>Press the button below. When Chrome asks, choose <b>Allow</b> for MIDI.</li>
 <li>Keep the cable in until it says <b>Done</b>. It takes a few minutes, and the keyboard restarts by itself.</li>
@@ -68,7 +69,8 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <p><button class="go" id="go">Install</button></p>
 <progress id="bar" max="100" value="0"></progress>
 <div id="status"></div><div id="log"></div>
-<p class="small"><b>New in 1.8:</b> ARP is an arpeggiator for the keys, LEAD is a new instrument, the keys and chords stay in the key of your bass line, and the DRIVE and FILTER faders are off at the bottom. The keys always play the instrument on screen, the pads are the steps, &lt; and &gt; pick the instrument (DRUMS 1, DRUMS 2, BASS, CHORDS, LEAD, BREAKS), and FX switches the faders between effects and volumes. <a href="#manual">How to play it is further down this page</a> (<a href="fw/1.8/md-hardware-controls.pdf">PDF</a>). You can also put <a href="loops.html">your own loops on the keyboard</a>. 1.8 has not been tested on a keyboard yet; 1.7 and 1.5 are below if you want one back.</p>
+<p class="small">Switching between MD442, MD187 and MD888 works the same way: pick another one and install. Your settings are kept.</p>
+<p class="small"><b>New in 1.8:</b> ARP is an arpeggiator for the keys, LEAD is a new instrument, the keys and chords stay in the key of your bass line, and the DRIVE and FILTER faders are off at the bottom. <a href="fw/1.8/md-hardware-controls.pdf">One-page controls sheet (PDF)</a>. <a href="#manual">How to play it</a> is at the bottom of this page. You can also put <a href="loops.html">your own loops on the keyboard</a>. 1.8 has not been tested on a keyboard yet; 1.7 and 1.5 are below if you want one back.</p>
 </div>
 
 <details><summary>Go back to version 1.7 or 1.5</summary>
@@ -87,9 +89,8 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 </ol>
 </details>
 
-<section class="man" id="manual">
-<div class="logo" style="font-size:24px;margin:34px 0 4px">HOW TO PLAY <span>1.8</span></div>
-<p class="sub" style="margin-bottom:10px">The actual mapping of the MD-Modules (version 1.8) on the SMK-37 Elite and Pro. All three play the same way. <a href="fw/1.8/md-hardware-controls.pdf">One-page PDF to print</a>.</p>
+<details class="man" id="manual"><summary>How to play it (version 1.8)</summary>
+<p class="small">The actual mapping of the MD-Modules (version 1.8) on the SMK-37 Elite and Pro. All three play the same way. <a href="fw/1.8/md-hardware-controls.pdf">One-page PDF to print</a>.</p>
 <p class="toc"><a href="#m-idea">The idea</a><a href="#m-keys">Keys</a><a href="#m-pads">Pads</a><a href="#m-buttons">Buttons</a><a href="#m-knobs">Knobs</a><a href="#m-faders">Faders</a><a href="#m-rec">Record</a><a href="#m-perf">Build-ups</a><a href="#m-mute">Mutes and patterns</a><a href="#m-app">With the app</a><a href="#m-stock">Module or M-VAVE</a></p>
 
 <div class="card" id="m-idea"><h3>The idea in four lines</h3>
@@ -214,7 +215,7 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <div class="card" id="m-app"><h3>On its own, and with the app</h3>
 <table>
 <tr><td>On its own</td><td>No computer needed. The sound comes out of the keyboard's own audio out. Everything above works the same.</td></tr>
-<tr><td>Plugged into the MD|442 app (USB)</td><td>One play button for both. PLAY or STOP on the keyboard starts and stops the app and sets its tempo. START in the app starts the keyboard in time. They never run two separate beats.</td></tr>
+<tr><td>Plugged into the MD-Modules app (USB)</td><td>One play button for both. PLAY or STOP on the keyboard starts and stops the app and sets its tempo. START in the app starts the keyboard in time. They never run two separate beats.</td></tr>
 <tr><td>Send your beats</td><td>In the app: MIDI &middot; DAW, then SEND TO KEYBOARD. Your scenes 1 to 8 land on keyboard patterns 9 to 16.</td></tr>
 <tr><td>With a DAW or other gear</td><td>The keyboard sends and follows MIDI clock, start and stop over USB. Change this under <kbd>GLOBE</kbd>.</td></tr>
 <tr><td>Unplug it</td><td>It carries on by itself at its own tempo.</td></tr>
@@ -225,12 +226,12 @@ kbd{display:inline-block;background:#0f1311;border:1px solid #3a463e;border-radi
 <table>
 <tr><td>The keyboard holds one</td><td>Installing an MD-Module replaces M-VAVE's firmware. There is not enough memory in the keyboard for both, or for all three modules at once.</td></tr>
 <tr><td>With an MD-Module</td><td>The keyboard is a drum machine that makes its own sound. No computer needed.</td></tr>
-<tr><td>What you give up meanwhile</td><td>M-VAVE's controller features: its own arp, chord, scale and note repeat modes, Bluetooth, and working as a plain MIDI controller for a DAW or for the MD|442 app's pads and keys.</td></tr>
+<tr><td>What you give up meanwhile</td><td>M-VAVE's controller features: its own arp, chord, scale and note repeat modes, Bluetooth, and working as a plain MIDI controller for a DAW or for the MD-Modules app's pads and keys.</td></tr>
 <tr><td>Swapping</td><td>A few minutes either way, as often as you like: another module at the top of this page, or <a href="#restore">M-VAVE's own firmware back</a>. Your module settings are kept.</td></tr>
 </table>
 <p class="small" style="margin-top:8px">1.8 has not been tested on a real keyboard yet. If something here does not match what the keyboard does, the keyboard is wrong, not you: go back to 1.7 or 1.5 above and say what you pressed.</p></div>
-</section>
-<p class="small" style="margin-top:22px">Uses the same USB-MIDI update as M-UPGRADE (X0X's fm1ota.js, GPL-3.0, Leo Kuroshita / Hügelton Instruments; SMK-37 port by genkigenki). MD firmware source: <a href="https://github.com/mathewdunn89-ggw/MD-MODULE">github.com/mathewdunn89-ggw/MD-MODULE</a>. M-VAVE, SMK-37 and FM-1 are trademarks of their owners. No warranty.</p>
+</details>
+<p class="small" style="margin-top:22px">Uses the same USB-MIDI update as M-UPGRADE (X0X's fm1ota.js, GPL-3.0, Leo Kuroshita / Hügelton Instruments; SMK-37 port by genkigenki). MD-Modules on GitHub: <a href="https://github.com/mathewdunn89-ggw/MD-MODULE">github.com/mathewdunn89-ggw/MD-MODULE</a> (<a href="https://github.com/mathewdunn89-ggw/MD-MODULE#keyboard-firmware">keyboard firmware</a>). M-VAVE, SMK-37 and FM-1 are trademarks of their owners. No warranty.</p>
 </main>
 <script type="module">
 
@@ -553,7 +554,7 @@ async function write(p) {
     } else await up.install(p.img, p.product, step);
   } catch (e) {
     if (e && e.code === "mismatch") { $("bar").value = 100; say("Done. The keyboard reports " + e.detail + "."); }
-    else if (e && e.code === "notfound") say("Keyboard not found. Quit M-UPGRADE, the MD|442 app, other Chrome tabs and any DAW, plug the keyboard straight in (no hub) and press again.");
+    else if (e && e.code === "notfound") say("Keyboard not found. Quit M-UPGRADE, the MD-Modules app, other Chrome tabs and any DAW, plug the keyboard straight in (no hub) and press again.");
     else if (e && e.code === "model") say("That's the wrong keyboard: " + e.message + ". Pick your keyboard at the top.");
     else say("Stopped: " + (e && e.message) + ". Pressing the button again is safe.");
     log(String(e && e.stack || e));
@@ -589,5 +590,10 @@ $("stockfile").onchange = async (e) => {
 $("stockgo").onclick = () => { if (stockPkg && !busy) write(stockPkg); };
 if (/restore(\.html)?\/?$/.test(location.pathname) || location.hash === "#restore") { $("restore").open = true; $("restore").scrollIntoView(); }
 document.querySelectorAll('a[href="#restore"]').forEach((a) => a.addEventListener("click", () => { $("restore").open = true; }));
+// "How to play it" is folded away at the bottom: a link into it (#manual, #m-keys ...) opens it first
+const inManual = (h) => h === "#manual" || /^#m-[a-z]+$/.test(h);
+const openManual = () => { if (!inManual(location.hash)) return; $("manual").open = true; const t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); };
+document.querySelectorAll('a[href^="#m"]').forEach((a) => { if (inManual(a.getAttribute("href"))) a.addEventListener("click", () => { $("manual").open = true; }); });
+window.addEventListener("hashchange", openManual); openManual();
 window.addEventListener("beforeunload", (e) => { if (busy) { e.preventDefault(); e.returnValue = "The keyboard is being written."; } });
 </script></body></html>
