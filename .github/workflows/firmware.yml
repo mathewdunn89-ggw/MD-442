@@ -71,7 +71,7 @@ jobs:
           import fm1_install as f
           bad = 0
           for p in sorted(glob.glob("out/*.fwsc")):
-              ident, _ = f.load_package(p, False)
+              ident = f.load_package(p, False)[0]
               ok = re.fullmatch(r"(SMK-37 (Pro|Elite)|FM-1)_9\d\d", ident) is not None
               print(p, ident, "ok" if ok else "REFUSED BY M-UPGRADE")
               bad |= not ok
