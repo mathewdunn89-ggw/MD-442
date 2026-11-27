@@ -121,12 +121,8 @@
   <section class="sec" id="firmware">
     <h2 class="mono">Firmware</h2>
     <p>MD|442 running on the keyboard itself. No computer and no app: it plays through the keyboard's own audio out, with Mathew's seven patterns loaded as patterns 1 to 7.</p>
-    <div class="card" style="border-color:var(--g)"><b class="mono" style="color:var(--g);font-weight:400">Easiest · Mac</b><strong>Firmware installer pack</strong><span>All three firmware files, the double-click Mac installer, the controls guide (PDF) and the source patch in one download.</span><a class="pill go mono" href="https://github.com/mathewdunn89-ggw/MD-442/releases/latest/download/md442-firmware.zip">Download installer pack (.zip) ↓</a></div>
-    <div class="cards">
-      <div class="card"><b class="mono" style="color:var(--g);font-weight:400">M-VAVE</b><strong>SMK-37 Elite</strong><span>37 keys, 16 pads, 4 faders.</span><a class="pill mono" href="https://github.com/mathewdunn89-ggw/MD-442/releases/latest/download/md442-smk37-elite.fwsc">md442-smk37-elite.fwsc ↓</a></div>
-      <div class="card"><b class="mono" style="color:var(--g);font-weight:400">M-VAVE</b><strong>SMK-37 Pro</strong><span>Also fits the Starrykey 37 Play.</span><a class="pill mono" href="https://github.com/mathewdunn89-ggw/MD-442/releases/latest/download/md442-smk37-pro.fwsc">md442-smk37-pro.fwsc ↓</a></div>
-      <div class="card"><b class="mono" style="color:var(--g);font-weight:400">M-VAVE</b><strong>FM-1</strong><span>The pocket groovebox.</span><a class="pill mono" href="https://github.com/mathewdunn89-ggw/MD-442/releases/latest/download/md442-fm1.fwsc">md442-fm1.fwsc ↓</a></div>
-    </div>
+    <div class="card" style="border-color:var(--g)"><b class="mono" style="color:var(--g);font-weight:400">Coming soon</b><strong>Keyboard firmware</strong><span>The keyboard firmware for the SMK-37 Elite, SMK-37 Pro and FM-1 is being reworked so M-VAVE's own updater (M-UPGRADE) can always put the stock firmware back. It will be back here once it has been tested on a keyboard. The app, desktop app and plugin work with the keyboards as MIDI controllers in the meantime.</span></div>
+    <div class="card"><b class="mono" style="color:var(--g);font-weight:400">Recovery · Mac, Windows, Linux</b><strong>Restore M-VAVE firmware</strong><span>Already installed MD|442 on a keyboard? This puts M-VAVE's own firmware back, even if M-UPGRADE refuses or the keyboard is stuck in update mode. Get M-VAVE's .fwsc file for your keyboard, then run "Restore M-VAVE firmware (Mac)" (or tools/fm1_install.py --force on Windows and Linux). Instructions are in README.txt.</span><a class="pill go mono" href="/md442/restore/md442-restore.zip">Download restore tool (.zip) ↓</a></div>
     <h3 class="mono" id="md-hardware">More firmwares: MD187 and MD888 (coming soon)</h3>
     <p>Two more keyboard firmwares on the same engine are on the way: MD187, 90s hip-hop at 96 BPM, and MD888, hard techno at 155 BPM. They will be back here once they've been tested on a keyboard.</p>
   </section>
@@ -140,9 +136,9 @@
       <tr><td><b>Ableton, Maschine, Logic, any DAW</b></td><td>VST3 plugin (Mac and Windows) and Audio Unit (Mac)</td><td><a href="#plugin">DAW plugin</a></td></tr>
       <tr><td><b>Android</b></td><td>Android app (.apk)</td><td><a href="#phone">Phone app</a></td></tr>
       <tr><td><b>iPhone</b></td><td>Phone app from the home screen</td><td><a href="#phone">Phone app</a></td></tr>
-      <tr><td><b>M-VAVE SMK-37 Elite</b></td><td>Firmware on the keyboard, or as a MIDI controller for the app</td><td><a href="#firmware">md442-smk37-elite.fwsc</a></td></tr>
-      <tr><td><b>M-VAVE SMK-37 Pro, Starrykey 37 Play</b></td><td>Firmware on the keyboard, or as a MIDI controller for the app</td><td><a href="#firmware">md442-smk37-pro.fwsc</a></td></tr>
-      <tr><td><b>M-VAVE FM-1</b></td><td>Firmware on the groovebox</td><td><a href="#firmware">md442-fm1.fwsc</a></td></tr>
+      <tr><td><b>M-VAVE SMK-37 Elite</b></td><td>Firmware on the keyboard, or as a MIDI controller for the app</td><td><a href="#firmware">Firmware coming soon</a></td></tr>
+      <tr><td><b>M-VAVE SMK-37 Pro, Starrykey 37 Play</b></td><td>Firmware on the keyboard, or as a MIDI controller for the app</td><td><a href="#firmware">Firmware coming soon</a></td></tr>
+      <tr><td><b>M-VAVE FM-1</b></td><td>Firmware on the groovebox</td><td><a href="#firmware">Firmware coming soon</a></td></tr>
       <tr><td><b>Any MIDI controller</b></td><td>Pads, keys and knobs control the desktop app and browser version</td><td><a href="../">Open MD|442</a></td></tr>
     </table></div>
   </section>
@@ -152,6 +148,7 @@
     <div class="two">
       <section class="box">
         <h2 class="mono">Install the firmware</h2>
+        <p><b>Coming soon:</b> the keyboard firmware is being reworked and is not available to download right now. To put M-VAVE's firmware back on a keyboard, use the <a href="#firmware">restore tool</a>.</p>
         <ol>
           <li><b style="font-weight:400;color:var(--g)">Mac:</b> download the installer pack and unzip it. Connect the keyboard with a USB data cable. Right-click "Install MD-442 (Mac).command", choose Open, and pick your keyboard (1 to 3). The first time, macOS may offer to install Python's command line tools: say yes, then run it again.</li>
           <li><b style="font-weight:400;color:var(--g)">Windows or Linux:</b> unzip the installer pack, open a terminal in the folder, run <code>pip install mido python-rtmidi</code>, then <code>python3 tools/fm1_install.py md442-smk37-elite.fwsc</code> (use the file for your keyboard).</li>
