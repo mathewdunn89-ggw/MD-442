@@ -10,6 +10,19 @@ Peak Warehouse, Berlin Roll, Electro, Acid Jack, Deep House, Breakbeat, Dub Tech
 | M-VAVE SMK-37 Pro (also Starrykey 37 Play) | md442-smk37-pro.fwsc |
 | M-VAVE FM-1 | md442-fm1.fwsc |
 
+## Version 1.8
+- ARP is a live arpeggiator for the keys on BASS, CHORDS and LEAD: one key held runs that note up the octaves, more
+  keys run upwards, in 16ths in time with the pattern. PATCH + ARP opens the line generator that ARP used to open.
+- LEAD is a new instrument on < / > (DRUMS 1, DRUMS 2, BASS, CHORDS, LEAD, BREAKS): the CHORDS voice playing single
+  notes. LEAD and CHORDS are one voice and one pattern lane.
+- IN KEY (on to start, PATCH + SCALE switches it): the keys snap to the natural minor scale of the bass line's key
+  and CHORDS builds its chords from that scale. Chords are levelled to sit with a single note.
+- FX lit: the DRIVE fader is off at the bottom and switches the distortion on above it (it did nothing while Dist was
+  Off); the FILTER fader is off at the bottom and sweeps up as a high-pass. Both ranges are capped.
+- Your own loops: about 14 seconds on the SMK-37 (21 on the FM-1) stay in the keyboard and play on BREAKS as BR1,
+  BR2 and so on; the loops page on the MD-Modules site sends them over USB.
+- Identity SMK-37 Elite_918. Not tested on a keyboard yet. Everything from 1.7 below is unchanged.
+
 ## Version 1.7
 - Hold a pad and move any fader: that pad's instrument volume. Pads 1 to 11 are the drums of the kit on screen,
   pads 12 to 16 are DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS. The step or mute the press changed is put back.

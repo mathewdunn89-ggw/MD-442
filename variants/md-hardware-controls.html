@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>MD Hardware 1.7: SMK-37 Elite controls</title>
+<title>MD Hardware 1.8: SMK-37 Elite controls</title>
 <style>
   @page { size: A4 landscape; margin: 8mm; }
   * { box-sizing: border-box; }
@@ -23,7 +23,7 @@
   .sh { background: #e8a10f; color: #15161a; }
   .gr { background: #1db954; }
   .note { color: #5c6070; font-size: 9.4px; margin-top: 4px; }
-  .parts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin: 4px 0 2px; }
+  .parts { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 4px 0 2px; }
   .parts div { border-radius: 5px; padding: 4px 3px; color: #fff; font-size: 9px; text-align: center; font-weight: 700; }
   .parts small { display: block; font-weight: 400; font-size: 8.2px; opacity: .9; }
   .kb { display: flex; gap: 2px; margin-top: 5px; }
@@ -32,9 +32,9 @@
 </style>
 </head>
 <body>
-<h1>MD<span>|</span>Hardware 1.7 &nbsp;&middot;&nbsp; M-VAVE SMK-37 Elite</h1>
+<h1>MD<span>|</span>Hardware 1.8 &nbsp;&middot;&nbsp; M-VAVE SMK-37 Elite</h1>
 <div class="sub">One layout for MD442, MD187 and MD888 (also on the SMK-37 Pro). <b>The keys play. The pads are the steps. &lt; &gt; picks the instrument. FX switches what the faders do.</b>
-Your global settings (MIDI, clock, output, keys, autosave) are never changed. Version 1.7 has not been tested on a keyboard yet.</div>
+Your global settings (MIDI, clock, output, keys, autosave) are never changed. Version 1.8 has not been tested on a keyboard yet.</div>
 
 <div class="grid">
 <div>
@@ -44,7 +44,8 @@ Your global settings (MIDI, clock, output, keys, autosave) are never changed. Ve
       <div style="background:#d9822b">DRUMS 1<small>909 kit</small></div>
       <div style="background:#c23b3b">DRUMS 2<small>808 kit</small></div>
       <div style="background:#2fa35a">BASS<small>303 A</small></div>
-      <div style="background:#3f6fd6">CHORDS<small>new</small></div>
+      <div style="background:#3f6fd6">CHORDS<small>stabs</small></div>
+      <div style="background:#1f9aa8">LEAD<small>new</small></div>
       <div style="background:#8a4fd6">BREAKS<small>loops</small></div>
     </div>
     <div class="note">The screen shows its name. The keys, the pads, the sound knobs and the mod wheel all follow it.</div>
@@ -55,7 +56,9 @@ Your global settings (MIDI, clock, output, keys, autosave) are never changed. Ve
     <table>
       <tr><td>DRUMS 1 / 2</td><td>From F3 up: BD SD CP CH OH LT MT HT RS CR RD, then the same again from E4. Hit harder for louder</td></tr>
       <tr><td>BASS</td><td>Notes. Hold one key and play another: it slides. <span class="k">OCT-</span> <span class="k">OCT+</span>: octave</td></tr>
-      <tr><td>CHORDS</td><td>One key = a whole chord (a minor chord to start), an octave above the bass</td></tr>
+      <tr><td>CHORDS / LEAD</td><td>CHORDS: one key = a whole chord. LEAD: the same voice, single notes. An octave above the bass</td></tr>
+      <tr><td><span class="k">ARP</span></td><td>BASS, CHORDS, LEAD: hold keys and they run in 16ths (one key: up the octaves). <span class="k sh">PATCH</span> + <span class="k">ARP</span>: line generator</td></tr>
+      <tr><td>In key</td><td>Keys and chords follow the key of the bass line. <span class="k sh">PATCH</span> + <span class="k">SCALE</span>: off / on</td></tr>
       <tr><td>BREAKS</td><td>Slices 1-8 of the loop, from F3 up</td></tr>
       <tr><td>Accent</td><td>Hit hard, or hold <span class="k">CHORD</span> while you play</td></tr>
     </table>
@@ -67,7 +70,7 @@ Your global settings (MIDI, clock, output, keys, autosave) are never changed. Ve
     <table>
       <tr><td>Tap a pad</td><td>That step on. Tap again: off. Pads 1-16 = steps 1-16</td></tr>
       <tr><td>DRUMS</td><td>The pads show the drum you last played on the keys. Play another key to edit that drum</td></tr>
-      <tr><td>BASS / CHORDS</td><td>A new step takes the note you last played. Hold a pad + press a key: that step's note</td></tr>
+      <tr><td>BASS / CHORDS / LEAD</td><td>A new step takes the note you last played. Hold a pad + press a key: that step's note</td></tr>
       <tr><td>Bars 2-4</td><td><span class="k">OCT-</span> <span class="k">OCT+</span> on the drums: steps 17-32 and on</td></tr>
     </table>
   </div>
@@ -77,7 +80,7 @@ Your global settings (MIDI, clock, output, keys, autosave) are never changed. Ve
   <div class="card big">
     <h2><span class="n">4</span>FX switches the faders</h2>
     <table>
-      <tr><td><span class="k gr">FX lit</span></td><td>REVERB &middot; DELAY &middot; DRIVE &middot; FILTER (middle off, left low-pass, right high-pass). The screen shows the effects</td></tr>
+      <tr><td><span class="k gr">FX lit</span></td><td>REVERB &middot; DELAY &middot; DRIVE &middot; FILTER. DRIVE and FILTER are off at the bottom; FILTER sweeps up as a high-pass</td></tr>
       <tr><td><span class="k">FX off</span></td><td>Volumes: DRUMS 1 &middot; DRUMS 2 &middot; BASS &middot; CHORDS</td></tr>
       <tr><td><span class="k">FADER BANK</span></td><td>Fader 1 switches between DRUMS 1 and BREAKS (lit = BREAKS)</td></tr>
       <tr><td>Hold a pad + any fader</td><td>That instrument's volume: pads 1-11 the drums of the kit on screen, 12-16 DRUMS 1, DRUMS 2, BASS, CHORDS, BREAKS</td></tr>
