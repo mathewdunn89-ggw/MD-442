@@ -1474,7 +1474,7 @@ function padUp(id) { if (padIds().includes(id)) { clearTimeout(elite.upT); elite
 // instrument (bass, stab or sampler; a drum keeps the last one) and SEQ closes it, so the pads are steps again.
 // FX on the Elite: once FX BUTTON is learned, FX on turns the faders (every control set to a track level) into the global
 // effects, FX off puts them back on the track levels. Knobs are not changed.
-const FXL = { 'lvl.BD': 'fx.filter', 'lvl.SD': 'fx.verb', 'lvl.CP': 'fx.vdec', 'lvl.CH': 'fx.space', 'lvl.OH': 'fx.efb', 'lvl.BS': 'fx.etime', 'lvl.ST': 'fx.drive' };
+const FXL = { 'lvl.BD': 'fx.verb', 'lvl.SD': 'fx.space', 'lvl.CP': 'fx.drive', 'lvl.CH': 'fx.filter', 'lvl.OH': 'fx.vdec', 'lvl.BS': 'fx.etime', 'lvl.ST': 'fx.efb' };   // same order as MD firmware 1.6: REVERB, DELAY, DRIVE, FILTER, then the rest
 const fxOf = k => (midi.fxl && typeof k === 'string' && k.startsWith('lvl.') ? FXL[k] || 'vol' : k);
 function fxLayer() { midi.fxl = !midi.fxl; drawAll(); lcdFlash('SMK-37 faders', midi.fxl ? 'Global FX' : 'Track levels'); }
 function eliteView(keys) {
