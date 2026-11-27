@@ -1454,14 +1454,14 @@ function onMidi(e) {
 }
 /* ELITE FOLLOWS THE SCREEN. The laptop is the main surface; the SMK-37 Elite (stock M-VAVE firmware, nothing on it is changed)
    follows whatever view is open:
-   - KEYS open: keys play the bass, stab or sampler, pads play the drums (as before).
-   - Sequencer (KEYS closed): pads 1-16 are the selected drum's 16 steps. Tap a pad to turn its step on or off, like a step on
-     screen. Keys still play the instrument. Pick another drum on screen (or with a learned < >) and the pads follow it.
+   - Pads 1-16 are always the selected drum's 16 steps: tap one to turn its step on or off, like a step on screen. Pick another
+     drum on screen (or with a learned < >) and the pads follow it. While SEQ REC records, the pads play the drums into the loop.
+   - Keys always play the selected instrument (bass, stab or sampler), never steps.
    Pad lights: only plain note-on / note-off messages go back, only to an output named SMK-37 / M-VAVE, on the pad's own note and
    channel. No SysEx, no CC, no settings. If the stock firmware ignores them nothing happens; turn PAD LIGHTS off in the MIDI panel. */
 const PADS_DEF = Array.from({ length: 16 }, (_, i) => '10:' + (36 + i));      // the setup guide's stock layout: 16 pads, channel 10, notes 36-51
 const padIds = () => (midi.pads && midi.pads.length ? midi.pads : PADS_DEF);
-const eliteMode = () => (S.keys.open ? 'keys' : 'seq');
+const eliteMode = () => 'seq';                                                // as on MD firmware 1.6: the pads are always the steps (drums from the pads only while SEQ REC records)
 const eliteOuts = () => (midi.access ? [...midi.access.outputs.values()].filter(o => /smk|m-?vave/i.test(o.name || '') && !(kbx.out && o.name === kbx.out.name)) : []);   // never to a keyboard that answered as MD firmware: there a note plays a drum
 function padStep(id) {
   if (midi.learn || eliteMode() !== 'seq' || writing()) return false;   // WRITE recording: pads play the drums into the loop
@@ -1551,7 +1551,7 @@ const GUIDE = [
   ['SMK-37', [
     'Plug the SMK-37 in with USB, press CONNECT above and allow MIDI. Chrome or Edge work best.',
     'Keys play the bass, or the stab (choose in KEYS). Pads play the drums when they send on MIDI channel 10: 36 kick, 38 snare, 39 clap, 42 and 46 hats.',
-    'The Elite follows the screen. KEYS open: keys play the instrument, pads play the drums. KEYS closed (the sequencer): pads 1-16 are the selected drum\'s steps, tap to turn them on or off, and they light when the firmware lights pads from MIDI. Pads not on channel 10, notes 36-51? Press SET PADS and hit them 1 to 16.',
+    'The Elite works like MD firmware: pads 1-16 are always the selected drum\'s steps (tap to turn them on or off; they light when the firmware lights pads from MIDI), keys always play the instrument. While SEQ REC records, the pads play the drums into the loop. Pads not on channel 10, notes 36-51? Press SET PADS and hit them 1 to 16.',
     'CHORD, SEQ and FX on the Elite: press CHORD BUTTON, SEQ BUTTON or FX BUTTON in this panel, then that button on the Elite. CHORD then opens the keyboard for the selected instrument, SEQ goes back to the steps, FX puts the global effects on the faders (off: track levels). A button that sends no MIDI on stock firmware cannot be learned: use a free pad or button instead.',
     'To set the pads that way, open the M-VAVE editor, set the pads to channel 10 and notes 36 to 51, send it to the keyboard, then close the editor.',
     'Running MD|442 firmware 1.1 on the keyboard? Press SEND TO KEYBOARD to copy this beat\'s scenes onto it (patterns 9 to 16). Saving a beat sends it again automatically.',
@@ -1672,7 +1672,7 @@ function buildMidi(box) {
   row.append(con, lk, ck, cko, pk, pl, vp, vr, vk, vs, vf, sk, lv, dp, dn); box.append(stat, row, list, guide(), h('p', 'note', 'Pads on MIDI channel 10 play the drums with the standard drum notes (36 kick, 38 snare, 39 clap, 42 and 46 hats…). Keys play the bass or the stab, whichever the keyboard panel is set to. LEARN ties any hardware knob, fader, pad or button to anything on screen: a drum, a knob, ▶ PLAY, ◀ DRUM / DRUM ▶, MUTE or a scene. Press LEARN, click it on screen, then press the control. Start, stop, continue and the tempo (MIDI clock) from a controller or a DAW are followed. LIVE (on once a keyboard with MD|442 firmware 1.2 has answered SEND TO KEYBOARD) keeps the keyboard on the scene you are editing, with the same mutes. CLOCK OUT does the opposite: an FM-1, an SMK-37 with MD|442 firmware, Maschine or Ableton follow MD|442\'s tempo, start and stop.'));
   live(lk, () => { lk.classList.toggle('on', midi.learn); lk.setAttribute('aria-pressed', midi.learn); });
   live(stat, () => {
-    stat.textContent = !navigator.requestMIDIAccess ? NOMIDI : !midi.access ? 'Press CONNECT and allow MIDI.' : (midi.names.length ? 'Connected: ' + midi.names.join(', ') : 'MIDI is on. No controller found yet.') + (midi.learn ? (midi.armP ? ' · LEARN: now move a hardware control for ' + DEF[midi.armP].lb : midi.armD ? ' · LEARN: now hit a pad for ' + NAME[midi.armD] : midi.armA ? ' · LEARN: now press a pad for ' + actName(midi.armA) : ' · LEARN: touch a knob, drum, scene or MUTE on screen') + (midi.synced ? ' · following MIDI clock' : '') : '') + (midi.access && midi.names.length ? (eliteMode() === 'seq' ? ' · Elite pads: ' + NAME[S.sel] + ' steps 1-16' : ' · Elite pads: play the drums') + (midi.fxl ? ' · faders: global FX' : '') : '') + (midi.last ? ' · last: ' + midi.last : '');
+    stat.textContent = !navigator.requestMIDIAccess ? NOMIDI : !midi.access ? 'Press CONNECT and allow MIDI.' : (midi.names.length ? 'Connected: ' + midi.names.join(', ') : 'MIDI is on. No controller found yet.') + (midi.learn ? (midi.armP ? ' · LEARN: now move a hardware control for ' + DEF[midi.armP].lb : midi.armD ? ' · LEARN: now hit a pad for ' + NAME[midi.armD] : midi.armA ? ' · LEARN: now press a pad for ' + actName(midi.armA) : ' · LEARN: touch a knob, drum, scene or MUTE on screen') + (midi.synced ? ' · following MIDI clock' : '') : '') + (midi.access && midi.names.length ? (writing() ? ' · Elite pads: recording drums' : ' · Elite pads: ' + NAME[S.sel] + ' steps 1-16') + (midi.fxl ? ' · faders: global FX' : '') : '') + (midi.last ? ' · last: ' + midi.last : '');
     const sig = JSON.stringify([midi.cc, midi.note]); if (list._sig === sig) return; list._sig = sig; list.textContent = '';
     Object.entries(midi.cc).forEach(([id, k]) => { if (isAct(k)) { const b = key('CC ' + id.split(':')[1] + ' → ' + actName(k) + '  ✕', () => { delete midi.cc[id]; midiKeep(); drawAll(); }); list.append(b); return; } if (!DEF[k]) return; const b = key('CC ' + id.split(':')[1] + ' → ' + DEF[k].lb + '  ✕', () => { delete midi.cc[id]; midiKeep(); drawAll(); }); b.setAttribute('aria-label', 'Remove mapping of control ' + id.split(':')[1] + ' to ' + DEF[k].lb); list.append(b); });
     Object.entries(midi.note).forEach(([id, k]) => { const b = key('NOTE ' + id.split(':')[1] + ' → ' + actName(k) + '  ✕', () => { delete midi.note[id]; midiKeep(); drawAll(); }); list.append(b); });
