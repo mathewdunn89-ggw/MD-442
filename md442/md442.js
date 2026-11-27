@@ -937,11 +937,12 @@ function noteOn(note) {
 // WRITE: records what you play (on screen or on the SMK-37) into the looping pattern of the instrument KEYS plays, on the
 // nearest step: a note in the second half of a step lands on the next one. Bass keeps the note, the sampler the slice, the
 // stab its timing (it plays its chord on the pattern's key). One UNDO takes back a whole take.
-function writeNote(note) {
-  const k = S.keys.target, sc = scene(); if (!sc.g[k]) return;
+const writing = () => !!S.keys.rec && playing && head >= 0;
+function writeNote(note, drum) {
+  const k = drum || S.keys.target, sc = scene(); if (!sc.g[k]) return;
   const late = ac && headT && ac.currentTime - headT > stepLen() / 2, i = late ? (head + 1) % Math.max(1, S.last) : head;
   if (performance.now() - editT > 1500) keep('keys write'); editT = performance.now();
-  sc.g[k][i] = true; if (k === 'BS') sc.n[i] = note; else if (k === 'SM') sc.sl[i] = slOf(note);
+  sc.g[k][i] = true; if (drum) {} else if (k === 'BS') sc.n[i] = note; else if (k === 'SM') sc.sl[i] = slOf(note);
   mark(); drawAll();
 }
 function noteOff(note) { if (!down.has(note)) return; down.delete(note); if (S.keys.mode && !S.keys.hold) held = held.filter(x => x !== note); drawKbd(); }
@@ -975,13 +976,13 @@ let wrSel = '';
 function toggleWrite() {
   const on = !S.keys.rec; if (on && S.keys.mode) S.keys.mode = 0;           // the arp can't be written: plain notes while WRITE is on
   setKeys({ rec: on }); if (on && !playing) { boot(); setPlaying(true); }
-  lcdFlash('WRITE', on ? 'Play ' + (NAME[S.keys.target] || 'bass') + ' to layer it' : 'Off'); buzz(15);
+  lcdFlash('WRITE', on ? 'Recording into the loop' : 'Off'); buzz(15);
 }
-const writeKey = () => { const b = key('', toggleWrite, 'led wr'); b.title = 'Loop record: what you play on the keys is written into the loop, pass after pass';
+const writeKey = () => { const b = key('', toggleWrite, 'led wr'); b.title = 'Loop record: everything you play (keys and drum pads, on screen or on the SMK-37) is written into the loop, pass after pass';
   return live(b, () => {
     if (S.sel !== wrSel) { wrSel = S.sel; if (['BS', 'ST', 'SM'].includes(S.sel) && S.keys.target !== S.sel) S.keys.target = S.sel; }   // picking bass, stab or sample also points the keys at it
-    b.textContent = 'WRITE · ' + (SHORT[S.keys.target] || 'BASS'); b.classList.toggle('on', !!S.keys.rec); b.setAttribute('aria-pressed', !!S.keys.rec);
-    b.setAttribute('aria-label', S.keys.rec ? 'Stop writing into the loop' : 'Write what you play into the loop: ' + (NAME[S.keys.target] || 'bass')); }); };
+    b.textContent = 'WRITE'; b.classList.toggle('on', !!S.keys.rec); b.setAttribute('aria-pressed', !!S.keys.rec);
+    b.setAttribute('aria-label', S.keys.rec ? 'Stop writing into the loop' : 'Write everything you play into the loop'); }); };
 function playKey() {
   const b = key('PLAY', () => { if (!learnAct('play')) setPlaying(!playing); }, 'big go play');
   return live(b, () => { b.classList.toggle('on', playing); b.textContent = playing ? (rec ? '■ STOP · REC' : '■ STOP') : '▶ PLAY'; b.classList.toggle('recon', !!rec && playing); b.setAttribute('aria-label', playing ? 'Stop' : 'Play'); b.setAttribute('aria-pressed', playing); });
@@ -1397,6 +1398,7 @@ if (SIGNUP_URL) { try { const pendingSign = localStorage.getItem(SIGN_LS); if (p
 // MIDI: any controller the browser can see. Pads play the drums, keys play the bass or the stab, and any hardware knob or
 // fader can be tied to any knob on screen with LEARN. Works over USB, and over Bluetooth once the computer has paired it.
 const MIDI_LS = 'md442-midi';
+const NOMIDI_DEV = /iPhone|iPad|iPod/.test(navigator.userAgent);
 const NOMIDI = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1) ? 'iPhone and iPad browsers cannot use MIDI. Use a computer with Chrome or Edge, or an Android phone with Chrome.' : /Firefox/.test(navigator.userAgent) && /Android/.test(navigator.userAgent) ? 'Firefox on Android cannot use MIDI. Open MD|442 in Chrome to use a controller.' : 'This browser cannot use MIDI controllers. Use Chrome or Edge (desktop Firefox works too and asks you to allow it).';
 const GM = { 35: 'BD', 36: 'BD', 37: 'RS', 38: 'SD', 40: 'SD', 39: 'CP', 41: 'LT', 43: 'LT', 45: 'MT', 47: 'MT', 48: 'HT', 50: 'HT', 42: 'CH', 44: 'CH', 46: 'OH', 49: 'CR', 57: 'CR', 51: 'RD', 59: 'RD', 53: 'RD' };
 const midi = { on: false, access: null, names: [], learn: false, armP: null, armD: null, armA: null, cc: {}, note: {}, last: '', ck: [], ccHi: {}, synced: false };
@@ -1413,7 +1415,7 @@ const MIDI_DEF = { cc: { '1:20': 'bd.decay', '1:21': 'sd.snappy', '1:22': 'ch.de
 const midiMap = () => (Object.keys(midi.cc).length || Object.keys(midi.note).length ? midi : MIDI_DEF);
 try { const m = JSON.parse(localStorage.getItem(MIDI_LS) || '{}'); if (m && m.cc) midi.cc = m.cc; if (m && m.note) midi.note = m.note; if (m && m.cko) midi.cko = true; if (m && Array.isArray(m.pads) && m.pads.length) midi.pads = m.pads; if (m && m.lights === false) midi.lights = false; } catch (_) {}
 const midiKeep = () => { try { localStorage.setItem(MIDI_LS, JSON.stringify({ cc: midi.cc, note: midi.note, cko: !!midi.cko, pads: midi.pads, lights: midi.lights !== false })); } catch (_) {} };
-function midiHit(k, v) { if (!SOUND.includes(k) || off(k)) return; boot(); const g = .35 + .65 * (v / 127), go = () => voice(E, k, ac.currentTime + .005, 0, g); if (ac.state === 'running') go(); else ac.resume().then(go).catch(() => {}); flashKey(k); }
+function midiHit(k, v) { if (!SOUND.includes(k) || off(k)) return; boot(); const g = .35 + .65 * (v / 127), go = () => voice(E, k, ac.currentTime + .005, 0, g); if (ac.state === 'running') go(); else ac.resume().then(go).catch(() => {}); flashKey(k); if (writing()) writeNote(0, k); }
 function onMidi(e) {
   const d = e.data; if (!d || !d.length) return; const st = d[0];
   if (st === 0xF8) { clockTick(e.timeStamp || performance.now()); return; }
@@ -1455,7 +1457,7 @@ const padIds = () => (midi.pads && midi.pads.length ? midi.pads : PADS_DEF);
 const eliteMode = () => (S.keys.open ? 'keys' : 'seq');
 const eliteOuts = () => (midi.access ? [...midi.access.outputs.values()].filter(o => /smk|m-?vave/i.test(o.name || '')) : []);
 function padStep(id) {
-  if (midi.learn || eliteMode() !== 'seq') return false;
+  if (midi.learn || eliteMode() !== 'seq' || writing()) return false;   // WRITE recording: pads play the drums into the loop
   if (isAct(midiMap().note[id])) return false;                               // a pad learned as PLAY, a scene or a mute keeps doing that
   const i = padIds().indexOf(id); if (i < 0 || i > 15) return false;
   boot(); setStep(S.sel, i, !scene().g[S.sel][i], true); elite.force = true; return true;
@@ -1504,13 +1506,24 @@ function eliteTick() {
 }
 setInterval(eliteTick, 30);
 function togglePadLights() { midi.lights = midi.lights === false; midiKeep(); if (midi.lights === false) eliteDark(eliteOuts()); else elite.force = true; drawAll(); toast(midi.lights !== false ? 'Pad lights on: the Elite shows the steps (if its firmware lights pads from MIDI)' : 'Pad lights off: nothing is sent back to the Elite'); }
-function midiScan() { const acc = midi.access; if (!acc) return; midi.names = []; acc.inputs.forEach(inp => { inp.onmidimessage = onMidi; midi.names.push(inp.name || 'MIDI device'); }); midi.on = true; drawAll(); }
-async function midiConnect() {
-  if (!navigator.requestMIDIAccess) { toast(NOMIDI); return false; }
+function midiScan() { const acc = midi.access; if (!acc) return; const was = midi.names.slice(); midi.names = []; acc.inputs.forEach(inp => { inp.onmidimessage = onMidi; midi.names.push(inp.name || 'MIDI device'); }); midi.on = true; elite.force = true;
+  const add = midi.names.filter(n => !was.includes(n)), gone = was.filter(n => !midi.names.includes(n));
+  if (midi.scanned && add.length) toast('Connected: ' + add.join(', ')); else if (midi.scanned && gone.length) toast('Unplugged: ' + gone.join(', ') + (/smk|m-?vave/i.test(gone.join(' ')) ? '. It runs on its own firmware again.' : ''));
+  midi.scanned = true; drawAll(); }
+async function midiConnect(quiet) {
+  if (!navigator.requestMIDIAccess) { if (quiet !== true) toast(NOMIDI); return false; }
   if (midi.access) { midiScan(); return true; }
-  try { midi.access = await navigator.requestMIDIAccess({ sysex: true }).catch(() => navigator.requestMIDIAccess()); midi.access.onstatechange = midiScan; midiScan(); toast(midi.names.length ? 'MIDI: ' + midi.names.join(', ') : 'MIDI is on. Plug in or pair a controller and it will appear.'); return true; }
+  try { midi.access = await navigator.requestMIDIAccess({ sysex: true }).catch(() => navigator.requestMIDIAccess()); midi.access.onstatechange = midiScan; midiScan(); try { localStorage.setItem(MIDI_LS + '-auto', '1'); } catch (_) {} if (quiet !== true) toast(midi.names.length ? 'MIDI: ' + midi.names.join(', ') : 'MIDI is on. Plug in or pair a controller and it will appear.'); return true; }
   catch (_) { toast('MIDI was not allowed. Allow it in the browser to use a controller.'); return false; }
 }
+// AUTO-CONNECT: once MIDI has been allowed (or CONNECT pressed once), MD|442 connects by itself on every load, and a keyboard
+// plugged in later appears on its own (no CONNECT). Unplugged, the SMK-37 just runs its own firmware.
+setTimeout(async () => {
+  if (!navigator.requestMIDIAccess || NOMIDI_DEV) return;
+  let ok = false; try { ok = localStorage.getItem(MIDI_LS + '-auto') === '1'; } catch (_) {}
+  try { if (navigator.permissions) { const st = await navigator.permissions.query({ name: 'midi', sysex: true }); if (st.state === 'granted') ok = true; else if (st.state === 'denied') ok = false; } } catch (_) {}
+  if (ok) midiConnect(true);
+}, 300);
 function toggleMidi() { S.midiOpen = !S.midiOpen; if (S.midiOpen && !midi.access) midiConnect(); drawAll(); persist(); }
 function midiLearn() { midi.learn = !midi.learn; midi.armP = midi.armD = midi.armA = null; if (midi.learn && !midi.access) midiConnect(); drawAll(); if (midi.learn) toast('LEARN: touch a knob, a drum, a scene, MUTE or MUTE GROUP on screen, then move the control or hit the pad on your controller.'); }
 
