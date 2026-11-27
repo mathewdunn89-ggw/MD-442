@@ -1,7 +1,8 @@
 name: MD|442 firmware (SMK-37 + FM-1)
 on:
   push:
-    paths: ['firmware/**', '.github/workflows/firmware.yml']
+    branches: [main]                 # a branch never makes a release (the site links latest/download)
+    paths: ['firmware/**', 'variants/md-variants.patch', '.github/workflows/firmware.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -15,6 +16,9 @@ jobs:
           git clone -b smk37 https://github.com/genkigenki/fm1-x0x x0x
           git -C x0x checkout 8af3731713ba6062f17b403300f436aac50aaf30
           git -C x0x apply "$GITHUB_WORKSPACE/firmware/md442-smk37.patch"
+          # MD|442 1.5 is the MD442 of the MD Hardware set: the same source as variants.yml builds (stock controls,
+          # routing and settings; a 3-digit identity M-UPGRADE accepts)
+          git -C x0x apply "$GITHUB_WORKSPACE/variants/md-variants.patch"
       - name: Toolchain and SDK
         run: |
           pip install Pillow
@@ -26,20 +30,22 @@ jobs:
           git -C "$HOME/fw-AC79_AIoT_SDK" sparse-checkout set --no-cone /cpu/wl82/tools/
           ls -la "$HOME/fw-AC79_AIoT_SDK/cpu/wl82/tools/uboot.boot"
       - name: Build Elite and Pro
+        env: { X0X_ID3: '1', MD_VARIANT: '442' }
         run: |
           mkdir -p out
           cd x0x
-          BOARD=smk37 MODEL=elite ./build.sh --release 1.2
+          BOARD=smk37 MODEL=elite ./build.sh --release 1.5
           cp "$(ls -t build/*.fwsc | head -1)" ../out/md442-smk37-elite.fwsc
-          BOARD=smk37 ./build.sh --release 1.2
+          BOARD=smk37 ./build.sh --release 1.5
           cp "$(ls -t build/*.fwsc | head -1)" ../out/md442-smk37-pro.fwsc
           git diff > ../out/md442-smk37.patch
           cd .. && cp firmware/INSTALL.md out/ && tar czf out/md442-smk37-source.tar.gz --exclude=.git x0x/firmware x0x/tools x0x/build.sh x0x/LICENSE x0x/SMK37.md x0x/BUILDING.md
       - name: Build FM-1
         continue-on-error: true
+        env: { X0X_ID3: '1', MD_VARIANT: '442' }
         run: |
           cd x0x
-          ./build.sh --release 1.2               # the M-VAVE FM-1 (same chip; X0X's original target)
+          ./build.sh --release 1.5               # the M-VAVE FM-1 (same chip; X0X's original target)
           cp "$(ls -t build/x0x-[0-9]*.fwsc | head -1)" ../out/md442-fm1.fwsc
       - name: Download bundle (md442-firmware.zip) and guide
         run: |
@@ -58,6 +64,19 @@ jobs:
           # Run numbers restarted when the repo moved; tags 4-11 already exist from the old repo, so continue that series at 12.
           # The site links latest/download/md442-fm1.fwsc: never publish a release without all three builds.
           for f in md442-smk37-elite.fwsc md442-smk37-pro.fwsc md442-fm1.fwsc; do test -f "out/$f" || { echo "::error::$f was not built, not publishing"; exit 1; }; done
+          # M-UPGRADE 3.11 takes only a 3-digit identity number (the stock "_016"): anything else locks out M-Vave's restore
+          python3 - <<'PY'
+          import glob, re, sys
+          sys.path.insert(0, "firmware/tools")
+          import fm1_install as f
+          bad = 0
+          for p in sorted(glob.glob("out/*.fwsc")):
+              ident, _ = f.load_package(p, False)
+              ok = re.fullmatch(r"(SMK-37 (Pro|Elite)|FM-1)_9\d\d", ident) is not None
+              print(p, ident, "ok" if ok else "REFUSED BY M-UPGRADE")
+              bad |= not ok
+          sys.exit(1 if bad else 0)
+          PY
           N=$((GITHUB_RUN_NUMBER + 7))
           TAG=md442-smk37-${N}
           gh release create "$TAG" out/* --target "$GITHUB_SHA" --title "MD|442 for SMK-37 (build ${N})" --notes-file firmware/INSTALL.md
