@@ -1,0 +1,16 @@
+# never commit signing material or secrets
+*.jks
+*.keystore
+*.p12
+*.pem
+keystore-password*
+.env
+.env.*
+
+# build output
+__pycache__/
+*.pyc
+dist/
+build/
+node_modules/
+.DS_Store
