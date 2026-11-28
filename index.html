@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="MD-Modules: three free drum machines in one app, developed by Mathew. MD442 techno, MD187 90s hip-hop and MD888 hard techno. Play in your browser or download it for Mac, Windows and Android.">
 <meta name="theme-color" content="#0a0a0a">
-<link rel="icon" href="/md442/app/icon-192.png">
+<link rel="icon" type="image/svg+xml" href="/md442/logo.svg">
 <link rel="apple-touch-icon" href="/md442/app/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,13 +49,20 @@
   .m .desc { font-size: 13px; line-height: 1.6; color: #c8c8c8; }
   .m .open { margin-top: auto; padding-top: 8px; color: #a3a3a3; }
   .m:hover .open { color: var(--c); }
+  .inst { display: grid; grid-template-columns: 1fr auto; gap: 10px 32px; align-items: center; padding: clamp(20px, 2.6vw, 34px); border: 1px solid #262626; border-radius: 14px; text-decoration: none; background: rgba(255,255,255,.02); transition: border-color .15s, background .15s; }
+  .inst .kind { color: var(--g); grid-column: 1; }
+  .inst .name { grid-column: 1; font-family: 'Anybody', sans-serif; font-weight: 900; font-variation-settings: 'wdth' 150; font-size: clamp(24px, 3vw, 44px); line-height: 1; letter-spacing: -.03em; }
+  .inst .desc { grid-column: 1; max-width: 720px; font-size: 13px; line-height: 1.6; color: #c8c8c8; }
+  .inst .open { grid-column: 2; grid-row: 1 / span 3; display: flex; flex-direction: column; gap: 10px; }
+  .inst .open .pill:first-child { border-color: var(--g); color: var(--g); }
+  .inst .open .pill:first-child:hover { background: var(--g); color: #0a0a0a; }
   .foot { color: #a3a3a3; font-size: 10px; margin: 0; padding-top: 0; }
-  @media (max-width: 760px) { .machines { grid-template-columns: 1fr; } .cta .pill { flex: 1 1 100%; } }
+  @media (max-width: 760px) { .machines { grid-template-columns: 1fr; } .inst { grid-template-columns: 1fr; } .inst .open { grid-column: 1; grid-row: auto; padding-top: 8px; } .cta .pill { flex: 1 1 100%; } }
 </style>
 </head>
 <body>
 <main class="wrap">
-  <nav class="site mono" aria-label="MD-Modules pages"><a href="/" class="brand" aria-current="page">MD-Modules</a><a href="/mathew-dj/">Mathew</a><a href="/md442/#machine" class="playlink">Play</a><a href="/md442/">MD442</a><a href="/md187/">MD187</a><a href="/md888/">MD888</a><a href="/md442/download/">Download</a></nav>
+  <nav data-md-nav style="margin-top:-8px"><a href="/">MD-Modules</a></nav>
   <div>
     <p class="mono eyebrow">Three drum machines, one app · free</p>
     <h1>MD<span class="dash">-</span>MODULES</h1>
@@ -64,6 +71,7 @@
   </div>
   <div class="cta">
     <a class="pill go mono playlink" href="/md442/#machine">Play ▶</a>
+    <a class="pill mono" href="/md442/install.html">Installer · recovery →</a>
     <a class="pill mono" href="/md442/download/">Download free ↓</a>
   </div>
   <div class="machines">
@@ -71,8 +79,10 @@
     <a class="m m187" href="/md187/"><span class="mono kind">90s hip-hop · 96 BPM</span><span class="name">MD<i>|187</i></span><span class="desc">Dusty boom-bap drums, vinyl stabs and vocal cuts.</span><span class="mono open">Open MD187 →</span></a>
     <a class="m m888" href="/md888/"><span class="mono kind">Hard techno · 155 BPM</span><span class="name">MD<i>|888</i></span><span class="desc">Pounding kicks, rumble, gabber hits and trance stabs.</span><span class="mono open">Open MD888 →</span></a>
   </div>
+  <div class="inst"><span class="mono kind">Installer · recovery · SMK-37 Elite · SMK-37 Pro · FM-1</span><span class="name">Put it on your keyboard</span><span class="desc">Pick your keyboard, pick MD442, MD187 or MD888, and press Install. It runs in Chrome on Mac and Windows, with nothing to download. The same page puts M-VAVE's own firmware back whenever you want it.</span><span class="open"><a class="pill mono" href="/md442/install.html">Open the installer →</a><a class="pill mono" href="/md442/install.html#restore">Recovery: restore the keyboard →</a></span></div>
 </main>
 <p class="wrap foot mono">MD-Modules · MD442 · MD187 · MD888 · free · developed by Mathew · NEST Group</p>
+<script src="/md442/site-nav.js"></script>
 <script>
 // On a phone, Play opens the phone app: the full console needs a wide screen.
 if (matchMedia('(max-width: 760px), (pointer: coarse) and (max-width: 1024px)').matches) document.querySelectorAll('.playlink').forEach(a => { a.href = '/md442/app/'; });

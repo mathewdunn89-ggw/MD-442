@@ -75,7 +75,7 @@
 <div id="strobe" aria-hidden="true"></div>
 <main>
   <section class="wrap hero">
-    <nav class="site mono" aria-label="MD-Modules pages"><a href="/" class="brand">MD-Modules</a><a href="/mathew-dj/">Mathew</a><a href="#machine" class="play">Play</a><a href="/md442/#machine" class="mlink" data-m="442">MD442</a><a href="/md187/#machine" class="mlink" data-m="187">MD187</a><a href="/md888/#machine" class="mlink" data-m="888">MD888</a><a href="app/">Phone app</a><a href="download/">Download</a><a href="#connect">MIDI · Ableton · Maschine</a></nav>
+    <nav data-md-nav style="margin-top:-8px"><a href="/">MD-Modules</a></nav>
     <div>
       <p class="mono eyebrow">MD-Modules · three drum machines, one app</p>
       <h1 id="mname">MD|442</h1>
@@ -130,6 +130,7 @@
   document.addEventListener('md:style', e => set(e.detail));
 })();
 </script>
+<script src="/md442/site-nav.js"></script>
 <script src="md442.js"></script>
 <script>
 // Inside the installed app the landing text is hidden: it opens straight on the machine.
