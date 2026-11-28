@@ -82,10 +82,15 @@ details.man>.small{margin:10px 0}details.man .card{background:none;border:0;bord
 </details>
 
 
-<details id="restore"><summary>Restore M-VAVE's own firmware</summary>
-<p class="small">To go back to M-VAVE's firmware, or if the install says the keyboard's M-VAVE firmware is too old.</p>
+<details id="restore"><summary>Recovery: restore M-VAVE's own firmware (SMK-37 Elite, SMK-37 Pro, FM-1)</summary>
+<p class="small">To go back to M-VAVE's firmware, or if the install says the keyboard's M-VAVE firmware is too old. Works the same for the SMK-37 Elite, the SMK-37 Pro and the FM-1. If an SMK-37 won't start normally, hold OCT- and OCT+ for 5 seconds to put it in update mode first.</p>
+<div class="opts" style="margin:6px 0 12px">
+<button class="opt" data-kb="elite"><b>SMK-37 Elite</b><small>restore</small></button>
+<button class="opt" data-kb="pro"><b>SMK-37 Pro</b><small>restore</small></button>
+<button class="opt" data-kb="fm1"><b>FM-1</b><small>restore</small></button>
+</div>
 <ol>
-<li><a id="stocklink" href="#">Download</a> (M-VAVE's official file).</li>
+<li><a id="stocklink" href="#">Download</a> (M-VAVE's official file for the keyboard picked above).</li>
 <li>Choose that file: <input type="file" id="stockfile" accept=".fwsc"></li>
 <li><button class="sec" id="stockgo" disabled>Restore</button> and keep the cable in until it says Done.</li>
 </ol>
