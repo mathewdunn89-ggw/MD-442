@@ -6,8 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="MD-Modules: three free drum machines in one app, developed by Mathew. MD442 techno, MD187 90s hip-hop and MD888 hard techno. Play in your browser or download it for Mac, Windows and Android.">
 <meta name="theme-color" content="#0a0a0a">
-<link rel="icon" href="/md442/app/icon-192.png">
-<link rel="apple-touch-icon" href="/md442/app/icon-192.png">
+<link rel="icon" type="image/svg+xml" href="/md442/favicon.svg"><link rel="icon" type="image/png" sizes="32x32" href="/md442/favicon-32.png"><link rel="apple-touch-icon" href="/md442/app/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@50..150,100..900&family=Instrument+Serif:ital@0;1&family=Martian+Mono:wdth,wght@75..112.5,300..600&display=swap" rel="stylesheet">
@@ -49,33 +48,97 @@
   .m .desc { font-size: 13px; line-height: 1.6; color: #c8c8c8; }
   .m .open { margin-top: auto; padding-top: 8px; color: #a3a3a3; }
   .m:hover .open { color: var(--c); }
+  .inst { display: grid; grid-template-columns: 1fr auto; gap: 10px 32px; align-items: center; padding: clamp(20px, 2.6vw, 34px); border: 1px solid #262626; border-radius: 14px; text-decoration: none; background: rgba(255,255,255,.02); transition: border-color .15s, background .15s; }
+  .inst .kind { color: var(--g); grid-column: 1; }
+  .inst .name { grid-column: 1; font-family: 'Anybody', sans-serif; font-weight: 900; font-variation-settings: 'wdth' 150; font-size: clamp(24px, 3vw, 44px); line-height: 1; letter-spacing: -.03em; }
+  .inst .desc { grid-column: 1; max-width: 720px; font-size: 13px; line-height: 1.6; color: #c8c8c8; }
+  .inst .open { grid-column: 2; grid-row: 1 / span 3; display: flex; flex-direction: column; gap: 10px; }
+  .inst .open .pill:first-child { border-color: var(--g); color: var(--g); }
+  .inst .open .pill:first-child:hover { background: var(--g); color: #0a0a0a; }
+  /* backlight that follows the cursor, strobe flashes and a ring cursor, like the MATHEW page */
+  #light { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(circle min(40vmax, 560px) at var(--lx, 70%) var(--ly, 30%), color-mix(in srgb, var(--lc, var(--g)) 22%, transparent) 0%, color-mix(in srgb, var(--lc, var(--g)) 7%, transparent) 38%, transparent 70%); transition: background-color .3s; }
+  #strobe { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0; background: #fff; }
+  main, .foot { position: relative; z-index: 2; }
+  .m, .inst { background: rgba(10,10,10,.55); backdrop-filter: blur(2px); }
+  #cur, #ring { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; border-radius: 50%; display: none; }
+  #cur { width: 6px; height: 6px; margin: -3px 0 0 -3px; background: #fff; mix-blend-mode: difference; }
+  #ring { width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 1px solid rgba(255,255,255,.7); mix-blend-mode: difference; transition: width .18s, height .18s, margin .18s; }
+  #ring.big { width: 64px; height: 64px; margin: -32px 0 0 -32px; border-color: var(--lc, var(--g)); }
+  #ring span { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); font: 400 9px/1 'Martian Mono', monospace; letter-spacing: .16em; text-transform: uppercase; color: #fff; white-space: nowrap; }
+  @media (pointer: fine) { html.cur, html.cur a { cursor: none; } html.cur #cur, html.cur #ring { display: block; } }
   .foot { color: #a3a3a3; font-size: 10px; margin: 0; padding-top: 0; }
-  @media (max-width: 760px) { .machines { grid-template-columns: 1fr; } .cta .pill { flex: 1 1 100%; } }
+  @media (max-width: 760px) { .machines { grid-template-columns: 1fr; } .inst { grid-template-columns: 1fr; } .inst .open { grid-column: 1; grid-row: auto; padding-top: 8px; } .cta .pill { flex: 1 1 100%; } }
 </style>
 </head>
 <body>
+<div id="light" aria-hidden="true"></div><div id="strobe" aria-hidden="true"></div><div id="cur" aria-hidden="true"></div><div id="ring" aria-hidden="true"><span></span></div>
 <main class="wrap">
-  <nav class="site mono" aria-label="MD-Modules pages"><a href="/" class="brand" aria-current="page">MD-Modules</a><a href="/mathew-dj/">Mathew</a><a href="/md442/#machine" class="playlink">Play</a><a href="/md442/">MD442</a><a href="/md187/">MD187</a><a href="/md888/">MD888</a><a href="/md442/download/">Download</a></nav>
+  <nav data-md-nav style="margin-top:-8px"><a href="/">MD-Modules</a></nav>
   <div>
     <p class="mono eyebrow">Three drum machines, one app · free</p>
     <h1>MD<span class="dash">-</span>MODULES</h1>
     <p class="tag">Techno, 90s hip-hop and hard techno. Analogue-style drums, an acid bass, chords and a row of effects. Play in your browser, or download it.</p>
-    <a class="by mono" href="/mathew-dj/"><span>Developed by</span><b>MATHEW</b><span>DJ · promoter ↗</span></a>
+    <a class="by mono" href="/mathew-dj/" data-cursor="mathew"><span>Developed by</span><b>MATHEW</b><span>DJ · promoter ↗</span></a>
   </div>
   <div class="cta">
-    <a class="pill go mono playlink" href="/md442/#machine">Play ▶</a>
+    <a class="pill go mono playlink" href="/md442/#machine" data-cursor="play" data-strobe>Play ▶</a>
+    <a class="pill mono" href="/md442/install.html">Installer · recovery →</a>
     <a class="pill mono" href="/md442/download/">Download free ↓</a>
   </div>
   <div class="machines">
-    <a class="m m442" href="/md442/"><span class="mono kind">Techno · 142 BPM</span><span class="name">MD<i>|442</i></span><span class="desc">Warehouse kicks, acid bass and dub chords.</span><span class="mono open">Open MD442 →</span></a>
-    <a class="m m187" href="/md187/"><span class="mono kind">90s hip-hop · 96 BPM</span><span class="name">MD<i>|187</i></span><span class="desc">Dusty boom-bap drums, vinyl stabs and vocal cuts.</span><span class="mono open">Open MD187 →</span></a>
-    <a class="m m888" href="/md888/"><span class="mono kind">Hard techno · 155 BPM</span><span class="name">MD<i>|888</i></span><span class="desc">Pounding kicks, rumble, gabber hits and trance stabs.</span><span class="mono open">Open MD888 →</span></a>
+    <a class="m m442" href="/md442/" data-cursor="techno" data-c="#3dff7a"><span class="mono kind">Techno · 142 BPM</span><span class="name">MD<i>|442</i></span><span class="desc">Warehouse kicks, acid bass and dub chords.</span><span class="mono open">Open MD442 →</span></a>
+    <a class="m m187" href="/md187/" data-cursor="hip-hop" data-c="#ffb02e"><span class="mono kind">90s hip-hop · 96 BPM</span><span class="name">MD<i>|187</i></span><span class="desc">Dusty boom-bap drums, vinyl stabs and vocal cuts.</span><span class="mono open">Open MD187 →</span></a>
+    <a class="m m888" href="/md888/" data-cursor="hard techno" data-c="#ff3d57"><span class="mono kind">Hard techno · 155 BPM</span><span class="name">MD<i>|888</i></span><span class="desc">Pounding kicks, rumble, gabber hits and trance stabs.</span><span class="mono open">Open MD888 →</span></a>
   </div>
+  <div class="inst"><span class="mono kind">Installer · recovery · SMK-37 Elite · SMK-37 Pro · FM-1</span><span class="name">Put it on your keyboard</span><span class="desc">Pick your keyboard, pick MD442, MD187 or MD888, and press Install. It runs in Chrome on Mac and Windows, with nothing to download. The same page puts M-VAVE's own firmware back whenever you want it.</span><span class="open"><a class="pill mono" href="/md442/install.html">Open the installer →</a><a class="pill mono" href="/md442/install.html#restore">Recovery: restore the keyboard →</a></span></div>
 </main>
 <p class="wrap foot mono">MD-Modules · MD442 · MD187 · MD888 · free · developed by Mathew · NEST Group</p>
+<script src="/md442/site-nav.js"></script>
 <script>
 // On a phone, Play opens the phone app: the full console needs a wide screen.
 if (matchMedia('(max-width: 760px), (pointer: coarse) and (max-width: 1024px)').matches) document.querySelectorAll('.playlink').forEach(a => { a.href = '/md442/app/'; });
+</script>
+<script>
+// Backlight follows the cursor (drifts on its own on touch screens), strobe flashes now and then and fast over Play, ring cursor with a label.
+(() => {
+  const root = document.documentElement, light = document.getElementById('light'), strobe = document.getElementById('strobe');
+  const cur = document.getElementById('cur'), ring = document.getElementById('ring'), lab = ring.querySelector('span');
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches, fine = matchMedia('(pointer: fine)').matches;
+  let mx = innerWidth * .7, my = innerHeight * .3, lx = mx, ly = my, rx = mx, ry = my, moved = 0, raf = 0;
+  const tick = t => {
+    raf = 0;
+    if (!fine || performance.now() - moved > 4000) { mx = innerWidth * (.5 + .35 * Math.sin(t / 5200)); my = innerHeight * (.4 + .25 * Math.cos(t / 4100)); }
+    lx += (mx - lx) * .08; ly += (my - ly) * .08; rx += (mx - rx) * .22; ry += (my - ry) * .22;
+    light.style.setProperty('--lx', lx.toFixed(0) + 'px'); light.style.setProperty('--ly', ly.toFixed(0) + 'px');
+    cur.style.transform = `translate(${mx}px, ${my}px)`; ring.style.transform = `translate(${rx}px, ${ry}px)`;
+    if (!still && !document.hidden) raf = requestAnimationFrame(tick);
+  };
+  if (still) { light.style.setProperty('--lx', '70%'); } else raf = requestAnimationFrame(tick);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !raf && !still) raf = requestAnimationFrame(tick); });
+  if (fine) {
+    root.classList.add('cur');
+    addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; moved = performance.now(); if (still) { cur.style.transform = ring.style.transform = `translate(${mx}px, ${my}px)`; } });
+    document.addEventListener('mouseover', e => {
+      const el = e.target.closest && e.target.closest('a,button,[data-cursor]');
+      ring.classList.toggle('big', !!el); lab.textContent = el ? (el.dataset.cursor || 'open') : '';
+      root.style.setProperty('--lc', (el && el.closest('[data-c]') && el.closest('[data-c]').dataset.c) || '');
+      hot = !!(el && el.hasAttribute('data-strobe'));
+    });
+    document.addEventListener('mouseleave', () => { cur.style.opacity = ring.style.opacity = 0; });
+    document.addEventListener('mouseenter', () => { cur.style.opacity = ring.style.opacity = 1; });
+  }
+  let hot = false;
+  const flash = big => {
+    if (still || document.hidden || !strobe.animate) return;
+    const c = getComputedStyle(root).getPropertyValue('--lc').trim() || '#3dff7a';
+    const x = big ? lx / innerWidth * 100 : Math.random() * 100, y = big ? ly / innerHeight * 100 : Math.random() * 70, w = 35 + Math.random() * 40;
+    strobe.style.background = `radial-gradient(ellipse ${w}% ${w * .9}% at ${x}% ${y}%, #fff 0%, color-mix(in srgb, ${c} 55%, transparent) 35%, transparent 75%)`;
+    strobe.animate([{ opacity: big ? .26 : .06 + Math.random() * .12 }, { opacity: 0 }], { duration: big ? 140 : 140 + Math.random() * 480, easing: 'ease-out' });
+  };
+  const idle = () => { if (!hot) flash(false); setTimeout(idle, 500 + Math.random() * 1700); };
+  const beat = () => { if (hot) flash(true); setTimeout(beat, 60000 / 142); };
+  setTimeout(idle, 800); beat();
+})();
 </script>
 </body>
 </html>

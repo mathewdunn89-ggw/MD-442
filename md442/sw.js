@@ -1,6 +1,6 @@
 // MD|442 desktop app: offline copy of the console. Bump the name on every release.
-const C = 'md442-desk-v34';
-const CORE = ['./', './index.html', './md442.js', './md442.css', './md442-dark.css', './md442-ux.css', './mix-autoplay.js', './manifest.webmanifest', './app/icon-192.png', './app/icon-512.png', './samples/md187/BOOMBP.wav', './samples/md187/DRUMS.wav', './samples/md187/STABS.wav', './samples/md187/VOX.wav', './samples/md888/RUMBLE.wav', './samples/md888/GABBA.wav', './samples/md888/TRANCE.wav', './samples/md888/HITS.wav'];
+const C = 'md442-desk-v36';
+const CORE = ['./', './index.html', './md442.js', './md442.css', './md442-dark.css', './md442-ux.css', './mix-autoplay.js', './site-nav.js', './logo.svg', './favicon.svg', './favicon-32.png', './app/apple-touch-icon.png', './manifest.webmanifest', './app/icon-192.png', './app/icon-512.png', './samples/md187/BOOMBP.wav', './samples/md187/DRUMS.wav', './samples/md187/STABS.wav', './samples/md187/VOX.wav', './samples/md888/RUMBLE.wav', './samples/md888/GABBA.wav', './samples/md888/TRANCE.wav', './samples/md888/HITS.wav'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('md442-desk-') && k !== C).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
