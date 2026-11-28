@@ -16,7 +16,7 @@ nav.mdn a.on{color:var(--g,#3dff7a)}
 nav.mdn a:focus-visible{outline:2px solid var(--g,#3dff7a);outline-offset:2px}
 nav.mdn a.mdn-home{gap:9px;padding:0 14px 0 0;margin-right:6px;border-radius:10px;color:#f2f2f2;font:900 19px/1 'Anybody',system-ui,sans-serif;font-variation-settings:'wdth' 150;letter-spacing:-.03em;text-transform:none}
 nav.mdn a.mdn-home:hover{background:none;color:#f2f2f2}
-nav.mdn a.mdn-home img{width:38px;height:38px;display:block;transition:transform .2s}
+nav.mdn a.mdn-home img{height:26px;width:auto;display:block;transition:transform .2s}
 nav.mdn a.mdn-home:hover img{transform:skewX(-8deg) scale(1.06)}
 nav.mdn a.mdn-home i{font-style:normal;color:var(--g,#3dff7a)}
 nav.mdn .mdn-sep{flex:0 0 1px;align-self:center;height:18px;background:#333;margin:0 6px}
@@ -35,7 +35,7 @@ nav.mdn .mdn-sep{flex:0 0 1px;align-self:center;height:18px;background:#333;marg
     ['/md442/download/', 'Download', /\/download\//.test(path)],
   ];
   host.classList.add('mdn'); host.setAttribute('aria-label', 'MD-Modules pages');
-  host.innerHTML = '<a class="mdn-home" href="/" aria-label="MD-Modules home"' + (path === '/' ? ' aria-current="page"' : '') + '><img src="/md442/logo.svg" alt="" width="36" height="36"><span>MD<i>-</i>M<i>’s</i></span></a><span class="mdn-sep" aria-hidden="true"></span>'
+  host.innerHTML = '<a class="mdn-home" href="/" aria-label="MD-Modules home"' + (path === '/' ? ' aria-current="page"' : '') + '><img src="/md442/logo.svg" alt="" width="62" height="26"><span>MD<i>-</i>M<i>’s</i></span></a><span class="mdn-sep" aria-hidden="true"></span>'
     + items.map(([h, t, on, m]) => '<a href="' + h + '"' + (on ? ' class="on" aria-current="page"' : '') + (m ? ' data-m="' + m + '"' : '') + '>' + t + '</a>').join('');
   // On a machine page the console can switch machine: the nav follows it.
   document.addEventListener('md:style', e => host.querySelectorAll('a[data-m]').forEach(a => a.classList.toggle('on', a.dataset.m === String(e.detail))));
