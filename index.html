@@ -1,1 +1,81 @@
-<!doctype html><meta charset="utf-8"><title>MATHEW</title><meta http-equiv="refresh" content="0; url=/mathew-dj/"><a href="/mathew-dj/">MATHEW</a>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MD-Modules · MD442 · MD187 · MD888 · MATHEW</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="MD-Modules: three free drum machines in one app, developed by Mathew. MD442 techno, MD187 90s hip-hop and MD888 hard techno. Play in your browser or download it for Mac, Windows and Android.">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="icon" href="/md442/app/icon-192.png">
+<link rel="apple-touch-icon" href="/md442/app/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@50..150,100..900&family=Instrument+Serif:ital@0;1&family=Martian+Mono:wdth,wght@75..112.5,300..600&display=swap" rel="stylesheet">
+<style>
+  :root { --g: #3dff7a; --a: #ffb02e; --r: #ff3d57; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: #0a0a0a; color: #f2f2f2; font-family: 'Martian Mono', ui-monospace, monospace; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  a:focus-visible { outline: 2px solid var(--g); outline-offset: 3px; }
+  .mono { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+  .wrap { padding: clamp(24px, 4vw, 48px) clamp(16px, 3vw, 40px); }
+  main { flex: 1; display: flex; flex-direction: column; gap: clamp(28px, 4vw, 52px); }
+  nav.site { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin: -8px 0 0 -12px; }
+  nav.site a { text-decoration: none; color: #a3a3a3; padding: 12px; border-radius: 999px; min-height: 44px; display: inline-flex; align-items: center; }
+  nav.site a:hover { color: #0a0a0a; background: #f2f2f2; }
+  nav.site .brand { font-weight: 600; color: #f2f2f2; }
+  .eyebrow { margin: 0 0 14px; color: var(--g); }
+  h1 { margin: 0; font-family: 'Anybody', sans-serif; font-weight: 900; font-variation-settings: 'wdth' 150; font-size: clamp(28px, 8.8vw, 200px); line-height: .82; letter-spacing: -.04em; white-space: nowrap; }
+  h1 .dash { color: var(--g); }
+  .tag { margin: 18px 0 0; max-width: 760px; font-family: 'Instrument Serif', serif; font-style: italic; font-size: clamp(22px, 2.6vw, 34px); line-height: 1.2; color: #c8c8c8; }
+  .by { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 22px 0 0; text-decoration: none; color: #a3a3a3; padding: 8px 0; }
+  .by b { font-family: 'Anybody', sans-serif; font-weight: 900; font-variation-settings: 'wdth' 150; font-size: clamp(26px, 4vw, 52px); letter-spacing: -.02em; line-height: 1; color: #f2f2f2; text-transform: none; }
+  .by span { white-space: nowrap; }
+  .by:hover b { color: var(--g); }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .pill { text-decoration: none; padding: 16px 22px; border-radius: 999px; border: 1px solid #f2f2f2; min-height: 52px; display: inline-flex; align-items: center; justify-content: center; }
+  .pill:hover { background: #f2f2f2; color: #0a0a0a; }
+  .pill.go { padding: 22px 34px; font-size: 13px; border-color: var(--g); background: var(--g); color: #0a0a0a; box-shadow: 0 0 28px color-mix(in srgb, var(--g) 40%, transparent); }
+  .pill.go:hover { background: #0a0a0a; color: var(--g); }
+  .machines { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .m { --c: var(--g); display: flex; flex-direction: column; gap: 12px; padding: clamp(20px, 2.6vw, 34px); border: 1px solid #262626; border-radius: 14px; text-decoration: none; background: rgba(255,255,255,.02); transition: border-color .15s, background .15s; }
+  .m.m187 { --c: var(--a); } .m.m888 { --c: var(--r); }
+  .m:hover, .m:focus-visible { border-color: var(--c); background: color-mix(in srgb, var(--c) 8%, transparent); }
+  .m .kind { color: var(--c); }
+  .m .name { font-family: 'Anybody', sans-serif; font-weight: 900; font-variation-settings: 'wdth' 150; font-size: clamp(34px, 4.6vw, 72px); line-height: .9; letter-spacing: -.04em; }
+  .m.m187 .name { font-variation-settings: 'wdth' 110; letter-spacing: -.02em; color: #f6ead2; }
+  .m.m888 .name { font-style: italic; }
+  .m .name i { font-style: inherit; color: var(--c); }
+  .m .desc { font-size: 13px; line-height: 1.6; color: #c8c8c8; }
+  .m .open { margin-top: auto; padding-top: 8px; color: #a3a3a3; }
+  .m:hover .open { color: var(--c); }
+  .foot { color: #a3a3a3; font-size: 10px; margin: 0; padding-top: 0; }
+  @media (max-width: 760px) { .machines { grid-template-columns: 1fr; } .cta .pill { flex: 1 1 100%; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <nav class="site mono" aria-label="MD-Modules pages"><a href="/" class="brand" aria-current="page">MD-Modules</a><a href="/mathew-dj/">Mathew</a><a href="/md442/#machine" class="playlink">Play</a><a href="/md442/">MD442</a><a href="/md187/">MD187</a><a href="/md888/">MD888</a><a href="/md442/download/">Download</a></nav>
+  <div>
+    <p class="mono eyebrow">Three drum machines, one app · free</p>
+    <h1>MD<span class="dash">-</span>MODULES</h1>
+    <p class="tag">Techno, 90s hip-hop and hard techno. Analogue-style drums, an acid bass, chords and a row of effects. Play in your browser, or download it.</p>
+    <a class="by mono" href="/mathew-dj/"><span>Developed by</span><b>MATHEW</b><span>DJ · promoter ↗</span></a>
+  </div>
+  <div class="cta">
+    <a class="pill go mono playlink" href="/md442/#machine">Play ▶</a>
+    <a class="pill mono" href="/md442/download/">Download free ↓</a>
+  </div>
+  <div class="machines">
+    <a class="m m442" href="/md442/"><span class="mono kind">Techno · 142 BPM</span><span class="name">MD<i>|442</i></span><span class="desc">Warehouse kicks, acid bass and dub chords.</span><span class="mono open">Open MD442 →</span></a>
+    <a class="m m187" href="/md187/"><span class="mono kind">90s hip-hop · 96 BPM</span><span class="name">MD<i>|187</i></span><span class="desc">Dusty boom-bap drums, vinyl stabs and vocal cuts.</span><span class="mono open">Open MD187 →</span></a>
+    <a class="m m888" href="/md888/"><span class="mono kind">Hard techno · 155 BPM</span><span class="name">MD<i>|888</i></span><span class="desc">Pounding kicks, rumble, gabber hits and trance stabs.</span><span class="mono open">Open MD888 →</span></a>
+  </div>
+</main>
+<p class="wrap foot mono">MD-Modules · MD442 · MD187 · MD888 · free · developed by Mathew · NEST Group</p>
+<script>
+// On a phone, Play opens the phone app: the full console needs a wide screen.
+if (matchMedia('(max-width: 760px), (pointer: coarse) and (max-width: 1024px)').matches) document.querySelectorAll('.playlink').forEach(a => { a.href = '/md442/app/'; });
+</script>
+</body>
+</html>
