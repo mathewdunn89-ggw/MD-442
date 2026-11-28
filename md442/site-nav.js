@@ -17,7 +17,7 @@ nav.mdn a:focus-visible{outline:2px solid var(--g,#3dff7a);outline-offset:2px}
 nav.mdn a.mdn-home{gap:9px;padding:0 14px 0 0;margin-right:6px;border-radius:10px;color:#f2f2f2;font:900 19px/1 'Anybody',system-ui,sans-serif;font-variation-settings:'wdth' 150;letter-spacing:-.03em;text-transform:none}
 nav.mdn a.mdn-home:hover{background:none;color:#f2f2f2}
 nav.mdn a.mdn-home img{width:38px;height:38px;display:block;transition:transform .2s}
-nav.mdn a.mdn-home:hover img{transform:rotate(-20deg)}
+nav.mdn a.mdn-home:hover img{transform:skewX(-8deg) scale(1.06)}
 nav.mdn a.mdn-home i{font-style:normal;color:var(--g,#3dff7a)}
 nav.mdn .mdn-sep{flex:0 0 1px;align-self:center;height:18px;background:#333;margin:0 6px}
 @media (max-width:760px){nav.mdn .mdn-sep{display:none}nav.mdn a.mdn-home{flex:1 1 100%}nav.mdn a:not(.mdn-home){padding:0 16px 0 0}}`;
