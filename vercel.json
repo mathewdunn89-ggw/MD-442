@@ -2,11 +2,6 @@
   "trailingSlash": true,
   "redirects": [
     {
-      "source": "/",
-      "destination": "/mathew-dj/",
-      "permanent": false
-    },
-    {
       "source": "/md-442",
       "destination": "/md442/",
       "permanent": false
